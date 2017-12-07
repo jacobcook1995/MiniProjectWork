@@ -8,9 +8,9 @@ using Plots
 # Then function definitions
 function toy(t,u,du)
     # Constants
-    k=100 # steady state for A=k/K=1
+    k=1000 # steady state for A=k/K=1
     K=100 # K=k'
-    q=1 # steady state for B=q/Q=1
+    q=10 # steady state for B=q/Q=1
     Q=1 # Q=q'
     l=0.001 #switching
     du[1] = k + l*u[2] - (l+K)*u[1]
@@ -32,9 +32,9 @@ savefig( "../Results/SolutionvsTimeODE.png")
 # 2. steady state values from analytical theory
 
 # Constants
-k=100 # steady state for A=k/K=1
+k=1000 # steady state for A=k/K=1
 K=100 # K=k'
-q=1 # steady state for B=q/Q=1
+q=10 # steady state for B=q/Q=1
 Q=1 # Q=q'
 l=0.001 #switching 
 A = (q*l+(l+Q)*k)/((l+Q)*(l+K)-l*l)

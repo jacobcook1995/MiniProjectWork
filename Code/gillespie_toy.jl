@@ -1,6 +1,15 @@
 #!/usr/bin/env julia
 # Julia Script for Gillespie simulation of toy driven ecosystem
 
+#####################################################################
+# Main changes I've made to script are that it no longer cats each loop but
+# instead cats every specified number of loops given by batchsize, this speeds
+# the code up significantly. The production of the histogram is now done by 
+# using the vectors to calculate the time spent at each level and then plotting
+# these cumlative times as bar graphs. Otherwise the only change is the plotting 
+# but this is mainly due to the different plotting syntax of julia
+####################################################################
+
 # Add package for plotting
 using Plots
     

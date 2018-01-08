@@ -4,45 +4,45 @@
 #####################################################################
 # Main changes I've made to script are that it no longer cats each loop but
 # instead cats every specified number of loops given by batchsize, this speeds
-# the code up significantly. The production of the histogram is now done by 
+# the code up significantly. The production of the histogram is now done by
 # using the vectors to calculate the time spent at each level and then plotting
-# these cumlative times as bar graphs. Otherwise the only change is the plotting 
+# these cumlative times as bar graphs. Otherwise the only change is the plotting
 # but this is mainly due to the different plotting syntax of julia
 ####################################################################
 
 # Add package for plotting
 using Plots
-    
+
 # Parameters
-k = 100 # steady state for A=k/K=1
+k = 1000 # steady state for A=k/K=1
 K = 10 # K=k'
-q = 10 # steady state for B=q/Q=1
+q = 100 # steady state for B=q/Q=1
 Q = 1 # Q=q'
-f = 0.1 # Promoter switching
-rr = 0.01
+f = 0.1 #10 # Promoter switching
+rr = 0.01 #1
 batchsizeA = 1000000
 batchsizeB = 1000000
 Na = 0 # counts of A and B, mainly to give an idea of statisical weight later on
 Nb = 0
- 
+
 Ti = 0  # initial time
-Tf = 200000 # end of simulation time in s
+Tf = 10000 # end of simulation time in s
 
 At = []
 Bt = []
 TA = []
 TB = []
- 
+
 Atemp = fill(0, batchsizeA) # preallocate
 Btemp = fill(0, batchsizeB)
 TtempA = fill(0.0, batchsizeA)
 TtempB = fill(0.0, batchsizeB)
 
-Atemp[1] = 1
-Btemp[1] = 1
+Atemp[1] = 0
+Btemp[1] = 100
 TtempA[1] = Ti
 TtempB[1] = Ti
- 
+
 t = TtempA[1] # initialise
 A = Atemp[1]
 B = Btemp[1]
@@ -57,12 +57,12 @@ while t <= Tf
     # rates
     rates = [K*A, a*k, Q*B, b*q, f*B*(B-1)*a, (1-a)*rr, f*A*(A-1)*b, (1-b)*rr]
     r = rates/sum(rates)
-    
+
     rone = rand() #first random number
-    
+
     updateA = 0
     updateB = 0
-   
+
     # which reaction?
     if rone < r[1]
         A -= 1
@@ -93,11 +93,11 @@ while t <= Tf
         A += 2
         updateA = 1
     end
-    
+
     # update time
     rtwo = rand()  # second random number
     t = t - log(rtwo)/sum(rates)
-    
+
     if updateA == 1
         Atemp[i] = A
         TtempA[i] = t
@@ -109,7 +109,7 @@ while t <= Tf
         j += 1
         Nb += 1
     end
-    
+
     if i == batchsizeA + 1
         At = vcat(At, Atemp) # these two lines are probably the biggest use of time in this program
         TA = vcat(TA, TtempA)
@@ -117,7 +117,7 @@ while t <= Tf
         Atemp = fill(0, batchsizeA) # repreallocate
         TtempA = fill(0.0, batchsizeA)
     end
-    
+
     if j == batchsizeB + 1
         Bt = vcat(Bt, Btemp) # these two lines are probably the biggest use of time in this program
         TB = vcat(TB, TtempB)
@@ -125,7 +125,7 @@ while t <= Tf
         Btemp = fill(0, batchsizeB) # repreallocate
         TtempB = fill(0.0, batchsizeB)
     end
-    
+
 end
 
 # Need to now cat the final incomplete batch, will test before I do this though
@@ -189,7 +189,7 @@ for i = 1:length(PB)
 end
 
 print("Gillespie done!\n")
- 
+
 gr() # set plotting back end to plotlyjs()
 # Plot
 pone = plot(TA, At, xlabel = "Time", ylabel = "Solution", legend = false)
@@ -203,14 +203,14 @@ gc() # collect garbage
 
 # 1st histograms
 binsA = 0:length(PA)-1
-ptwo = plot(binsA, Na*PA, xlabel = "A", ylabel = "Frequency", color = :blue, linetype=:bar, xlim = (-1,30), legend = false)
-annotate!(20,100,text("<A>=$(aveA)",:left))
+ptwo = plot(binsA, Na*PA, xlabel = "A", ylabel = "Frequency", color = :blue, linetype=:bar, xlim = (-1,300), legend = false)
+annotate!(200,100,text("<A>=$(aveA)",:left))
 print("Second plot done!\n")
 
 # 2nd histogram
 binsB = 0:length(PB)-1
-pthree = plot(binsB, Nb*PB, xlabel = "B", ylabel = "Frequency", color = :red, linetype=:bar, xlim = (-1,30), legend = false)
-annotate!(20,100,text("<B>=$(aveB)",:left))
+pthree = plot(binsB, Nb*PB, xlabel = "B", ylabel = "Frequency", color = :red, linetype=:bar, xlim = (-1,300), legend = false)
+annotate!(200,100,text("<B>=$(aveB)",:left))
 print("Third plot done!\n")
 
 plot(pone, ptwo, pthree, layout=(3,1))#pthree

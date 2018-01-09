@@ -119,8 +119,6 @@ while t <= Tf
             PB[Bprev+1] += TtempB[1] - TtempB[2]
         end
     end
-
-
 end
 
 # Now rescale PB and PA by t
@@ -145,13 +143,13 @@ gr() # set plotting back end to gr()
 binsA = 0:(length(PA)-1)
 pone = plot(binsA, Na*PA, xlabel = "A", ylabel = "Frequency", color = :blue, linetype=:bar, xlim = (-1,30), legend = false)
 annotate!(20,100,text("<A>=$(aveA)",:left))
-print("Second plot done!\n")
+print("First plot done!\n")
 
 # 2nd histogram
 binsB = 0:(length(PB)-1)
 ptwo = plot(binsB, Nb*PB, xlabel = "B", ylabel = "Frequency", color = :red, linetype=:bar, xlim = (-1,30), legend = false)
 annotate!(20,100,text("<B>=$(aveB)",:left))
-print("Third plot done!\n")
+print("Second plot done!\n")
 
 plot(pone, ptwo, layout=(2,1))
 

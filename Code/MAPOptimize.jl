@@ -12,17 +12,26 @@ const k = 100
 const K = 10
 const q = 10
 const Q = 1
-const r = 0.1
-const f = 0.01
+const r = 1000000
+const f = 100000 # 100000
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
 const star = [0; 10] # start point
 const fin = [10; 0] # end point
 
+# find saddle points
+const inflex = [2; 2] # point of inflextion
+const pa1 = collect(star[1]:(2*(inflex[1]-star[1])/N):inflex[1])
+const pa2 = collect(inflex[1]:(2*(fin[1]-inflex[1])/N):fin[1])
+const pa = vcat(pa1,pa2[2:length(pa2)])
+const pb1 = collect(star[2]:(2*(inflex[2]-star[2])/N):inflex[2])
+const pb2 = collect(inflex[2]:(2*(fin[2]-inflex[2])/N):fin[2])
+const pb = vcat(pb1,pb2[2:length(pb2)])
+
 # First make a reasonable first guess of the path vector
-const pa = collect(star[1]:((fin[1]-star[1])/N):fin[1])
-const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
+# const pa = collect(star[1]:((fin[1]-star[1])/N):fin[1])
+# const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
 # Now construct the three relevant vectors of equations
@@ -135,8 +144,8 @@ function AP(thi, tau) # function to calculate action of a given path
             posA = (thi[i] + thi[i-1])/2
             posB = (thi[i+(N-1)] + thi[i+(N-2)])/2
         end
-        h = f!(h, [posA, posB])
-        d = D!(d, [posA, posB])
+        h = f!(h, [posA; posB])
+        d = D!(d, [posA; posB])
         for j = 1:2
             if i == 1
                 thiv = (thi[1+(j-1)*(N-1)] - star[j])/deltat
@@ -180,13 +189,13 @@ function g!(grads, thi, tau)
             thidot[1,i] = (thi[i] - thi[i-1])/deltat
             thidot[2,i] = (thi[i+(N-1)] - thi[i+(N-2)])/deltat
         end
-        fu[:,i] = f!(fu[:,i], [posA, posB])
-        fua[:,i] = fA!(fua[:,i], [posA, posB])
-        fub[:,i] = fB!(fub[:,i], [posA, posB])
-        d[:,:,i] = D!(d[:,:,i], [posA, posB])
-        d2[:,:,i] = D2!(d2[:,:,i], [posA, posB])
-        da[:,:,i] = DA!(da[:,:,i], [posA, posB])
-        db[:,:,i] = DB!(db[:,:,i], [posA, posB])
+        fu[:,i] = f!(fu[:,i], [posA; posB])
+        fua[:,i] = fA!(fua[:,i], [posA; posB])
+        fub[:,i] = fB!(fub[:,i], [posA; posB])
+        d[:,:,i] = D!(d[:,:,i], [posA; posB])
+        d2[:,:,i] = D2!(d2[:,:,i], [posA; posB])
+        da[:,:,i] = DA!(da[:,:,i], [posA; posB])
+        db[:,:,i] = DB!(db[:,:,i], [posA; posB])
     end
 
     for i = 1:N-1
@@ -223,19 +232,14 @@ end
 # function to actually perform the optimisation
 function optSt(nonfixed,tau)
     results = optimize(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), nonfixed, LBFGS(),
-                       Optim.Options(g_tol = 1e-12, f_tol = 1e-64,
-                       iterations = 10000))
+                       Optim.Options(g_tol = 0.0, f_tol = 0.0, x_tol = 0.0,
+                       iterations = 10000, allow_f_increases = true))
     # Get results out of optimiser
     result = Optim.minimizer(results)
     S = Optim.minimum(results)
-    # Steps so I can see what's going on
-    print(Optim.summary(results))
+    print(Optim.iterations(results))
     print("\n")
     print(Optim.iteration_limit_reached(results))
-    print("\n")
-    print(Optim.f_calls(results))
-    print("\n")
-    print(Optim.converged(results))
     print("\n")
     print(Optim.x_converged(results))
     print("\n")
@@ -243,25 +247,38 @@ function optSt(nonfixed,tau)
     print("\n")
     print(Optim.g_converged(results))
     print("\n")
-    print(Optim.iterations(results))
+    print(Optim.converged(results))
     print("\n")
-
+    print(Optim.f_calls(results))
+    print("\n")
+    print(Optim.g_calls(results))
+    print("\n")
     return(result, S)
 end
 
+# This function runs the optimisation multiple times in the hope of reducing the ruggedness of the action landscape
+function optSt2(tau,noit)
+    notfixed = Pathdiv(thi1)
+    result, S = optSt(notfixed, tau) # generate standard path
+    for i = 2:noit
+        result, S = optSt(result, tau)
+    end
+    pathfin = Pathmerge(result)
+    return(pathfin, S)
+end
+
 # A function to run a linesearch
-function linesear(func, thi, tau0)
-    nonfixed = Pathdiv(thi) # convert path to optimizable form
+function linesear(tau,noit)
     k = 0 # initialise counter
-    t = tau0
-    converged = false
-    α = 10000
-    while converged != true
-        h = 1/100000000
+    t = tau
+    α = 1
+    β = 0.1
+    while true
+        h = 1/100
         # first proper step of the algorithm is to calculate the direction vector
-        _, f = optSt(nonfixed,t)
-        _, fh = optSt(nonfixed,t+h)
-        _, fminh = optSt(nonfixed, t-h)
+        _, f = optSt2(t,noit)
+        _, fh = optSt2(t+h,noit)
+        _, fminh = optSt2(t-h,noit)
         dplus = - (fh-f)/h
         dminus = - (fminh-f)/h
         d = max(dplus,dminus)
@@ -272,24 +289,28 @@ function linesear(func, thi, tau0)
         end
         # Check that the rate of descent is still significant if not end linesearch
         if d <= 10.0^-10
-            converged = true
             print(d)
             print("\n")
+            print(t)
+            print(",")
+            print(f)
+            print("\n")
+            break
         end
         # Next step is to find the correct step size to make, α,
         appstep = false
         while appstep == false
             if plus == true
-                t1 = t + α*d
+                t1 = t + α
             else
-                t1 = t - α*d
+                t1 = t - α
             end
-            _, fa = optSt(nonfixed,t1)
-            if fa <= f
+            _, fa = optSt2(t1,noit)
+            if fa <= f - α*β*d # commented out as it seems to be stopping the cycle from finishing
                 t = t1
                 print(t)
                 print(",")
-                print(f)
+                print(fa)
                 print("\n")
                 appstep = true
             else
@@ -302,52 +323,33 @@ end
 
 # function to run a full optimization
 # takes a starting path for each simulation thi, and an initial guess for tau, h is step size
-function run(thi, tau)
-    linesear(optSt, thi, tau)
+function run(tau,noit)
+    linesear(tau,noit)
 end
 
-# @time run(thi1, 1080)
-
-notfixed = Pathdiv(thi1)
-@time result, S = optSt(notfixed, 1)
-path = Pathmerge(result)
-print(S)
-print("\n")
-plot(path[:,1],path[:,2])
-savefig("../Results/Graph11.png")
-@time result2, S2 = optSt(result, 1)
-path2 = Pathmerge(result2)
-print(S2)
-print("\n")
-plot(path2[:,1],path2[:,2])
-savefig("../Results/Graph12.png")
-@time result3, S3 = optSt(result2, 1)
-path3 = Pathmerge(result3)
-print(S3)
-print("\n")
-plot(path3[:,1],path3[:,2])
-savefig("../Results/Graph13.png")
-@time result4, S4 = optSt(result3, 1)
-path4 = Pathmerge(result4)
-print(S4)
-print("\n")
-plot(path4[:,1],path4[:,2])
-savefig("../Results/Graph14.png")
-@time result5, S5 = optSt(result4, 1)
-path5 = Pathmerge(result5)
-print(S5)
-print("\n")
-plot(path5[:,1],path5[:,2])
-savefig("../Results/Graph15.png")
-@time result6, S6 = optSt(result5, 1)
-path6 = Pathmerge(result6)
-print(S6)
-print("\n")
-plot(path6[:,1],path6[:,2])
-savefig("../Results/Graph16.png")
-@time result7, S7 = optSt(result6, 1)
-path7 = Pathmerge(result7)
-print(S7)
-print("\n")
-plot(path7[:,1],path7[:,2])
-savefig("../Results/Graph17.png")
+#@time run(20,5)
+taus = [ 25; 50; 75; 100; 125; 150; 175; 200; 225; 250; 275; 300; 325; 350; 375; 400; 425; 450 ]
+S = zeros(length(taus),1)
+for i = 1:length(taus)
+   @time _, S[i] = optSt2(taus[i],5) # more loops don't add as much time as you'd think only really adds time to incorrectly calculated MAPs
+end
+plot(taus,S)
+savefig("../Results/Graph.png")
+# result, S = optSt2(17.5,1) # 3.9232519533501384, 3.9232519533494825
+# print(S)
+# print("\n")
+# path = Pathmerge(result)
+# plot(path[:,1],path[:,2])
+# savefig("../Results/Graph10.png")
+# result, S = optSt2(17.5,2) # 23.000229120254517
+# print(S)
+# print("\n")
+# path = Pathmerge(result)
+# plot(path[:,1],path[:,2])
+# savefig("../Results/Graph20.png")
+# result, S = optSt2(17.5,3)
+# print(S)
+# print("\n")
+# path = Pathmerge(result)
+# plot(path[:,1],path[:,2])
+# savefig("../Results/Graph30.png")

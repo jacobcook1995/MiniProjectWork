@@ -1,23 +1,26 @@
-# Script for plotting nullclines of toggle switch  
+# Script for plotting nullclines of toggle switch
 # with cooperativity
 
 # Add package for plotting
 using Plots
- 
+
 k = 100
 K = 10 #/s
 q = 10
 Q = 1
- 
+
 f = 0.01
 r = 0.01
-a = 1
-b = 1
- 
+a = 2
+b = 2
+
 B=0:0.01:10
- 
+
 A1 = k*r/K./(r+f*B.^a)
 A2 = (r/f*(q./(Q*B)-1)).^(1/b)
+
+A1=k*r/K./(r+f*B.^a);
+A2=(r/f*(q./(Q*B)-1)).^(1/b)
 
 gr() # set plotting back end to gr()
 

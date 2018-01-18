@@ -4,23 +4,19 @@
 # Add package for plotting
 using Plots
 
-k = 100
-K = 10 #/s
-q = 10
-Q = 1
-
-f = 0.01
-r = 0.01
+const k = 100
+const K = 10
+const q = 10
+const Q = 1
+const r = 100000
+const f = 10000
 a = 2
 b = 2
 
-B=0:0.01:10
+B = 0:0.01:10
 
 A1 = k*r/K./(r+f*B.^a)
 A2 = (r/f*(q./(Q*B)-1)).^(1/b)
-
-A1=k*r/K./(r+f*B.^a);
-A2=(r/f*(q./(Q*B)-1)).^(1/b)
 
 gr() # set plotting back end to gr()
 

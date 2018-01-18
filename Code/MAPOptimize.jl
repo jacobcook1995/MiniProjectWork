@@ -7,32 +7,18 @@
 # Putting the relevant imports in
 using Optim
 using Plots
+using Roots
+
 # Firstly should define constants
 const k = 100
 const K = 10
 const q = 10
 const Q = 1
-const r = 1000000
+const r = 10000
 const f = 100000 # 100000
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
-const star = [0; 10] # start point
-const fin = [10; 0] # end point
-
-# find saddle points
-const inflex = [2; 2] # point of inflextion
-const pa1 = collect(star[1]:(2*(inflex[1]-star[1])/N):inflex[1])
-const pa2 = collect(inflex[1]:(2*(fin[1]-inflex[1])/N):fin[1])
-const pa = vcat(pa1,pa2[2:length(pa2)])
-const pb1 = collect(star[2]:(2*(inflex[2]-star[2])/N):inflex[2])
-const pb2 = collect(inflex[2]:(2*(fin[2]-inflex[2])/N):fin[2])
-const pb = vcat(pb1,pb2[2:length(pb2)])
-
-# First make a reasonable first guess of the path vector
-# const pa = collect(star[1]:((fin[1]-star[1])/N):fin[1])
-# const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
-const thi1 = hcat(pa,pb)
 
 # Now construct the three relevant vectors of equations
 function f!(F, x)
@@ -111,6 +97,21 @@ function Pathmerge(nonfixed)
     unshift!(bpath,star[2])
     path = hcat(apath,bpath)
     return(path)
+end
+
+# A function to find the crossing points of the nullclines so they can be used
+# as start, end and saddle points
+function nullcline()
+    a = 2
+    b = 2
+    A1(x) = k*r/(K*(r+f*x^a))
+    A2(x) = (r/f*(q/(Q*x)-1))^(1/b)
+    g(x) = k*r/(K*(r+f*x^a)) - (r/f*(q/(Q*x)-1))^(1/b) #A1(x) - A2(x)
+    xs = fzeros(g, 0, q/Q)
+    ss1 = [xs[1]; A1(xs[1])]
+    sad = [xs[2]; A1(xs[2])]
+    ss2 = [xs[3]; A1(xs[3])]#
+    return (ss1,sad,ss2)
 end
 
 function AP(thi, tau) # function to calculate action of a given path
@@ -237,22 +238,6 @@ function optSt(nonfixed,tau)
     # Get results out of optimiser
     result = Optim.minimizer(results)
     S = Optim.minimum(results)
-    print(Optim.iterations(results))
-    print("\n")
-    print(Optim.iteration_limit_reached(results))
-    print("\n")
-    print(Optim.x_converged(results))
-    print("\n")
-    print(Optim.f_converged(results))
-    print("\n")
-    print(Optim.g_converged(results))
-    print("\n")
-    print(Optim.converged(results))
-    print("\n")
-    print(Optim.f_calls(results))
-    print("\n")
-    print(Optim.g_calls(results))
-    print("\n")
     return(result, S)
 end
 
@@ -274,7 +259,7 @@ function linesear(tau,noit)
     α = 1
     β = 0.1
     while true
-        h = 1/100
+        h = 1/1000
         # first proper step of the algorithm is to calculate the direction vector
         _, f = optSt2(t,noit)
         _, fh = optSt2(t+h,noit)
@@ -289,12 +274,9 @@ function linesear(tau,noit)
         end
         # Check that the rate of descent is still significant if not end linesearch
         if d <= 10.0^-10
-            print(d)
+            print("Line Search Done")
             print("\n")
-            print(t)
-            print(",")
-            print(f)
-            print("\n")
+            return(t)
             break
         end
         # Next step is to find the correct step size to make, α,
@@ -308,11 +290,9 @@ function linesear(tau,noit)
             _, fa = optSt2(t1,noit)
             if fa <= f - α*β*d # commented out as it seems to be stopping the cycle from finishing
                 t = t1
-                print(t)
-                print(",")
-                print(fa)
-                print("\n")
                 appstep = true
+                print("Still making progress")
+                print("\n")
             else
                 α *= 0.5
             end
@@ -320,36 +300,86 @@ function linesear(tau,noit)
     end
 end
 
+# function to find the entropy production of a path that takes a certain time tau
+function EntProd(path,tau)
+    # probably easiest to calculate the entropy production at each point in the path
+    ents = zeros(N,2)
+    h = [0.0; 0.0]
+    d = [0.0 0.0; 0.0 0.0]
+    deltat = tau/N
+    for i = 2:N+1
+        posA = (path[i,1] + path[i-1,1])/2
+        posB = (path[i,2] + path[i-1,2])/2
+        h = f!(h, [posA; posB])
+        d = D!(d, [posA; posB])
+        for j = 1:2
+            thiv = (path[i,j] - path[i-1,j])/deltat
+            ents[i-1,j] = h[j]*thiv*deltat/d[j,j]
+        end
+    end
+    print(ents)
+    print("\n")
+    return(ents)
+end
+
 
 # function to run a full optimization
 # takes a starting path for each simulation thi, and an initial guess for tau, h is step size
 function run(tau,noit)
-    linesear(tau,noit)
+    t = linesear(tau,noit)
+    print(t)
+    print("\n")
+    pathmin, S = optSt2(t,noit)
+    print(S)
+    print("\n")
+    plot(pathmin[:,1],pathmin[:,2])
+    ents =  EntProd(pathmin,t)
+
 end
 
-#@time run(20,5)
-taus = [ 25; 50; 75; 100; 125; 150; 175; 200; 225; 250; 275; 300; 325; 350; 375; 400; 425; 450 ]
-S = zeros(length(taus),1)
-for i = 1:length(taus)
-   @time _, S[i] = optSt2(taus[i],5) # more loops don't add as much time as you'd think only really adds time to incorrectly calculated MAPs
-end
-plot(taus,S)
-savefig("../Results/Graph.png")
-# result, S = optSt2(17.5,1) # 3.9232519533501384, 3.9232519533494825
+# Now define the paths
+start, saddle, finish = nullcline()
+
+const star = start # These are then set constant to allow better optimisation
+const inflex = saddle
+const fin = finish
+
+# find saddle points
+const pa1 = collect(linspace(star[1],inflex[1],(N/2)+1))
+const pa2 = collect(linspace(inflex[1],fin[1],(N/2)+1))
+const pa = vcat(pa1,pa2[2:length(pa2)])
+const pb1 = collect(linspace(star[2],inflex[2],(N/2)+1))
+const pb2 = collect(linspace(inflex[2],fin[2],(N/2)+1))
+const pb = vcat(pb1,pb2[2:length(pb2)])
+
+# First make a reasonable first guess of the path vector
+# const pa = collect(star[1]:((fin[1]-star[1])/N):fin[1])
+# const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
+const thi1 = hcat(pa,pb)
+
+@time run(16.1025390625,5)
+# taus = [ 25; 50; 75; 100; 125; 150; 175; 200; 225; 250; 275; 300; 325; 350; 375; 400; 425; 450 ]
+# S = zeros(length(taus),1)
+# for i = 1:length(taus)
+#    @time _, S[i] = optSt2(taus[i],5) # more loops don't add as much time as you'd think only really adds time to incorrectly calculated MAPs
+# end
+# plot(taus,S)
+# savefig("../Results/Graph.png")
+# result, S = optSt2(16.1008300781255,2) # 45.4296875 f<r 18.9375 f=r
 # print(S)
 # print("\n")
 # path = Pathmerge(result)
-# plot(path[:,1],path[:,2])
+# plot(path[:,1],path[:,2],marker=:auto)
 # savefig("../Results/Graph10.png")
-# result, S = optSt2(17.5,2) # 23.000229120254517
+# result, S = optSt2(16.100830078125,5)
 # print(S)
 # print("\n")
 # path = Pathmerge(result)
-# plot(path[:,1],path[:,2])
+# plot(path[:,1],path[:,2],marker=:auto)
 # savefig("../Results/Graph20.png")
-# result, S = optSt2(17.5,3)
+# result, S = optSt2(16.100830078125,10)
 # print(S)
 # print("\n")
 # path = Pathmerge(result)
-# plot(path[:,1],path[:,2])
+# plot(path[:,1],path[:,2],marker=:auto)
 # savefig("../Results/Graph30.png")

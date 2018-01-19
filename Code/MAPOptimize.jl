@@ -8,17 +8,18 @@
 using Optim
 using Plots
 using Roots
+import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
 const k = 100
 const K = 10
 const q = 10
 const Q = 1
-const r = 10000
-const f = 100000 # 100000
+const r = 100000
+const f = 10000 # 100000
 
 # Then set parameters of the optimization
-const N = 150 # number of segments optimised over
+const N = 1500 # number of segments optimised over
 
 # Now construct the three relevant vectors of equations
 function f!(F, x)
@@ -110,7 +111,7 @@ function nullcline()
     xs = fzeros(g, 0, q/Q)
     ss1 = [xs[1]; A1(xs[1])]
     sad = [xs[2]; A1(xs[2])]
-    ss2 = [xs[3]; A1(xs[3])]#
+    ss2 = [xs[3]; A1(xs[3])]
     return (ss1,sad,ss2)
 end
 
@@ -291,7 +292,8 @@ function linesear(tau,noit)
             if fa <= f - α*β*d # commented out as it seems to be stopping the cycle from finishing
                 t = t1
                 appstep = true
-                print("Still making progress")
+                print("Still making progress. τ = ")
+                print(t)
                 print("\n")
             else
                 α *= 0.5
@@ -317,8 +319,6 @@ function EntProd(path,tau)
             ents[i-1,j] = h[j]*thiv*deltat/d[j,j]
         end
     end
-    print(ents)
-    print("\n")
     return(ents)
 end
 
@@ -332,9 +332,21 @@ function run(tau,noit)
     pathmin, S = optSt2(t,noit)
     print(S)
     print("\n")
-    plot(pathmin[:,1],pathmin[:,2])
+    gr()
+    segpos = zeros(N,2)
+    for i = 1:N
+        for j = 1:2
+            segpos[i,j] = (pathmin[i,j]+pathmin[i+1,j])/2
+        end
+    end
+    pone = plot(pathmin[:,1],pathmin[:,2])
     ents =  EntProd(pathmin,t)
-
+    entropies =  ents[:,1] + ents[:,2]
+    ptwo = plot(segpos[:,1],entropies) # CRUDE AND SHOULD CHANGE BUT THIS IS OKAY FOR NOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    plot(pone, ptwo, layout=(1,2))
+    savefig("../Results/Entropy.png")
+    print(sum(entropies))
+    print("\n")
 end
 
 # Now define the paths
@@ -357,7 +369,7 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
-@time run(16.1025390625,5)
+@time run(45.4306640625,5)
 # taus = [ 25; 50; 75; 100; 125; 150; 175; 200; 225; 250; 275; 300; 325; 350; 375; 400; 425; 450 ]
 # S = zeros(length(taus),1)
 # for i = 1:length(taus)

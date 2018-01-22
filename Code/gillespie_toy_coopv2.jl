@@ -15,18 +15,19 @@
 using Plots
 
 # Parameters
+Ω = 10000 # system size
 k = 100 # steady state for A=k/K=1
-K = 10 # K=k'
+K = k/Ω # K=k'
 q = 10 # steady state for B=q/Q=1
-Q = 1 # Q=q'
-f = 0.1 # Promoter switching
-rr = 0.01
+Q = q/Ω # Q=q'
+f = 100000 # Promoter switching
+rr = 100000
 
 Na = 0 # counts of A and B, mainly to give an idea of statisical weight later on
 Nb = 0
 
 Ti = 0.0  # initial time
-Tf = 1000000 # end of simulation time in s
+Tf = 1000 # end of simulation time in s
 
 TtempA = [Ti; Ti]
 TtempB = [Ti; Ti]
@@ -35,7 +36,7 @@ PB = [0.0]
 
 t = TtempA[1] # initialise
 A = 0
-B = 10
+B = Ω
 
 a = 1
 b = 1

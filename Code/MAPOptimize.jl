@@ -11,15 +11,16 @@ using Roots
 import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
+const Ω = 10
 const k = 100
 const K = 10
 const q = 10
 const Q = 1
 const r = 100000
-const f = 10000 # 100000
+const f = 100000 # 100000
 
 # Then set parameters of the optimization
-const N = 1500 # number of segments optimised over
+const N = 150 # number of segments optimised over
 
 # Now construct the three relevant vectors of equations
 function f!(F, x)
@@ -257,7 +258,7 @@ end
 function linesear(tau,noit)
     k = 0 # initialise counter
     t = tau
-    α = 1
+    α = 2
     β = 0.1
     while true
         h = 1/1000
@@ -292,9 +293,7 @@ function linesear(tau,noit)
             if fa <= f - α*β*d # commented out as it seems to be stopping the cycle from finishing
                 t = t1
                 appstep = true
-                print("Still making progress. τ = ")
-                print(t)
-                print("\n")
+                print("Still making progress. τ = $(t)\n")
             else
                 α *= 0.5
             end
@@ -305,18 +304,22 @@ end
 # function to find the entropy production of a path that takes a certain time tau
 function EntProd(path,tau)
     # probably easiest to calculate the entropy production at each point in the path
-    ents = zeros(N,2)
+    ents = zeros(N+1,2)
     h = [0.0; 0.0]
     d = [0.0 0.0; 0.0 0.0]
     deltat = tau/N
-    for i = 2:N+1
-        posA = (path[i,1] + path[i-1,1])/2
-        posB = (path[i,2] + path[i-1,2])/2
-        h = f!(h, [posA; posB])
-        d = D!(d, [posA; posB])
+    for i = 1:N+1
+        h = f!(h, path[i,:])
+        d = D!(d, path[i,:])
         for j = 1:2
-            thiv = (path[i,j] - path[i-1,j])/deltat
-            ents[i-1,j] = h[j]*thiv*deltat/d[j,j]
+            if i == 1
+                thiv = (path[i+1,j] - path[i,j])/deltat
+            elseif i == N+1
+                thiv = (path[i,j] - path[i-1,j])/deltat
+            else
+                thiv = (path[i+1,j] - path[i-1,j])/(2*deltat)
+            end
+            ents[i,j] = h[j]*thiv*deltat/d[j,j] # this will change things surely, or maybe not
         end
     end
     return(ents)
@@ -333,20 +336,21 @@ function run(tau,noit)
     print(S)
     print("\n")
     gr()
-    segpos = zeros(N,2)
-    for i = 1:N
-        for j = 1:2
-            segpos[i,j] = (pathmin[i,j]+pathmin[i+1,j])/2
-        end
-    end
-    pone = plot(pathmin[:,1],pathmin[:,2])
+    pone = plot(pathmin[:,1],pathmin[:,2], lab = "MAP", xaxis = "A", yaxis = "B")
+    pone = scatter!(pone, [star[1]], [star[2]], lab = "Start", seriescolor = :green) # put start point in
+    pone = scatter!(pone, [inflex[1]], [inflex[2]], lab = "Saddle Point", seriescolor = :orange)
+    pone = scatter!(pone, [fin[1]], [fin[2]], lab = "Finish", seriescolor = :red) # put end point in
     ents =  EntProd(pathmin,t)
-    entropies =  ents[:,1] + ents[:,2]
-    ptwo = plot(segpos[:,1],entropies) # CRUDE AND SHOULD CHANGE BUT THIS IS OKAY FOR NOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    plot(pone, ptwo, layout=(1,2))
-    savefig("../Results/Entropy.png")
-    print(sum(entropies))
+    entP = sum(ents)
+    print(entP)
     print("\n")
+    ptwo = plot(pathmin[1:(N+1),1], ents, xaxis = "A", yaxis = "Entropy Production", marker=:auto)
+    ptwo = scatter!(ptwo, [star[1]], [0.0], seriescolor = :green)
+    ptwo = scatter!(ptwo, [inflex[1]], [0.0], seriescolor = :orange)
+    ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red, leg=false)
+    annotate!(inflex[1]+3, minimum(ents)+0.01, text("Ent prod = $(entP)\nBlue is A\nRed is B", :left, font(5, "Courier")))
+    plot(pone, ptwo, layout = (1,2))
+    savefig("../Results/Entropy.png")
 end
 
 # Now define the paths
@@ -369,29 +373,4 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
-@time run(45.4306640625,5)
-# taus = [ 25; 50; 75; 100; 125; 150; 175; 200; 225; 250; 275; 300; 325; 350; 375; 400; 425; 450 ]
-# S = zeros(length(taus),1)
-# for i = 1:length(taus)
-#    @time _, S[i] = optSt2(taus[i],5) # more loops don't add as much time as you'd think only really adds time to incorrectly calculated MAPs
-# end
-# plot(taus,S)
-# savefig("../Results/Graph.png")
-# result, S = optSt2(16.1008300781255,2) # 45.4296875 f<r 18.9375 f=r
-# print(S)
-# print("\n")
-# path = Pathmerge(result)
-# plot(path[:,1],path[:,2],marker=:auto)
-# savefig("../Results/Graph10.png")
-# result, S = optSt2(16.100830078125,5)
-# print(S)
-# print("\n")
-# path = Pathmerge(result)
-# plot(path[:,1],path[:,2],marker=:auto)
-# savefig("../Results/Graph20.png")
-# result, S = optSt2(16.100830078125,10)
-# print(S)
-# print("\n")
-# path = Pathmerge(result)
-# plot(path[:,1],path[:,2],marker=:auto)
-# savefig("../Results/Graph30.png")
+@time run(18.9384765625,5)

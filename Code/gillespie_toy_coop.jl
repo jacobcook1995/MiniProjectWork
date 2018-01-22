@@ -14,19 +14,20 @@
 using Plots
 
 # Parameters
-k = 1000 # steady state for A=k/K=1
-K = 10 # K=k'
-q = 100 # steady state for B=q/Q=1
-Q = 1 # Q=q'
-f = 0.1 #10 # Promoter switching
-rr = 0.01 #1
+Ω = 10000
+k = 100 # steady state for A=k/K=1
+K = k/Ω # K=k'
+q = 10 # steady state for B=q/Q=1
+Q = q/Ω # Q=q'
+f = 100000 #10 # Promoter switching
+rr = 100000 #1
 batchsizeA = 1000000
 batchsizeB = 1000000
 Na = 0 # counts of A and B, mainly to give an idea of statisical weight later on
 Nb = 0
 
 Ti = 0  # initial time
-Tf = 10000 # end of simulation time in s
+Tf = 10 # end of simulation time in s
 
 At = []
 Bt = []
@@ -38,8 +39,8 @@ Btemp = fill(0, batchsizeB)
 TtempA = fill(0.0, batchsizeA)
 TtempB = fill(0.0, batchsizeB)
 
-Atemp[1] = 0
-Btemp[1] = 100
+Atemp[1] = 1
+Btemp[1] = Ω
 TtempA[1] = Ti
 TtempB[1] = Ti
 
@@ -203,14 +204,14 @@ gc() # collect garbage
 
 # 1st histograms
 binsA = 0:length(PA)-1
-ptwo = plot(binsA, Na*PA, xlabel = "A", ylabel = "Frequency", color = :blue, linetype=:bar, xlim = (-1,300), legend = false)
-annotate!(200,100,text("<A>=$(aveA)",:left))
+ptwo = plot(binsA, Na*PA, xlabel = "A", ylabel = "Frequency", color = :blue, linetype=:bar, xlim = (-1,30000), legend = false)
+annotate!(15000,100,text("<A>=$(aveA)",:left))
 print("Second plot done!\n")
 
 # 2nd histogram
 binsB = 0:length(PB)-1
-pthree = plot(binsB, Nb*PB, xlabel = "B", ylabel = "Frequency", color = :red, linetype=:bar, xlim = (-1,300), legend = false)
-annotate!(200,100,text("<B>=$(aveB)",:left))
+pthree = plot(binsB, Nb*PB, xlabel = "B", ylabel = "Frequency", color = :red, linetype=:bar, xlim = (-1,30000), legend = false)
+annotate!(15000,100,text("<B>=$(aveB)",:left))
 print("Third plot done!\n")
 
 plot(pone, ptwo, pthree, layout=(3,1))#pthree

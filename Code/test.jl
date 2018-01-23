@@ -14,20 +14,21 @@
 # Add package for plotting
 using Plots
 
+
 # Parameters
 Ω = 30 # system size
 k = 100 # steady state for A=k/K=1
 K = k/Ω # K=k'
 q = 10 # steady state for B=q/Q=1
 Q = q/Ω # Q=q'
-f = 100000 # Promoter switching
-rr = 100000
+f = 0.01 # Promoter switching
+rr = 0.01
 
 Na = 0 # counts of A and B, mainly to give an idea of statisical weight later on
 Nb = 0
 
 Ti = 0.0  # initial time
-Tf = 500000 # end of simulation time in s
+Tf = 50000 # end of simulation time in s
 
 TtempA = [Ti; Ti]
 TtempB = [Ti; Ti]
@@ -38,6 +39,9 @@ t = TtempA[1] # initialise
 A = Ω
 B = 0
 
+a = 1
+b = 1
+
 # Main loop
 while t <= Tf
     # set prior A and Bs
@@ -45,7 +49,7 @@ while t <= Tf
     Bprev = B
 
     # rates
-    rates = [K*A, rr*k/(rr+f*B*(B-1)), Q*B, rr*q/(rr+f*A*(A-1))]
+    rates = [K*A, a*k, Q*B, b*q, f*B*(B-1)*a, (1-a)*rr, f*A*(A-1)*b, (1-b)*rr]
     r = rates/sum(rates)
 
     rone = rand() # first random number
@@ -63,9 +67,25 @@ while t <= Tf
     elseif rone < (r[1]+r[2]+r[3])
         B -= 1
         updateB = 1
-    else
+    elseif rone < (r[1]+r[2]+r[3]+r[4])
         B += 1
         updateB = 1
+    elseif rone < (r[1]+r[2]+r[3]+r[4]+r[5])
+        a -= 1
+        B -= 2 # With cooperativity
+        updateB = 1
+    elseif rone < (r[1]+r[2]+r[3]+r[4]+r[5]+r[6])
+        a += 1
+        B += 2
+        updateB = 1
+    elseif rone < (r[1]+r[2]+r[3]+r[4]+r[5]+r[6]+r[7])
+        b -= 1
+        A -= 2 # with cooperativity
+        updateA = 1
+    else
+        b += 1
+        A += 2
+        updateA = 1
     end
 
     # update time

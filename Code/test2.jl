@@ -14,20 +14,21 @@
 using Plots
 
 # Parameters
-Ω = 10
+Ω = 30 # system size
 k = 100 # steady state for A=k/K=1
 K = k/Ω # K=k'
 q = 10 # steady state for B=q/Q=1
 Q = q/Ω # Q=q'
-f = 100000 #10 # Promoter switching
-rr = 100000 #1
+f = 1 # Promoter switching
+rr = 1
 batchsizeA = 1000000
 batchsizeB = 1000000
+
 Na = 0 # counts of A and B, mainly to give an idea of statisical weight later on
 Nb = 0
 
-Ti = 0  # initial time
-Tf = 10000 # end of simulation time in s
+Ti = 0.0  # initial time
+Tf = 100000 # end of simulation time in s
 
 At = []
 Bt = []
@@ -56,7 +57,7 @@ b = 1
 # Main loop
 while t <= Tf
     # rates
-    rates = [K*A, rr*k/(rr+f*B*B), Q*B, rr*q/(rr+f*A*A)]
+    rates = [K*A, a*k, Q*B, b*q, f*B*(B-1)*a, (1-a)*rr, f*A*(A-1)*b, (1-b)*rr]
     r = rates/sum(rates)
 
     rone = rand() #first random number
@@ -74,9 +75,25 @@ while t <= Tf
     elseif rone < (r[1]+r[2]+r[3])
         B -= 1
         updateB = 1
-    else
+    elseif rone < (r[1]+r[2]+r[3]+r[4])
         B += 1
         updateB = 1
+    elseif rone < (r[1]+r[2]+r[3]+r[4]+r[5])
+        a -= 1
+        B -= 2 # With cooperativity
+        updateB = 1
+    elseif rone < (r[1]+r[2]+r[3]+r[4]+r[5]+r[6])
+        a += 1
+        B += 2
+        updateB = 1
+    elseif rone < (r[1]+r[2]+r[3]+r[4]+r[5]+r[6]+r[7])
+        b -= 1
+        A -= 2 # with cooperativity
+        updateA = 1
+    else
+        b += 1
+        A += 2
+        updateA = 1
     end
 
     # update time
@@ -189,13 +206,13 @@ gc() # collect garbage
 # 1st histograms
 binsA = 0:(length(PA)-1)
 ptwo = plot(binsA, Na*PA, xlabel = "A", ylabel = "Frequency", color = :blue, linetype=:bar, xlim = (-1,3*Ω), legend = false)
-annotate!(1.5*Ω,100,text("<A>=$(aveA)",:left))
+annotate!(1.5*Ω,0.5*maximum(Na*PA),text("<A>=$(aveA)",:left))
 print("Second plot done!\n")
 
 # 2nd histogram
 binsB = 0:(length(PB)-1)
 pthree = plot(binsB, Nb*PB, xlabel = "B", ylabel = "Frequency", color = :red, linetype=:bar, xlim = (-1,3*Ω), legend = false)
-annotate!(1.5*Ω,100,text("<B>=$(aveB)",:left))
+annotate!(1.5*Ω,0.5*maximum(Nb*PB),text("<B>=$(aveB)",:left))
 print("Third plot done!\n")
 
 plot(pone, ptwo, pthree, layout=(3,1))#pthree

@@ -16,8 +16,8 @@ const k = 100
 const K = 10
 const q = 10
 const Q = 1
-const r = 100000
-const f = 100000 # 100000
+const r = 0.01#00000
+const f = 0.01#00000 # 100000
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over

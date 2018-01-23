@@ -11,13 +11,13 @@ using Roots
 import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
-const Ω = 10
-const k = 100
-const K = 10
-const q = 10
-const Q = 1
-const r = 0.01#00000
-const f = 0.01#00000 # 100000
+const Ω = 10 #30
+const k = 10
+const K = k/Ω
+const q = 100
+const Q = q/Ω
+const r = 0.00001
+const f = 0.00001# 100000
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
@@ -110,9 +110,9 @@ function nullcline()
     A2(x) = (r/f*(q/(Q*x)-1))^(1/b)
     g(x) = k*r/(K*(r+f*x^a)) - (r/f*(q/(Q*x)-1))^(1/b) #A1(x) - A2(x)
     xs = fzeros(g, 0, q/Q)
-    ss1 = [xs[1]; A1(xs[1])]
-    sad = [xs[2]; A1(xs[2])]
-    ss2 = [xs[3]; A1(xs[3])]
+    ss1 = [A1(xs[1]); xs[1]]
+    sad = [A1(xs[2]); xs[2]]
+    ss2 = [A1(xs[3]); xs[3]]
     return (ss1,sad,ss2)
 end
 
@@ -348,7 +348,7 @@ function run(tau,noit)
     ptwo = scatter!(ptwo, [star[1]], [0.0], seriescolor = :green)
     ptwo = scatter!(ptwo, [inflex[1]], [0.0], seriescolor = :orange)
     ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red, leg=false)
-    annotate!(inflex[1]+3, minimum(ents)+0.01, text("Ent prod = $(entP)\nBlue is A\nRed is B", :left, font(5, "Courier")))
+    annotate!(inflex[1]+3, minimum(ents)+0.01, text("Ent prod = $(entP)\nBlue is B\nRed is A", :left, font(5, "Courier")))
     plot(pone, ptwo, layout = (1,2))
     savefig("../Results/Entropy.png")
 end
@@ -373,4 +373,4 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
-@time run(18.9384765625,5)
+@time run(38.9052734375,5)

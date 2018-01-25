@@ -32,27 +32,20 @@ end
 
 # function to calculate the entropy production of a point in protein space
 function entprods(point,a,b)
-    entros = zeros(3,2) # gonna neglect switching at first
+    entros = zeros(4) # gonna neglect switching at first
     decA = K*point[1]
     decArev = 10.0^-60 # Any protein is equally (very un-) likely to spontanously assemble from celluar enviroment
     decB = Q*point[2]
     decBrev = 10.0^-60
-    prodA = k*r/(r+f*point[2]*point[2]) # compound rate based on adiabatic assumption
+    prodA = k*a # compound rate based on adiabatic assumption
     prodArev = (10.0^-20)*point[1] # spontanous decay to unfolded state seems more likely
-    prodB = q*r/(r+f*point[1]*point[1])
+    prodB = q*b
     prodBrev = (10.0^-20)*point[2]
-    # Big question is what to do about a and b's here
-    aon = (1 - a)*r + 10.0^-60
-    aoff = f*point[2]*(point[2])*a + 10.0^-60# - 1)*a
-    bon = (1 - b)*r + 10.0^-60
-    boff = f*point[1]*(point[1])*b + 10.0^-60# - 1)*b
-    entros[1,1] = (decA - decArev)*log(decA/decArev)
-    entros[1,2] = (decB - decBrev)*log(decB/decBrev)
-    entros[2,1] = (prodA - prodArev)*log(prodA/prodArev)
-    entros[2,2] = (prodB - prodBrev)*log(prodB/prodBrev)
+    entros[1] = (decA - decArev)*log(decA/decArev)
+    entros[2] = (decB - decBrev)*log(decB/decBrev)
+    entros[3] = (prodA - prodArev)*log(prodA/prodArev)
+    entros[4] = (prodB - prodBrev)*log(prodB/prodBrev)
     # look at calculating the entropy production from promotor switching
-    entros[3,1] = (aon - aoff)*log(aon/aoff)
-    entros[3,2] = (bon - boff)*log(bon/boff)
     return(entros)
 end
 
@@ -62,6 +55,7 @@ function gille(Ti,Tf)
     batchsizeB = 1000000
     batchsizea = 1000000
     batchsizeb = 1000000
+    batchsizeS = 4000000
 
     Na = 0 # counts of A and B, mainly to give an idea of statisical weight later on
     Nb = 0
@@ -72,28 +66,34 @@ function gille(Ti,Tf)
     Bt = []
     at = []
     bt = []
+    St = []
     TA = []
     TB = []
     Ta = []
     Tb = []
+    TS = []
 
     Atemp = fill(0, batchsizeA) # preallocate
     Btemp = fill(0, batchsizeB)
     atemp = fill(0, batchsizea)
     btemp = fill(0, batchsizeb)
+    Stemp = fill(0.0, (batchsizeS, 4))
     TtempA = fill(0.0, batchsizeA)
     TtempB = fill(0.0, batchsizeB)
     Ttempa = fill(0.0, batchsizea)
     Ttempb = fill(0.0, batchsizeb)
+    TtempS = fill(0.0, batchsizeS)
 
     Atemp[1] = Ω
     Btemp[1] = 0
     atemp[1] = 1
     btemp[1] = 1
+    Stemp[1,:] = entprods([Atemp[1] Btemp[1]], atemp[1], btemp[1]) # calculate initial values for entropy production
     TtempA[1] = Ti
     TtempB[1] = Ti
     Ttempa[1] = Ti
     Ttempb[1] = Ti
+    TtempS[1] = Ti
 
     t = TtempA[1] # initialise
     A = Atemp[1]
@@ -105,6 +105,7 @@ function gille(Ti,Tf)
     j = 2
     k = 2
     l = 2
+    m = 2
 
     # Main loop
     while t <= Tf
@@ -182,6 +183,11 @@ function gille(Ti,Tf)
             nb += 1
         end
 
+        # Entropy prod calculation step
+        Stemp[m,:] = entprods([A B], a, b)
+        TtempS[m] = t
+        m += 1
+
         if i == batchsizeA + 1
             At = vcat(At, Atemp) # these two lines are probably the biggest use of time in this program
             TA = vcat(TA, TtempA)
@@ -214,6 +220,13 @@ function gille(Ti,Tf)
             Ttempb = fill(0.0, batchsizeb)
         end
 
+        if m == batchsizeS + 1
+            St = vcat(St, Stemp)
+            TS = vcat(TS, TtempS)
+            m = 1
+            Stemp = fill(0.0, (batchsizeS, 4))
+            TtempS = fill(0.0, batchsizeS)
+        end
     end
 
     # Need to now cat the final incomplete batch
@@ -221,29 +234,37 @@ function gille(Ti,Tf)
     Bverytemp = fill(0, j-1)
     averytemp = fill(0, k-1)
     bverytemp = fill(0, l-1)
+    Sverytemp = fill(0.0, (m-1, 4))
     TAverytemp = fill(0.0, i-1)
     TBverytemp = fill(0.0, j-1)
     Taverytemp = fill(0.0, k-1)
     Tbverytemp = fill(0.0, l-1)
+    TSverytemp = fill(0.0, m-1)
+
     # Select the valued entries
-    for m = 1:(i-1)
-        Averytemp[m] = Atemp[m]
-        TAverytemp[m] = TtempA[m]
+    for n = 1:(i-1)
+        Averytemp[n] = Atemp[n]
+        TAverytemp[n] = TtempA[n]
     end
     # Select the valued entries
-    for m = 1:(j-1)
-        Bverytemp[m] = Btemp[m]
-        TBverytemp[m] = TtempB[m]
+    for n = 1:(j-1)
+        Bverytemp[n] = Btemp[n]
+        TBverytemp[n] = TtempB[n]
     end
     # Select the valued entries
-    for m = 1:(k-1)
-        averytemp[m] = atemp[m]
-        Taverytemp[m] = Ttempa[m]
+    for n = 1:(k-1)
+        averytemp[n] = atemp[n]
+        Taverytemp[n] = Ttempa[n]
     end
     # Select the valued entries
-    for m = 1:(l-1)
-        bverytemp[m] = btemp[m]
-        Tbverytemp[m] = Ttempb[m]
+    for n = 1:(l-1)
+        bverytemp[n] = btemp[n]
+        Tbverytemp[n] = Ttempb[n]
+    end
+    # Select the valued entries
+    for n = 1:(m-1)
+        Sverytemp[n,:] = Stemp[n,:]
+        TSverytemp[n] = TtempS[n]
     end
 
     # clear temps
@@ -251,10 +272,12 @@ function gille(Ti,Tf)
     clear!(:Btemp)
     clear!(:atemp)
     clear!(:btemp)
+    clear!(:Stemp)
     clear!(:TtempA)
     clear!(:TtempB)
     clear!(:Ttempa)
     clear!(:Ttempb)
+    clear!(:TtempS)
     gc()
 
     # Then cat onto vector
@@ -262,20 +285,25 @@ function gille(Ti,Tf)
     Bt = vcat(Bt, Bverytemp)
     at = vcat(at, averytemp)
     bt = vcat(bt, averytemp)
+    St = vcat(St, Sverytemp)
+    St = vcat(St, Sverytemp)
     TA = vcat(TA, TAverytemp)
     TB = vcat(TB, TBverytemp)
     Ta = vcat(Ta, Taverytemp)
     Tb = vcat(Tb, Tbverytemp)
+    TS = vcat(TS, TSverytemp)
 
     # clear temps
     clear!(:Averytemp)
     clear!(:Bverytemp)
     clear!(:averytemp)
     clear!(:bverytemp)
+    clear!(:Sverytemp)
     clear!(:TAverytemp)
     clear!(:TBverytemp)
     clear!(:Taverytemp)
     clear!(:Tbverytemp)
+    clear!(:TSverytemp)
     gc()
 
     ## Now find probability distribution
@@ -323,9 +351,15 @@ function gille(Ti,Tf)
     end
 
     print("Gillespie done!\n")
-    return(aveA, aveB, avea, aveb)
+
+    averages = zeros(4)
+    averages[1] = aveA
+    averages[2] = aveB
+    averages[3] = avea
+    averages[4] = aveb
+    return(averages, TS, St)
 end
 
-@time A, B, a, b = gille(0.0, 100000)
-print("$(A),$(B),$(a),$(b)\n")
+@time Averages,  = gille(0.0, 100000)
+
 # ss1, sad, ss2 = nullcline() # ss1 is the more driven steady state

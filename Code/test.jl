@@ -24,6 +24,7 @@ Q = q/Ω # Q=q'
 f = 0.01 # Promoter switching
 rr = 0.01
 
+tic()
 Na = 0 # counts of A and B, mainly to give an idea of statisical weight later on
 Nb = 0
 
@@ -138,6 +139,7 @@ for i = 1:length(PB)
 end
 
 print("Gillespie done!\n")
+toc()
 
 gr() # set plotting back end to gr()
 # 1st histograms

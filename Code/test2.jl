@@ -40,8 +40,8 @@ Btemp = fill(0, batchsizeB)
 TtempA = fill(0.0, batchsizeA)
 TtempB = fill(0.0, batchsizeB)
 
-Atemp[1] = 1
-Btemp[1] = Ω
+Atemp[1] = Ω
+Btemp[1] = 0
 TtempA[1] = Ti
 TtempB[1] = Ti
 

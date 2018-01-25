@@ -1,3 +1,4 @@
+#!/usr/bin/env julia
 # nullcline_flow.jl
 # A julia script to plot the nullclines and the flow, so that the effect of
 # changing r and f values on the preffered flow direction can be seen
@@ -7,8 +8,8 @@ import GR # need this to stop plotting in function bug
 
 const k = 100
 const K = 10 #/s
-const q = 10 # asymmetric switches - second switch slower but same steady states.
-const Q = 1 #    As a result, flow diagram very different from symmetric case,
+const q = 100 # asymmetric switches - second switch slower but same steady states.
+const Q = 10 #    As a result, flow diagram very different from symmetric case,
      #    showing increased basin of attraction of fast switch
 
 const f = 0.01
@@ -21,8 +22,8 @@ const δ2 = 0.01 # detail of nullclines
 
 # Find velocity of a point in species space
 function velos(A, B)
-    Adot = k*r/(r+f*B^a) - K*A
-    Bdot = q*r/(r+f*A^b) - Q*B
+    Adot = (k*r/(r+f*B^a) - K*A)/100
+    Bdot = (q*r/(r+f*A^b) - Q*B)/100
     return(Adot, Bdot)
 end
 
@@ -64,7 +65,7 @@ function main()
     plot(B2, A12, xlabel = "B", ylabel = "A", xlim = (0,10), ylim = (0,10), legend = false)
     # quiver(A, B, dotA, dotB) # comment out as want to see just directions
     pts = vec(P2[(arr[i,j,1], arr[i,j,2]) for i = 1:s, j = 1:s])
-    quiver!(pts, quiver = velosnorm)
+    quiver!(pts, quiver = velos)
     savefig("../Results/Graph.png")
 end
 

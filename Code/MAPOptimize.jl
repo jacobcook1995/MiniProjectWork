@@ -1,3 +1,4 @@
+#!/usr/bin/env julia
 # MAPOptimize.jl
 # A script to optimize the path function of the minimum action path in order
 # to determine the minimum path action for the driven bistable gene switch with

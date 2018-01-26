@@ -5,6 +5,8 @@
 # Add package for plotting
 using Plots
 using Roots
+using Atom
+import GR
 
 # Parameters
 const Ω = 30 # system size
@@ -12,8 +14,8 @@ const k = 100 # steady state for A=k/K=1
 const K = k/Ω # K=k'
 const q = 10 # steady state for B=q/Q=1
 const Q = q/Ω # Q=q'
-const f = 0.01 # Promoter switching
-const r = 0.01
+const f = 0.0001 # Promoter switching
+const r = 0.0001
 
 # A function to find the crossing points of the nullclines so they can be used
 # as start, end and saddle points
@@ -33,14 +35,14 @@ end
 # function to calculate the entropy production of a point in protein space
 function entprods(point,a,b)
     entros = zeros(4) # gonna neglect switching at first
-    decA = K*point[1]
+    decA = K*point[1] + 10.0^-60
     decArev = 10.0^-60 # Any protein is equally (very un-) likely to spontanously assemble from celluar enviroment
-    decB = Q*point[2]
+    decB = Q*point[2] + 10.0^-60
     decBrev = 10.0^-60
-    prodA = k*a # compound rate based on adiabatic assumption
-    prodArev = (10.0^-20)*point[1] # spontanous decay to unfolded state seems more likely
-    prodB = q*b
-    prodBrev = (10.0^-20)*point[2]
+    prodA = k*a + 10.0^-60 # compound rate based on adiabatic assumption
+    prodArev = (10.0^-30)*point[1] + 10.0^-60 # spontanous decay to unfolded state seems more likely
+    prodB = q*b + 10.0^-60
+    prodBrev = (10.0^-30)*point[2] + 10.0^-60
     entros[1] = (decA - decArev)*log(decA/decArev)
     entros[2] = (decB - decBrev)*log(decB/decBrev)
     entros[3] = (prodA - prodArev)*log(prodA/prodArev)
@@ -103,9 +105,9 @@ function gille(Ti,Tf)
 
     i = 2 # start counts at two as the first element to fill is two
     j = 2
-    k = 2
     l = 2
     m = 2
+    n = 2
 
     # Main loop
     while t <= Tf
@@ -172,21 +174,21 @@ function gille(Ti,Tf)
         end
 
         if updatea == 1
-            atemp[k] = a
-            Ttempa[k] = t
-            k += 1
+            atemp[l] = a
+            Ttempa[l] = t
+            l += 1
             na += 1
         elseif updateb == 1
-            btemp[l] = b
-            Ttempb[l] = t
-            l += 1
+            btemp[m] = b
+            Ttempb[m] = t
+            m += 1
             nb += 1
         end
 
         # Entropy prod calculation step
-        Stemp[m,:] = entprods([A B], a, b)
-        TtempS[m] = t
-        m += 1
+        Stemp[n,:] = entprods([A B], a, b)
+        TtempS[n] = t
+        n += 1
 
         if i == batchsizeA + 1
             At = vcat(At, Atemp) # these two lines are probably the biggest use of time in this program
@@ -204,26 +206,26 @@ function gille(Ti,Tf)
             TtempB = fill(0.0, batchsizeB)
         end
 
-        if k == batchsizea + 1
+        if l == batchsizea + 1
             at = vcat(at, atemp)
-            TA = vcat(Ta, Ttempa)
-            k = 1
+            Ta = vcat(Ta, Ttempa)
+            l = 1
             atemp = fill(0, batchsizea)
             Ttempa = fill(0.0, batchsizea)
         end
 
-        if l == batchsizeb + 1
+        if m == batchsizeb + 1
             bt = vcat(bt, btemp)
-            TB = vcat(Tb, Ttempb)
-            l = 1
+            Tb = vcat(Tb, Ttempb)
+            m = 1
             btemp = fill(0, batchsizeb)
             Ttempb = fill(0.0, batchsizeb)
         end
 
-        if m == batchsizeS + 1
+        if n == batchsizeS + 1
             St = vcat(St, Stemp)
             TS = vcat(TS, TtempS)
-            m = 1
+            n = 1
             Stemp = fill(0.0, (batchsizeS, 4))
             TtempS = fill(0.0, batchsizeS)
         end
@@ -232,39 +234,38 @@ function gille(Ti,Tf)
     # Need to now cat the final incomplete batch
     Averytemp = fill(0, i-1)
     Bverytemp = fill(0, j-1)
-    averytemp = fill(0, k-1)
-    bverytemp = fill(0, l-1)
-    Sverytemp = fill(0.0, (m-1, 4))
+    averytemp = fill(0, l-1)
+    bverytemp = fill(0, m-1)
+    Sverytemp = fill(0.0, (n-1, 4))
     TAverytemp = fill(0.0, i-1)
     TBverytemp = fill(0.0, j-1)
-    Taverytemp = fill(0.0, k-1)
-    Tbverytemp = fill(0.0, l-1)
-    TSverytemp = fill(0.0, m-1)
-
+    Taverytemp = fill(0.0, l-1)
+    Tbverytemp = fill(0.0, m-1)
+    TSverytemp = fill(0.0, n-1)
     # Select the valued entries
-    for n = 1:(i-1)
-        Averytemp[n] = Atemp[n]
-        TAverytemp[n] = TtempA[n]
+    for p = 1:(i-1)
+        Averytemp[p] = Atemp[p]
+        TAverytemp[p] = TtempA[p]
     end
     # Select the valued entries
-    for n = 1:(j-1)
-        Bverytemp[n] = Btemp[n]
-        TBverytemp[n] = TtempB[n]
+    for p = 1:(j-1)
+        Bverytemp[p] = Btemp[p]
+        TBverytemp[p] = TtempB[p]
     end
     # Select the valued entries
-    for n = 1:(k-1)
-        averytemp[n] = atemp[n]
-        Taverytemp[n] = Ttempa[n]
+    for p = 1:(l-1)
+        averytemp[p] = atemp[p]
+        Taverytemp[p] = Ttempa[p]
     end
     # Select the valued entries
-    for n = 1:(l-1)
-        bverytemp[n] = btemp[n]
-        Tbverytemp[n] = Ttempb[n]
+    for p = 1:(m-1)
+        bverytemp[p] = btemp[p]
+        Tbverytemp[p] = Ttempb[p]
     end
     # Select the valued entries
-    for n = 1:(m-1)
-        Sverytemp[n,:] = Stemp[n,:]
-        TSverytemp[n] = TtempS[n]
+    for p = 1:(n-1)
+        Sverytemp[p,:] = Stemp[p,:]
+        TSverytemp[p] = TtempS[p]
     end
 
     # clear temps
@@ -280,12 +281,12 @@ function gille(Ti,Tf)
     clear!(:TtempS)
     gc()
 
+
     # Then cat onto vector
     At = vcat(At, Averytemp)
     Bt = vcat(Bt, Bverytemp)
     at = vcat(at, averytemp)
-    bt = vcat(bt, averytemp)
-    St = vcat(St, Sverytemp)
+    bt = vcat(bt, bverytemp)
     St = vcat(St, Sverytemp)
     TA = vcat(TA, TAverytemp)
     TB = vcat(TB, TBverytemp)
@@ -314,40 +315,35 @@ function gille(Ti,Tf)
     Pa = fill(0.0, 2)
     Pb = fill(0.0, 2)
 
+    # Calculate for each species
     for i = 2:length(At)
-        PA[1+At[i-1]] = PA[1+At[i-1]] + (TA[i]-TA[i-1])/t;
+        PA[1+At[i-1]] += (TA[i]-TA[i-1])/t;
     end
-
     for i = 2:length(Bt)
-        PB[1+Bt[i-1]] = PB[1+Bt[i-1]] + (TB[i]-TB[i-1])/t;
+        PB[1+Bt[i-1]] += (TB[i]-TB[i-1])/t;
     end
-
     for i = 2:length(at)
-        Pa[1+at[i-1]] = Pa[1+at[i-1]] + (Ta[i]-Ta[i-1])/t;
+        Pa[1+at[i-1]] += (Ta[i]-Ta[i-1])/t;
     end
 
     for i = 2:length(bt)
-        Pb[1+bt[i-1]] = Pb[1+bt[i-1]] + (Tb[i]-Tb[i-1])/t;
+        Pb[1+bt[i-1]] += (Tb[i]-Tb[i-1])/t;
     end
-
     aveA = 0
     for i = 1:length(PA)
-        aveA = aveA + (i-1)*PA[i]
+        aveA += (i-1)*PA[i]
     end
-
     aveB = 0
     for i = 1:length(PB)
-        aveB = aveB + (i-1)*PB[i]
+        aveB += (i-1)*PB[i]
     end
-
     avea = 0
     for i = 1:length(Pa)
-        avea = avea + (i-1)*Pa[i]
+        avea += (i-1)*Pa[i]
     end
-
     aveb = 0
     for i = 1:length(Pb)
-        aveb = aveb + (i-1)*Pb[i]
+        aveb += (i-1)*Pb[i]
     end
 
     print("Gillespie done!\n")
@@ -357,9 +353,24 @@ function gille(Ti,Tf)
     averages[2] = aveB
     averages[3] = avea
     averages[4] = aveb
-    return(averages, TS, St)
+
+    gr()
+    pone = plot(TS, St)
+
+    # savefig("../Results/EntropiesvsTime") # takes a really long time
+    ptwo = plot(TA, At)
+    pthree = plot(TB, Bt)
+    pfour = plot(Ta, at)
+    pfive = plot(Tb, bt)
+
+    plot(ptwo, pthree, pfour, pfive, layout=(4,1))
+    print("Plots combined!\n")
+    gui()
+    # savefig("../Results/SolutionvsTime.png") # savefig takes a really long time
+
+    return(averages)
 end
 
-@time Averages,  = gille(0.0, 100000)
-
+@time Averages  = gille(0.0, 10)
+print("$(Averages[1]),$(Averages[2]),$(Averages[3]),$(Averages[4])\n")
 # ss1, sad, ss2 = nullcline() # ss1 is the more driven steady state

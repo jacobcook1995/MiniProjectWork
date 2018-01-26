@@ -356,8 +356,7 @@ function gille(Ti,Tf)
 
     gr()
     pone = plot(TS, St)
-
-    # savefig("../Results/EntropiesvsTime") # takes a really long time
+    savefig("../Results/EntropiesvsTime") # takes a really long time
     ptwo = plot(TA, At)
     pthree = plot(TB, Bt)
     pfour = plot(Ta, at)
@@ -365,12 +364,11 @@ function gille(Ti,Tf)
 
     plot(ptwo, pthree, pfour, pfive, layout=(4,1))
     print("Plots combined!\n")
-    gui()
-    # savefig("../Results/SolutionvsTime.png") # savefig takes a really long time
+    savefig("../Results/SolutionvsTime.png") # savefig takes a really long time
 
     return(averages)
 end
 
-@time Averages  = gille(0.0, 10)
+@time Averages  = gille(0.0, 1000000)
 print("$(Averages[1]),$(Averages[2]),$(Averages[3]),$(Averages[4])\n")
 # ss1, sad, ss2 = nullcline() # ss1 is the more driven steady state

@@ -14,8 +14,8 @@ const k = 100 # steady state for A=k/K=1
 const K = k/Ω # K=k'
 const q = 10 # steady state for B=q/Q=1
 const Q = q/Ω # Q=q'
-const f = 0.0001 # Promoter switching
-const r = 0.0001
+const f = 10 # Promoter switching
+const r = 10
 
 # A function to find the crossing points of the nullclines so they can be used
 # as start, end and saddle points
@@ -52,7 +52,7 @@ function entprods(point,a,b)
 end
 
 # run gillespie simulation from Ti to Tf
-function gille(Ti,Tf)
+function gille(Ti, Tf, itnum)
     batchsizeA = 1000000
     batchsizeB = 1000000
     batchsizea = 1000000
@@ -86,7 +86,7 @@ function gille(Ti,Tf)
     Ttempb = fill(0.0, batchsizeb)
     TtempS = fill(0.0, batchsizeS)
 
-    Atemp[1] = Ω
+    Atemp[1] = 0
     Btemp[1] = 0
     atemp[1] = 1
     btemp[1] = 1
@@ -232,16 +232,16 @@ function gille(Ti,Tf)
     end
 
     # Need to now cat the final incomplete batch
-    Averytemp = fill(0, i-1)
-    Bverytemp = fill(0, j-1)
-    averytemp = fill(0, l-1)
-    bverytemp = fill(0, m-1)
-    Sverytemp = fill(0.0, (n-1, 4))
-    TAverytemp = fill(0.0, i-1)
-    TBverytemp = fill(0.0, j-1)
-    Taverytemp = fill(0.0, l-1)
-    Tbverytemp = fill(0.0, m-1)
-    TSverytemp = fill(0.0, n-1)
+    Averytemp = fill(0, i)
+    Bverytemp = fill(0, j)
+    averytemp = fill(0, l)
+    bverytemp = fill(0, m)
+    Sverytemp = fill(0.0, (n, 4))
+    TAverytemp = fill(0.0, i)
+    TBverytemp = fill(0.0, j)
+    Taverytemp = fill(0.0, l)
+    Tbverytemp = fill(0.0, m)
+    TSverytemp = fill(0.0, n)
     # Select the valued entries
     for p = 1:(i-1)
         Averytemp[p] = Atemp[p]
@@ -267,6 +267,20 @@ function gille(Ti,Tf)
         Sverytemp[p,:] = Stemp[p,:]
         TSverytemp[p] = TtempS[p]
     end
+
+    # add final posistions to the end of each vector
+    Averytemp[i] = A
+    Bverytemp[j] = B
+    averytemp[l] = a
+    bverytemp[m] = b
+    Sverytemp[n,:] = entprods([A B], a, b)
+
+    # Now add final time to end of time vectors
+    TAverytemp[i] = t
+    TBverytemp[j] = t
+    Taverytemp[l] = t
+    Tbverytemp[m] = t
+    TSverytemp[n] = t
 
     # clear temps
     clear!(:Atemp)
@@ -356,7 +370,7 @@ function gille(Ti,Tf)
 
     gr()
     pone = plot(TS, St)
-    savefig("../Results/EntropiesvsTime") # takes a really long time
+    savefig("../Results/EntropiesvsTime$(itnum).png") # takes a really long time
     ptwo = plot(TA, At)
     pthree = plot(TB, Bt)
     pfour = plot(Ta, at)
@@ -364,11 +378,15 @@ function gille(Ti,Tf)
 
     plot(ptwo, pthree, pfour, pfive, layout=(4,1))
     print("Plots combined!\n")
-    savefig("../Results/SolutionvsTime.png") # savefig takes a really long time
+    savefig("../Results/SolutionvsTime$(itnum).png") # savefig takes a really long time
 
     return(averages)
 end
+for num = 1:1
+    @time Averages  = gille(0.0, 10, num)
+    print("$(Averages[1]),$(Averages[2]),$(Averages[3]),$(Averages[4])\n")
+end
 
-@time Averages  = gille(0.0, 1000000)
-print("$(Averages[1]),$(Averages[2]),$(Averages[3]),$(Averages[4])\n")
+
 # ss1, sad, ss2 = nullcline() # ss1 is the more driven steady state
+gc() # do final garbage collection to clear up memory at end of program

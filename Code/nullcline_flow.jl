@@ -6,18 +6,20 @@
 using Plots # use GR instead of plots so that MeshGrid works
 import GR # need this to stop plotting in function bug
 
+const Ω = 30
 const k = 100
-const K = 10 #/s
-const q = 100 # asymmetric switches - second switch slower but same steady states.
-const Q = 10 #    As a result, flow diagram very different from symmetric case,
+const K = k/Ω #/s
+const q = 10 # asymmetric switches - second switch slower but same steady states.
+const Q = q/(2*Ω) #    As a result, flow diagram very different from symmetric case,
      #    showing increased basin of attraction of fast switch
 
 const f = 0.01
 const r = 0.01
 const a = 2
 const b = 2
-const L = 10 # side length of grid
-const δ = 0.5 # detail of grid
+const LA = Ω # side length of A axis of the grid
+const LB = 2*Ω # side length of B axis of the grid
+const δ = 1 # detail of grid
 const δ2 = 0.01 # detail of nullclines
 
 # Find velocity of a point in species space
@@ -43,28 +45,29 @@ function nullclines(B)
 end
 
 function main()
-    s = convert(Int64,L/δ) + 1 # Step only works well if L/δ is an integer
-    arr = zeros(s,s,2)
+    sA = convert(Int64, LA/δ) + 1 # Step only works well if L/δ is an integer
+    sB = convert(Int64, LB/δ) + 1
+    arr = zeros(sA,sB,2)
 
-    for i = 1:s
-        for j = 1:s
+    for i = 1:sA
+        for j = 1:sB
             arr[i,j,1] = (i - 1)*δ
-            arr[i,j,2] = 10 - (j - 1)*δ
+            arr[i,j,2] = LB - (j - 1)*δ
         end
     end
 
     # B2 is used for plotting nullclines
-    B2 = 0:δ2:L
+    B2 = 0:δ2:LB
 
     # find nullclines to plot
-    s2 = convert(Int64,L/δ2) + 1
+    s2 = convert(Int64, LB/δ2) + 1
     A12 = zeros(s2,2)
     A12[:,1], A12[:,2] = nullclines(B2)
 
     gr() # set backend to gr
-    plot(B2, A12, xlabel = "B", ylabel = "A", xlim = (0,10), ylim = (0,10), legend = false)
+    plot(A12, B2, xlabel = "A", ylabel = "B", xlim = (0,LA), ylim = (0,LB), legend = false)
     # quiver(A, B, dotA, dotB) # comment out as want to see just directions
-    pts = vec(P2[(arr[i,j,1], arr[i,j,2]) for i = 1:s, j = 1:s])
+    pts = vec(P2[(arr[i,j,1], arr[i,j,2]) for i = 1:sA, j = 1:sB])
     quiver!(pts, quiver = velos)
     savefig("../Results/Graph.png")
 end

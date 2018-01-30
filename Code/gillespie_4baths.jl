@@ -29,7 +29,7 @@ function gillespie()
     Ns = 0
 
     Ti = 0.0  # initial time
-    Tf = 1000#000#0 # end of simulation time in s
+    Tf = 10000#00#0 # end of simulation time in s
 
     TtempA = [Ti; Ti]
     TtempB = [Ti; Ti]
@@ -211,6 +211,12 @@ function gillespie()
     print("$(aveB)\n")
     print("$(aveW)\n")
     print("$(aveS)\n")
+
+    # print maxs of peaks to screen
+    print("$(indmax(PA) - 1)\n")
+    print("$(indmax(PB) - 1)\n")
+    print("$(indmax(PW) - 1)\n")
+    print("$(indmax(PS) - 1)\n")
 
     gr() # set plotting back end to gr()
     # 1st histograms

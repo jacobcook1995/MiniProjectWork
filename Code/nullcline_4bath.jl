@@ -58,23 +58,36 @@ function f!(F1, x)
 end
 
 
-
-function find_zeros()
-    # system of 7 equations to find the minimum of
-
-    # AiBi = N/10
-    # Bi = AiBi/10
-    # Ai = AiBi - Bi
-    # Si = (N - AiBi)/10
-    # Wi = 9*(N - AiBi)/10
-
+# function takes in initial values and either throws an error or returns the solution it finds
+function find_zeros(Ai, Bi, Si, Wi)
     xs = nlsolve(f!, [Ai, Bi, Si, Wi])
+    print(xs)
+    print("\n")
     nW = Wdot(xs.zero)
-    if mag(nW) <= 10.0^-10 && converged(xs) == true
-
+    if abs(nW) <= 10.0^-10 && converged(xs) == true && any(x -> x < 0.0, xs.zero) == false
+        return(xs.zero)
+    elseif abs(nW) >= 10.0^-10 && converged(xs) == true && any(x -> x < 0.0, xs.zero) == false
+        error("PointChoiceError: not a valid initial point, w not valid")
+    elseif abs(nW) <= 10.0^-10 && converged(xs) == false && any(x -> x < 0.0, xs.zero) == false
+        error("PointChoiceError: not a valid initial point cannot converge")
+    elseif abs(nW) <= 10.0^-10 && converged(xs) == true && any(x -> x < 0.0, xs.zero) == true
+        error("PointChoiceError: not a valid initial point result has negative components")
     else
-        error("Error: Not a valid point")
+        error("PointChoiceError: not a valid initial point fails all conditions")
     end
 end
 
-@time find_zeros()
+# High A
+# Ai = N/10
+# Bi = N/10
+# Si = 2*N/5
+# Wi = 2*N/5
+# Higher B
+Ai = N/200
+Bi = 2*N/5
+Si = 119*N/400
+Wi = 119*N/400
+
+@time X = find_zeros(Ai, Bi, Si, Wi)
+print(X)
+print("\n")

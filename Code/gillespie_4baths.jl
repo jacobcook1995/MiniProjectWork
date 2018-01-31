@@ -30,7 +30,7 @@ function gillespie()
     Ns = 0
 
     Ti = 0.0  # initial time
-    Tf = 10000#00#0 # end of simulation time in s
+    Tf = 1000000#0 # end of simulation time in s
 
     TtempA = [Ti; Ti]
     TtempB = [Ti; Ti]

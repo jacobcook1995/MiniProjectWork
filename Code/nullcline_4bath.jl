@@ -25,101 +25,56 @@ const r = 10
 const F = 250 # removal rate
 const N = 2000.0 # density within the system
 
-# functions to calculate the nullclines for A at a given point x = (B, S, W)
-function nullcline1(x)
-    A1 = (1/(kmin + K))*(k*x[2]*(r/(r + f*x[1]^2)) + Kmin*x[3])
-    return(A1)
+# functions to calculate the nullclines for A at a given point
+# x[1] = A, x[2] = B, x[3] = W, x[4] = S
+function nullclineS1(x)
+    S1 = (r + f*x[2]^2)*((kmin + K)*x[1] - Kmin*x[3])/(k*r)
+    return(S1)
 end
 
-function nullcline2(x)
-    A2 = Complex((r/f)*((k*x[2]/((kmin + K)*x[1] - Kmin*x[3])) - 1))^0.5 # only valid if ϕ = q/k
-    erA2 = 10.0^50 # Not sure if this is the best way to do this
-    # using a large number in order to weight very heavily against it
-    if imag(A2) != 0
-        print("WARNING: In Dodgy Region (Nullcline2) Could Effect Validity Of Results\n")
-        return(erA2)
-        #return(erA2)
-    else
-        return(real(A2))
-    end
+function nullclineS2(x)
+    S2 = (r + f*x[1]^2)*((kmin + K)*x[2] - Kmin*x[3])/(k*r)
+    return(S2)
 end
 
-function nullcline3(x)
-    A3 = (Kmin/K)*(1 + ϕ)*x[3] + (F/K) - ϕ*x[1] # only valid if ϕ = q/k
-    return(A3)
+function nullclineS3(x)
+    S3 = (kmin*(x[1] + ϕ*x[2]) + F)/(k*(r/(r + f*x[2]^2) + ϕ*r/(r + f*x[1]^2)))
+    return(S3)
 end
 
-function nullcline4(x)
-    A4 = Complex((r/f)*((k*ϕ*x[2]/(F + ϕ*kmin*x[1] - k*x[2]*r/(r + f*x[1]^2)) - 1)))^0.5 # only valid if ϕ = q/k
-    erA4 = 10.0^50
-    if imag(A4) != 0
-        print("WARNING: In Dodgy Region (Nullcline4) Could Effect Validity Of Results\n")
-        return(erA4)
-        #return(erA4)
-    else
-        return(real(A4))
-    end
+function nullclineW1(x)
+    W1 = k*x[4]*r/(Kmin*(r + f*x[2]^2)) - (kmin + K)*x[1]/Kmin
+    return(W1)
+end
+
+function nullclineW2(x)
+    W2 = k*x[4]*r/(Kmin*(r + f*x[1]^2)) - (kmin + K)*x[2]/Kmin
+    return(W2)
+end
+
+function nullclineW3(x)
+    W3 = (K*(x[1] + ϕ*x[2]) - F)/(Kmin*(1 + ϕ))
+    return(W3)
 end
 
 # single function containing all the equations to minimize
-function f!(F, x)
-    F[1] = nullcline1(x[2:4]) - x[1]
-    F[2] = nullcline2(x[2:4]) - x[1]
-    F[3] = nullcline3(x[2:4]) - x[1]
-    F[4] = nullcline4(x[2:4]) - x[1]
-    F[5] = N - x[1] - x[2] - x[3] - x[4]
-end
-
-# jacobian should think a bit about how I do this
-# x[1] = A, x[2] = B, x[3] = S, x[4] = W, x[5] = N
-function j!(J, x)
-    J[1, 1] = -1
-    J[1, 2] = -2*f*x[2]*k*x[3]*r/((kmin + K)*(r + f*x[2]^2)^2)
-    J[1, 3] = k*r/((kmin + K)*(r + f*x[2]^2))
-    J[1, 4] = Kmin/(kmin + K)
-    J[1, 5] = 0
-    J[2, 1] = -1
-    denom = (kmin + K)*x[2] - Kmin*x[4]
-    # Need to think about how to deal with complex numbers here
-    A = -((r/f)^0.5)*k*x[3]/(2*(denom)*(Complex(k*x[3]/(denom) - 1)^0.5))
-    if imag(A) != 0
-        print("Warning: 2nd Row Of Jacobian Found In Dodgy Region\n")
-    end
-    A = real(A)
-    J[2, 2] = -(kmin + K)*A/(denom)
-    J[2, 3] = A
-    J[2, 4] = Kmin*A/(denom)
-    J[2, 5] = 0
-    J[3, 1] = -1
-    J[3, 2] = -ϕ
-    J[3, 3] = 0
-    J[3, 4] = (Kmin/K)*(1 + ϕ)
-    J[3, 5] = 0
-    J[4, 1] = -1
-    denom2 = F + ϕ*kmin*x[2] - r*k*x[3]/(r + f*x[2]^2)
-    # And how to deal with complex numbers here
-    B = ((r/f)^0.5)*ϕ*k/(2*(Complex(ϕ*k*x[3]/(denom2) - 1)^0.5))
-    if imag(B) != 0
-        print("Warning: 4th Row Of Jacobian Found In Dodgy Region\n")
-    end
-    B = real(B)
-    J[4, 2] = B*x[3]*(ϕ*kmin + 2*r*f*x[2]*k*x[3]/((r + f*x[2]^2)^2))/(denom2^2)
-    J[4, 3] = B*(1/(denom2) + k*r/((r + f*x[2]^2)*(denom2^2)))
-    J[4, 4] = 0
-    J[4, 5] = 0
-    J[5, 1] = -1
-    J[5, 2] = -1
-    J[5, 3] = -1
-    J[5, 4] = -1
-    J[5, 5] = 0
+# x[1] = A, x[2] = B, x[3] = W, x[4] = S
+# function termed F1 to avoid name space conflict with global constant F
+function f!(F1, x)
+    F1[1] = nullclineS1(x) - x[4]
+    F1[2] = nullclineS2(x) - x[4]
+    F1[3] = nullclineS3(x) - x[4]
+    F1[4] = nullclineW1(x) - x[3]
+    F1[5] = nullclineW2(x) - x[3]
+    F1[6] = nullclineW3(x) - x[3]
+    F1[7] = N - x[1] - x[2] - x[3] - x[4] # constraint term
 end
 
 
 
 function find_zeros()
-    # system of 6 equations to find the minimum of
-    #xs = nlsolve(f!, j!, [200.0, 200.0, 800.0, 800.0, N], iterations = 1000)
-    xs = nlsolve(f!, [0.0065, 750.0, 27.0, 1225.3, N], iterations = 1000)
+    # system of 7 equations to find the minimum of
+    xs = nlsolve(f!, [100.0, 700.0, 600.0, 600.0, 0.0, 0.0, 0.0], iterations = 1000) # three zeros are for unused variables
     # AiBi = N/10
     # Bi = AiBi/10
     # Ai = AiBi - Bi
@@ -128,20 +83,29 @@ function find_zeros()
     # xs = nlsolve(f!, [Ai, Bi, Si, Wi, N])
     print(xs)
     print("\n")
-    n1 = nullcline1(xs.zero[2:4]) - xs.zero[1]
-    n2 = nullcline2(xs.zero[2:4]) - xs.zero[1]
-    n3 = nullcline3(xs.zero[2:4]) - xs.zero[1]
-    n4 = nullcline4(xs.zero[2:4]) - xs.zero[1]
-    print(n1 + n2 + n3 + n4)
+    n1 = nullclineS1(xs.zero) - xs.zero[4]
+    n2 = nullclineS2(xs.zero) - xs.zero[4]
+    n3 = nullclineS3(xs.zero) - xs.zero[4]
+    n4 = nullclineW1(xs.zero) - xs.zero[3]
+    n5 = nullclineW2(xs.zero) - xs.zero[3]
+    n6 = nullclineW3(xs.zero) - xs.zero[3]
+    n7 = N - xs.zero[1] - xs.zero[2] - xs.zero[3] - xs.zero[4]
+    print(n1)
+    print("\n")
+    print(n2)
+    print("\n")
+    print(n3)
+    print("\n")
+    print(n4)
+    print("\n")
+    print(n5)
+    print("\n")
+    print(n6)
+    print("\n")
+    print(n7)
+    print("\n")
+    print(n1 + n2 + n3 + n4 + n5 + n6 + n7)
     print("\n")
 end
 
 @time find_zeros()
-# print(nullcline1([0.00, 2.5004, 1922.49]))
-# print("\n")
-# print(nullcline2([0.0133336, 2.5004, 1922.49]))
-# print("\n")
-# print(nullcline3([0.0133336, 2.5004, 1922.49]))
-# print("\n")
-# print(nullcline4([0.0133336, 2.5004, 1922.49]))
-# print("\n")

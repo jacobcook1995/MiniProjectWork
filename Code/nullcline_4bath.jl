@@ -36,8 +36,9 @@ function nullcline2(x)
     erA2 = 10.0^50 # Not sure if this is the best way to do this
     # using a large number in order to weight very heavily against it
     if imag(A2) != 0
-        return(erA2)
         print("WARNING: In Dodgy Region (Nullcline2) Could Effect Validity Of Results\n")
+        return(erA2)
+        #return(erA2)
     else
         return(real(A2))
     end
@@ -52,8 +53,9 @@ function nullcline4(x)
     A4 = Complex((r/f)*((k*ϕ*x[2]/(F + ϕ*kmin*x[1] - k*x[2]*r/(r + f*x[1]^2)) - 1)))^0.5 # only valid if ϕ = q/k
     erA4 = 10.0^50
     if imag(A4) != 0
-        return(erA4)
         print("WARNING: In Dodgy Region (Nullcline4) Could Effect Validity Of Results\n")
+        return(erA4)
+        #return(erA4)
     else
         return(real(A4))
     end
@@ -116,16 +118,30 @@ end
 
 function find_zeros()
     # system of 6 equations to find the minimum of
-    xs = nlsolve(f!, j!, [200.0, 200.0, 800.0, 800.0, N], iterations = 1000)
-    #xs = nlsolve(f!, [200.0, 200.0, 800.0, 800.0, N], iterations = 1000)
+    #xs = nlsolve(f!, j!, [200.0, 200.0, 800.0, 800.0, N], iterations = 1000)
+    xs = nlsolve(f!, [0.0065, 750.0, 27.0, 1225.3, N], iterations = 1000)
+    # AiBi = N/10
+    # Bi = AiBi/10
+    # Ai = AiBi - Bi
+    # Si = (N - AiBi)/10
+    # Wi = 9*(N - AiBi)/10
+    # xs = nlsolve(f!, [Ai, Bi, Si, Wi, N])
     print(xs)
     print("\n")
     n1 = nullcline1(xs.zero[2:4]) - xs.zero[1]
     n2 = nullcline2(xs.zero[2:4]) - xs.zero[1]
     n3 = nullcline3(xs.zero[2:4]) - xs.zero[1]
     n4 = nullcline4(xs.zero[2:4]) - xs.zero[1]
-    print(n1+n2+n3+n4)
+    print(n1 + n2 + n3 + n4)
     print("\n")
 end
 
 @time find_zeros()
+# print(nullcline1([0.00, 2.5004, 1922.49]))
+# print("\n")
+# print(nullcline2([0.0133336, 2.5004, 1922.49]))
+# print("\n")
+# print(nullcline3([0.0133336, 2.5004, 1922.49]))
+# print("\n")
+# print(nullcline4([0.0133336, 2.5004, 1922.49]))
+# print("\n")

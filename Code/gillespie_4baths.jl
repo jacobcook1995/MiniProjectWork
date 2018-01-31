@@ -21,6 +21,7 @@ const Qmin = 10.0^-20
 const f = 10 # Promoter switching
 const r = 10
 const F = 250 # removal rate
+const N = 2000 # number of elements in the system
 
 function gillespie()
     Na = 0 # counts of A and B, mainly to give an idea of statisical weight later on
@@ -41,10 +42,13 @@ function gillespie()
     PS = [0.0]
 
     t = TtempA[1] # initialise
-    A = 0
-    B = 0
-    W = 1000
-    S = 1000
+    A = Ω
+    B = Ω
+    W = div((N - A - B), 2)
+    S = div((N - A - B), 2)
+    if rem((N - A - B), 2) != 0
+        error("Error: Inappropriate choice of initial value of A or B")
+    end
 
     # Main loop
     while t <= Tf
@@ -211,12 +215,6 @@ function gillespie()
     print("$(aveB)\n")
     print("$(aveW)\n")
     print("$(aveS)\n")
-
-    # print maxs of peaks to screen
-    print("$(indmax(PA) - 1)\n")
-    print("$(indmax(PB) - 1)\n")
-    print("$(indmax(PW) - 1)\n")
-    print("$(indmax(PS) - 1)\n")
 
     gr() # set plotting back end to gr()
     # 1st histograms

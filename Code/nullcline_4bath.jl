@@ -77,6 +77,10 @@ end
 
 # function to search initial posistion space to find any other points that work bar the steady state
 function point_search()
+    # Assign the first command line argument to a variable called input_file
+    output_file = ARGS[1]
+    # open file for writing
+    out_file = open(output_file, "w")
     # High A
     # Ai = N/10
     # Bi = N/10
@@ -87,7 +91,8 @@ function point_search()
     #Bi = 2*N/5
     #Si = 119*N/400
     #Wi = 119*N/400
-    for i = 1:100
+    line = ""
+    for i = 1:1000000
         rA = rand()
         rB = rand()
         rS = rand()
@@ -98,21 +103,23 @@ function point_search()
         Bi = N*rs[2]
         Si = N*rs[3]
         Wi = N*rs[4]
+
         try x, ws = find_zeros(Ai, Bi, Si, Wi)
-            print(x.zero)
-            print("\n")
+            line = "$(x.zero[1]),$(x.zero[2]),$(x.zero[3]),$(x.zero[4])\n"
         catch y
             if isa(y, DomainError) # the errors here don't really mean anything I'm just too lazy to make my own
-                print("Does not work due to waste not being steady\n")
+                line = "NaN,NaN,NaN,NaN\n"
             elseif isa(y, BoundsError)
-                print("Does not work due to not convergance\n")
+                line = "NaN,NaN,NaN,NaN\n"
             elseif isa(y, InexactError)
-                print("Does not work due to negativity\n")
+                line = "NaN,NaN,NaN,NaN\n"
             elseif isa(y, UndefVarError)
-                print("Does not work due to everything\n")
+                line = "NaN,NaN,NaN,NaN\n"
             end
         end
+        write(out_file, line)
     end
+    close(out_file)
 end
 
 @time point_search()

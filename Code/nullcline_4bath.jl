@@ -63,20 +63,16 @@ function find_zeros(Ai, Bi, Si, Wi)
     xs = nlsolve(f!, [Ai, Bi, Si, Wi])
     nW = Wdot(xs.zero)
     if abs(nW) <= 10.0^-10 && converged(xs) == true && any(x -> x < 0.0, xs.zero) == false
-        return(xs, nW)
     elseif abs(nW) >= 10.0^-10 && converged(xs) == true && any(x -> x < 0.0, xs.zero) == false
-        throw(DomainError) # just about reasonable
-        error("PointChoiceError: not a valid initial point, w not valid")
+        xs = throw(DomainError("not a valid initial point, w not valid")) # just about reasonable
     elseif abs(nW) <= 10.0^-10 && converged(xs) == false && any(x -> x < 0.0, xs.zero) == false
-        throw(BoundsError)
-        error("PointChoiceError: not a valid initial point cannot converge")
+        xs = throw(BoundsError([nw],[2]))#"not a valid initial point cannot converge"))
     elseif abs(nW) <= 10.0^-10 && converged(xs) == true && any(x -> x < 0.0, xs.zero) == true
-        throw(InexactError) # dubious use of exceptions but I can't be bothered to make my own at the minute
-        error("PointChoiceError: not a valid initial point result has negative components")
+        xs = throw(InexactError())# dubious use of exceptions but I can't be bothered to make my own at the minute
     else
-        throw(TypeError)
-        error("PointChoiceError: not a valid initial point fails multiple conditions")
+        xs = throw(UndefVarError(:nW))
     end
+    return(xs, nW)
 end
 
 # function to search initial posistion space to find any other points that work bar the steady state
@@ -91,7 +87,7 @@ function point_search()
     #Bi = 2*N/5
     #Si = 119*N/400
     #Wi = 119*N/400
-    for i = 1:10
+    for i = 1:100
         rA = rand()
         rB = rand()
         rS = rand()
@@ -102,7 +98,9 @@ function point_search()
         Bi = N*rs[2]
         Si = N*rs[3]
         Wi = N*rs[4]
-        try find_zeros(Ai, Bi, Si, Wi)
+        try x, ws = find_zeros(Ai, Bi, Si, Wi)
+            print(x.zero)
+            print("\n")
         catch y
             if isa(y, DomainError) # the errors here don't really mean anything I'm just too lazy to make my own
                 print("Does not work due to waste not being steady\n")
@@ -110,11 +108,9 @@ function point_search()
                 print("Does not work due to not convergance\n")
             elseif isa(y, InexactError)
                 print("Does not work due to negativity\n")
-            elseif isa(y, TypeError)
+            elseif isa(y, UndefVarError)
                 print("Does not work due to everything\n")
             end
-        finally
-            print("a\n")
         end
     end
 end

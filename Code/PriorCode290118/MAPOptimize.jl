@@ -13,12 +13,12 @@ import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
 const Ω = 10 #30
-const k = 10
+const k = 100
 const K = k/Ω
-const q = 100
+const q = 10
 const Q = q/Ω
-const r = 0.00001
-const f = 0.00001# 100000
+const r = 100000
+const f = 100000# 100000
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
@@ -47,7 +47,7 @@ function D!(D, x)
     D[1,1] = k*r/(r+f*x[2]*x[2]) + K*x[1]
     D[1,2] = 0
     D[2,1] = 0
-    D[2,2] = q*r/(r+f*x[1]*x[1]) + Q*x[2]
+    D[2,2] = k*r/(r+f*x[1]*x[1]) + K*x[2]#q*r/(r+f*x[1]*x[1]) + Q*x[2]
     return D
 end
 
@@ -55,7 +55,7 @@ function D2!(D2, x)
     D2[1,1] = (k*r/(r+f*x[2]*x[2]) + K*x[1])^2
     D2[1,2] = 0
     D2[2,1] = 0
-    D2[2,2] = (q*r/(r+f*x[1]*x[1]) + Q*x[2])^2
+    D2[2,2] = (k*r/(r+f*x[1]*x[1]) + K*x[2])^2#(q*r/(r+f*x[1]*x[1]) + Q*x[2])^2
     return D2
 end
 
@@ -63,7 +63,7 @@ function DA!(DA, x)
     DA[1,1] = K
     DA[1,2] = 0
     DA[2,1] = 0
-    DA[2,2] = -2*q*r*f*x[1]/((r+f*x[1]*x[1])^2)
+    DA[2,2] = -2*k*r*f*x[1]/((r+f*x[1]*x[1])^2)#-2*q*r*f*x[1]/((r+f*x[1]*x[1])^2)
     return DA
 end
 
@@ -71,7 +71,7 @@ function DB!(DB, x)
     DB[1,1] = -2*k*r*f*x[2]/((r+f*x[2]*x[2])^2)
     DB[1,2] = 0
     DB[2,1] = 0
-    DB[2,2] = Q
+    DB[2,2] = K#Q
     return DB
 end
 

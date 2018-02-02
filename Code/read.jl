@@ -12,7 +12,8 @@ function main()
     # Open the input file for reading and close automatically at end
     open(input_file, "r") do in_file
         # Use a for loop to process the rows in the input file one-by-one
-        points = Array{Float64}(0,4) # Four points to be filled initially
+        points = Array{Float64}(0,4) # empty array for the points to be input to
+        n = Array{Int64}(0) # empty vector to store numbers
         for line in eachline(in_file)
             # Write the row of data to the output file
             # Check if it is a real point
@@ -50,19 +51,24 @@ function main()
                     condition4 = S < (points[i,4] - 10.0^-5) || S > (points[i,4] + 10.0^-5)
                     if condition1 != true && condition2 != true && condition3 != true && condition4 != true
                         distinct = false
+                        points[i,1] = (n[i]*points[i,1] + A)/(n[i] + 1)
+                        points[i,2] = (n[i]*points[i,2] + B)/(n[i] + 1)
+                        points[i,3] = (n[i]*points[i,3] + W)/(n[i] + 1)
+                        points[i,4] = (n[i]*points[i,4] + S)/(n[i] + 1)
+                        n[i] += 1
                     end
                 end
                 if distinct == true
                     # if so add point to array that orginality is checked relative too
                     points = vcat(points, [ A B W S ])
-                    # Then writes the line to the file
-                    linep = line + "\n"
-                    write(out_file, linep)
+                    n = vcat(n, 1)
                 end
             end
         end
+        for i = 1:size(points,1)
+            write(out_file, "$(points[i,1]),$(points[i,2]),$(points[i,3]),$(points[i,4])\n")
+        end
     end
-
     # Close the output file handle
     close(out_file)
 end

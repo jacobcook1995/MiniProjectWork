@@ -368,10 +368,9 @@ end
 
 # Now define the paths
 start, saddle, finish = nullcline()
-
-const star = start # These are then set constant to allow better optimisation
-const inflex = saddle
-const fin = finish
+const star = start + 0.05 # These are then set constant to allow better optimisation
+const inflex = start#saddle
+const fin = start - 0.05 #finish
 
 # find saddle points
 const pa1 = collect(linspace(star[1],inflex[1],(N/2)+1))
@@ -386,4 +385,4 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
-@time run(22.06,5)#38.9052734375
+@time run(3000,5)#38.9052734375

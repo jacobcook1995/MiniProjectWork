@@ -59,8 +59,8 @@ end
 
 
 # function takes in initial values and either throws an error or returns the solution it finds
-function find_zeros(Ai, Bi, Si, Wi)
-    xs = nlsolve(f!, [Ai, Bi, Si, Wi])
+function find_zeros(Ai, Bi, Wi, Si)
+    xs = nlsolve(f!, [Ai, Bi, Wi, Si])
     nW = Wdot(xs.zero)
     if abs(nW) <= 10.0^-10 && converged(xs) == true && any(x -> x < 0.0, xs.zero) == false
     elseif abs(nW) >= 10.0^-10 && converged(xs) == true && any(x -> x < 0.0, xs.zero) == false
@@ -97,14 +97,14 @@ function point_search()
         rB = rand()
         rS = rand()
         rW = rand()
-        rs = [ rA; rB; rS; rW ]
+        rs = [ rA; rB; rW; rS ]
         rs = rs/sum(rs)
         Ai = N*rs[1]
         Bi = N*rs[2]
-        Si = N*rs[3]
-        Wi = N*rs[4]
+        Wi = N*rs[3]
+        Si = N*rs[4]
 
-        try x, ws = find_zeros(Ai, Bi, Si, Wi)
+        try x, ws = find_zeros(Ai, Bi, Wi, Si)
             line = "$(x.zero[1]),$(x.zero[2]),$(x.zero[3]),$(x.zero[4])\n"
         catch y
             if isa(y, DomainError) # the errors here don't really mean anything I'm just too lazy to make my own

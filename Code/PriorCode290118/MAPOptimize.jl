@@ -19,6 +19,7 @@ const q = 10
 const Q = q/Ω
 const r = 100000
 const f = 100000# 100000
+const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
@@ -47,7 +48,7 @@ function D!(D, x)
     D[1,1] = k*r/(r+f*x[2]*x[2]) + K*x[1]
     D[1,2] = 0
     D[2,1] = 0
-    D[2,2] = k*r/(r+f*x[1]*x[1]) + K*x[2]#q*r/(r+f*x[1]*x[1]) + Q*x[2]
+    D[2,2] = q*r/(r+f*x[1]*x[1]) + Q*x[2]
     return D
 end
 
@@ -55,7 +56,7 @@ function D2!(D2, x)
     D2[1,1] = (k*r/(r+f*x[2]*x[2]) + K*x[1])^2
     D2[1,2] = 0
     D2[2,1] = 0
-    D2[2,2] = (k*r/(r+f*x[1]*x[1]) + K*x[2])^2#(q*r/(r+f*x[1]*x[1]) + Q*x[2])^2
+    D2[2,2] = (q*r/(r+f*x[1]*x[1]) + Q*x[2])^2
     return D2
 end
 
@@ -63,7 +64,7 @@ function DA!(DA, x)
     DA[1,1] = K
     DA[1,2] = 0
     DA[2,1] = 0
-    DA[2,2] = -2*k*r*f*x[1]/((r+f*x[1]*x[1])^2)#-2*q*r*f*x[1]/((r+f*x[1]*x[1])^2)
+    DA[2,2] = -2*q*r*f*x[1]/((r+f*x[1]*x[1])^2)
     return DA
 end
 
@@ -71,7 +72,7 @@ function DB!(DB, x)
     DB[1,1] = -2*k*r*f*x[2]/((r+f*x[2]*x[2])^2)
     DB[1,2] = 0
     DB[2,1] = 0
-    DB[2,2] = K#Q
+    DB[2,2] = Q
     return DB
 end
 
@@ -111,9 +112,20 @@ function nullcline()
     A2(x) = (r/f*(q/(Q*x)-1))^(1/b)
     g(x) = k*r/(K*(r+f*x^a)) - (r/f*(q/(Q*x)-1))^(1/b) #A1(x) - A2(x)
     xs = fzeros(g, 0, q/Q)
-    ss1 = [A1(xs[1]); xs[1]]
     sad = [A1(xs[2]); xs[2]]
-    ss2 = [A1(xs[3]); xs[3]]
+    if high2low == true
+        ss1 = [A1(xs[1]); xs[1]]
+        ss2 = [A1(xs[3]); xs[3]]
+    else
+        ss1 = [A1(xs[3]); xs[3]]
+        ss2 = [A1(xs[1]); xs[1]]
+    end
+    print(ss1)
+    print("\n")
+    print(sad)
+    print("\n")
+    print(ss2)
+    print("\n")
     return (ss1,sad,ss2)
 end
 
@@ -351,7 +363,7 @@ function run(tau,noit)
     ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red, leg=false)
     annotate!(inflex[1]+3, minimum(ents)+0.01, text("Ent prod = $(entP)\nBlue is B\nRed is A", :left, font(5, "Courier")))
     plot(pone, ptwo, layout = (1,2))
-    savefig("../Results/Entropy.png")
+    savefig("../../Results/Entropy$(high2low).png")
 end
 
 # Now define the paths
@@ -374,4 +386,4 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
-@time run(38.9052734375,5)
+@time run(22.06,5)#38.9052734375

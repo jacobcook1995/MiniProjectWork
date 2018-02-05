@@ -127,3 +127,166 @@ function DS!(DS, x)
     DS[1,2:4] = DS[2,1] = DS[2,3:4] = DS[3,1:2] = DS[3,4] = DS[4,1:3] = 0
     return DS
 end
+
+# function to split paths into required form
+function Pathdiv(path)
+    # split path into vectors a and b
+    a = path[:,1]
+    b = path[:,2]
+    w = path[:,3]
+    s = path[:,4]
+    # delete first  and last elements of a and b
+    deleteat!(a, 1)
+    deleteat!(a, N)
+    deleteat!(b, 1)
+    deleteat!(b, N)
+    deleteat!(w, 1)
+    deleteat!(w, N)
+    deleteat!(s, 1)
+    deleteat!(s, N)
+    nonfixed = vcat(a,b,w,s)
+    return(nonfixed)
+end
+
+# function to recombine paths into a plotable form
+function Pathmerge(nonfixed)
+    # Should now try to reconstruct the paths
+    apath = nonfixed[1:N-1]
+    bpath = nonfixed[N:2*(N-1)]
+    wpath = nonfixed[(2*N - 1):3*(N-1)]
+    spath = nonfixed[(3*N - 2):4*(N-1)]
+    push!(apath,fin[1]) # This should all go in a function if it's repeated
+    push!(bpath,fin[2])
+    push!(wpath,fin[3])
+    push!(spath,fin[4])
+    unshift!(apath,star[1])
+    unshift!(bpath,star[2])
+    unshift!(wpath,star[3])
+    unshift!(spath,star[4])
+    path = hcat(apath,bpath,wpath,spath)
+    return(path)
+end
+
+# A function to find the crossing points of the nullclines so they can be used
+# as start, end and saddle points
+function nullcline()
+    # Literally just gonna hardcode the steady states in as I can't think of a better way to do this yet
+    ss1 = [ 74.9986666432; 0.0133335704; 1922.4875997765; 2.5004000071 ]
+    ss2 = [ 0.001333357; 749.9866664274; 1225.0124002197; 24.9995999929 ]
+    print(ss1)
+    print("\n")
+    print(ss2)
+    print("\n")
+    return (ss1,ss2)
+end
+
+function AP(thi, tau) # function to calculate action of a given path
+    deltat = tau/N
+    S = 0 # initialise as zero
+
+    # make an initial d and f
+    d = [ 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 ]
+    h = [ 0.0; 0.0; 0.0; 0.0 ]
+    # need a step to massively disfavour paths that go negative
+    negs = false
+    for i = 1:N-1
+        for j = 1:4
+            if thi[i+(N-1)*(j-1)] < 0
+                negs = true
+            end
+        end
+    end
+    if negs == true
+        S = 1000000000000 # large number to disfavour path
+    end
+
+    for i = 1:N
+        if i == 1
+            posA = (thi[1] + star[1])/2
+            posB = (thi[N] + star[2])/2
+            posW = (thi[(2*N - 1)] + star[3])/2
+            posS = (thi[(3*N - 2)] + star[4])/2
+        elseif i == N
+            posA = (fin[1] + thi[N-1])/2
+            posB = (fin[2] + thi[2*(N-1)])/2
+            posW = (fin[3] + thi[3*(N-1)])/2
+            posS = (fin[4] + thi[4*(N-1)])/2
+        else
+            posA = (thi[i] + thi[i-1])/2
+            posB = (thi[i + (N-1)] + thi[i + (N-2)])/2
+            posW = (thi[i + 2*(N-1)] + thi[i - 1 + 2*(N-1)])/2
+            posS = (thi[i + 3*(N-1)] + thi[i - 1 + 3*(N-1)])/2
+        end
+        h = f!(h, [posA; posB; posW; posS])
+        d = D!(d, [posA; posB; posW; posS])
+        for j = 1:4
+            if i == 1
+                thiv = (thi[1+(j-1)*(N-1)] - star[j])/deltat
+            elseif i == N
+                thiv = (fin[j] - thi[(N-1)*j])/deltat
+            else
+                thiv = (thi[i+(j-1)*(N-1)] - thi[i-1+(j-1)*(N-1)])/deltat
+            end
+            S += (0.5*deltat/d[j,j])*((thiv-h[j])^2)
+        end
+    end
+    return(S)
+end
+
+################################################################################
+#SKIPPING THE GRADIENT STEP FOR NOW AS IT WOULD SEEM TO BE A WASTE OF TIME IF THE
+################################################################################
+#REST OF THE PROGRAM DOESN'T WORK WHICH COULD BE THE CASE AT THE MOMENT
+################################################################################
+
+# function to actually perform the optimisation
+function optSt(nonfixed,tau)
+    results = optimize(f -> AP(f,tau), nonfixed, LBFGS(), #(grads, f) -> g!(grads,f,tau),
+                       Optim.Options(g_tol = 0.0, f_tol = 0.0, x_tol = 0.0,
+                       iterations = 10000, allow_f_increases = true))
+    # Get results out of optimiser
+    result = Optim.minimizer(results)
+    S = Optim.minimum(results)
+    return(result, S)
+end
+
+
+# This function runs the optimisation multiple times in the hope of reducing the ruggedness of the action landscape
+function optSt2(tau,noit)
+    notfixed = Pathdiv(thi1)
+    result, S = optSt(notfixed, tau) # generate standard path
+    for i = 2:noit
+        result, S = optSt(result, tau)
+    end
+    pathfin = Pathmerge(result)
+    return(pathfin, S)
+end
+
+# Now define the paths
+start, finish = nullcline()
+const star = start
+const inflex = [50; 250; 850; 850]
+const fin = finish
+
+# First make a reasonable first guess of the path vector
+const pa1 = collect(linspace(star[1],inflex[1],(N/2)+1))
+const pa2 = collect(linspace(inflex[1],fin[1],(N/2)+1))
+const pa = vcat(pa1,pa2[2:length(pa2)])
+const pb1 = collect(linspace(star[2],inflex[2],(N/2)+1))
+const pb2 = collect(linspace(inflex[2],fin[2],(N/2)+1))
+const pb = vcat(pb1,pb2[2:length(pb2)])
+const pw1 = collect(linspace(star[3],inflex[3],(N/2)+1))
+const pw2 = collect(linspace(inflex[3],fin[3],(N/2)+1))
+const pw = vcat(pw1,pw2[2:length(pw2)])
+const ps1 = collect(linspace(star[4],inflex[4],(N/2)+1))
+const ps2 = collect(linspace(inflex[4],fin[4],(N/2)+1))
+const ps = vcat(ps1,ps2[2:length(ps2)])
+const thi1 = hcat(pa,pb,pw,ps)
+
+@time path, S = optSt2(5,5)
+print("$(S)\n")
+plot(path[:,1],path[:,2])
+savefig("../Results/4BathGraph.png")
+a =  sum(path,2)
+plot(a)
+savefig("../Results/4BathGraphTotal.png")

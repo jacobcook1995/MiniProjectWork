@@ -15,7 +15,7 @@
 using Plots
 
 # Parameters
-Ω = 30 # system size
+Ω = 2 # system size
 k = 100 # steady state for A=k/K=1
 K = k/Ω # K=k'
 q = 10 # steady state for B=q/Q=1
@@ -27,7 +27,7 @@ Na = 0 # counts of A and B, mainly to give an idea of statisical weight later on
 Nb = 0
 
 Ti = 0.0  # initial time
-Tf = 500000 # end of simulation time in s
+Tf = 5000000 # end of simulation time in s
 
 TtempA = [Ti; Ti]
 TtempB = [Ti; Ti]
@@ -35,8 +35,8 @@ PA = [0.0]
 PB = [0.0]
 
 t = TtempA[1] # initialise
-A = Ω
-B = 0
+A = 0
+B = Ω
 
 # Main loop
 while t <= Tf
@@ -136,7 +136,7 @@ plot(pone, ptwo, layout=(2,1))
 
 print("Plots combined!\n")
 
-savefig("../Results/SolutionvsTime.png")
+savefig("../../Results/SolutionvsTime.png") # Now needs to go up two directories because of where it's saved
 print("Plot Saved!\n")
 
 # print moments to screen

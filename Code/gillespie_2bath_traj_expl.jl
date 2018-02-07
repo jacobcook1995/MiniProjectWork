@@ -1,5 +1,5 @@
 #!/usr/bin/env julia
-# gillespie_2bath_traj.jl
+# gillespie_2bath_traj_expl.jl
 # Julia Script for Gillespie simulation of toy driven ecosystem, this now
 # only calculates the histogram rather than trajectories to save computation time
 # In this case 2 resivours are considered, protiens A and B
@@ -10,7 +10,7 @@ using Plots
 import GR
 
 # Parameters
-const Ω = 30 # system size
+const Ω = 2 # system size, maybe this isn't correct terminology
 const k = 100 # steady state for A=k/K=1
 const kmin = 10.0^-20 # set all too 10.0^-20 for now
 const K = k/Ω # K=k'
@@ -26,25 +26,27 @@ function gillespie()
     Ti = 0.0  # initial time
     Tf = 10000 # end of simulation time in s
     batchsize = 100000
-    Traj = zeros(0,3)
+    Traj = zeros(0,5)
     Tims = []
-    traj = zeros(batchsize,3)
+    traj = zeros(batchsize,5)
     tims = zeros(batchsize)
 
     t = Ti # initialise
     A = Ω
     B = 0
+    a = 1
+    b = 1
     trans = 0
 
     i = 1
-    traj[1,:] = [ A B trans ]
+    traj[1,:] = [ A B a b trans ]
     tims[1] = t
     # Main loop
     while t <= Tf
         # set prior A and Bs
 
         # rates
-        rates = [ r*k/(r+f*B*(B-1)), kmin*A, K*A, Kmin, r*q/(r+f*A*(A-1)), qmin*B, Q*B, Qmin ]
+        rates = [ k*a, kmin*A, K*A, Kmin, r*b, qmin*B, Q*B, Qmin, f*B*(B-1)*a, (1-a)*r, f*A*(A-1)*b, (1-b)*r ]
         rs = rates/sum(rates)
         rone = rand() # first random number
 
@@ -70,9 +72,25 @@ function gillespie()
         elseif rone < (rs[1]+rs[2]+rs[3]+rs[4]+rs[5]+rs[6]+rs[7])
             B -= 1
             trans = 7
-        else
+        elseif rone < (rs[1]+rs[2]+rs[3]+rs[4]+rs[5]+rs[6]+rs[7]+rs[8])
             B += 1
             trans = 8
+        elseif rone < (rs[1]+rs[2]+rs[3]+rs[4]+rs[5]+rs[6]+rs[7]+rs[8]+rs[9])
+            B -= 2
+            a -= 1
+            trans = 9
+        elseif rone < (rs[1]+rs[2]+rs[3]+rs[4]+rs[5]+rs[6]+rs[7]+rs[8]+rs[9]+rs[10])
+            B += 2
+            a += 1
+            trans = 10
+        elseif rone < (rs[1]+rs[2]+rs[3]+rs[4]+rs[5]+rs[6]+rs[7]+rs[8]+rs[9]+rs[10]+rs[11])
+            A -= 2
+            b -= 1
+            trans = 11
+        else
+            A += 2
+            b += 1
+            trans = 12
         end
 
         # update time
@@ -80,18 +98,18 @@ function gillespie()
         t = t - log(rtwo)/sum(rates)
 
         i += 1
-        traj[i,:] = [ A B trans ]
+        traj[i,:] = [ A B a b trans ]
         tims[i] = t
         if i == batchsize
             Traj = vcat(Traj,traj)
             Tims = vcat(Tims,tims)
-            traj = zeros(batchsize,3)
+            traj = zeros(batchsize,5)
             tims = zeros(batchsize)
             i = 0
         end
     end
     # Need to now cat the final incomplete batch
-    trajverytemp = fill(0, i, 3)
+    trajverytemp = fill(0, i, 5)
     timsverytemp = fill(0.0, i)
     # Select the valued entries
     for p = 1:i
@@ -116,11 +134,11 @@ function gillespie()
     Back = 0
     for i = 2:L
         # calculate rate of going from pos[i-1] to pos[i]
-        rate_type = Traj[i,3]
+        rate_type = Traj[i,5]
         if rate_type == 0
             error("You've done something wrong here Jacob.\n")
         elseif rate_type == 1
-            Wf[i-1] = r*k/(r + f*Traj[i-1,2]*(Traj[i-1,2]-1))
+            Wf[i-1] = k*Traj[i-1,3]
         elseif rate_type == 2
             Wf[i-1] = kmin*Traj[i-1,1]
         elseif rate_type == 3
@@ -128,13 +146,21 @@ function gillespie()
         elseif rate_type == 4
             Wf[i-1] = Kmin
         elseif rate_type == 5
-            Wf[i-1] = r*q/(r + f*Traj[i-1,1]*(Traj[i-1,1]-1))
+            Wf[i-1] = q*Traj[i-1,4]
         elseif rate_type == 6
             Wf[i-1] = qmin*Traj[i-1,2]
         elseif rate_type == 7
             Wf[i-1] = Q*Traj[i-1,2]
         elseif rate_type == 8
             Wf[i-1] = Qmin
+        elseif rate_type == 9
+            Wf[i-1] = f*Traj[i-1,2]*(Traj[i-1,2]-1)*Traj[i-1,3]
+        elseif rate_type == 10
+            Wf[i-1] = (1-Traj[i-1,3])*r
+        elseif rate_type == 11
+            Wf[i-1] = f*Traj[i-1,1]*(Traj[i-1,1]-1)*Traj[i-1,4]
+        elseif rate_type == 12
+            Wf[i-1] = (1-Traj[i-1,4])*r
         else
             error("You've done something wrong here Jacob.\n")
         end
@@ -143,7 +169,7 @@ function gillespie()
     # Now find reversed trajectory
     for i = L:(-1):2
         # calculate rate of going from pos[i] to pos[i-1]
-        rate_type = Traj[i,3]
+        rate_type = Traj[i,5]
         if rate_type == 0
             error("You've done something wrong here Jacob.\n")
         elseif rate_type == 1
@@ -162,6 +188,14 @@ function gillespie()
             Wminf[i-1] = Qmin
         elseif rate_type == 8
             Wminf[i-1] = Q*Traj[i,2]
+        elseif rate_type == 9
+            Wminf[i-1] = (1-Traj[i,3])*r
+        elseif rate_type == 10
+            Wminf[i-1] = f*Traj[i,2]*(Traj[i,2]-1)*Traj[i,3]
+        elseif rate_type == 11
+            Wminf[i-1] = (1-Traj[i,4])*r
+        elseif rate_type == 12
+            Wminf[i-1] = f*Traj[i,1]*(Traj[i,1]-1)*Traj[i,4]
         else
             error("You've done something wrong here Jacob.\n")
         end

@@ -13,7 +13,7 @@ const q = 10 # asymmetric switches - second switch slower but same steady states
 const Q = q/(Ω) #    As a result, flow diagram very different from symmetric case,
      #    showing increased basin of attraction of fast switch
 
-const f = 1
+const f = 25/(Ω^2)
 const r = 10
 const a = 2
 const b = 2
@@ -69,7 +69,7 @@ function main()
     # quiver(A, B, dotA, dotB) # comment out as want to see just directions
     pts = vec(P2[(arr[i,j,1], arr[i,j,2]) for i = 1:sA, j = 1:sB])
     quiver!(pts, quiver = velos)
-    savefig("../Results/Graph.png")
+    savefig("../../Results/Graph.png")
 end
 
 main() # run main program

@@ -10,16 +10,17 @@ using Plots
 import GR
 
 # Parameters
-const Ω = 2 # system size, maybe this isn't correct terminology
+const Ω = 20 # system size, maybe this isn't correct terminology
+const ss = 20 # Steady state size
 const k = 100 # steady state for A=k/K=1
 const kmin = 10.0^-20 # set all too 10.0^-20 for now
-const K = k/Ω # K=k'
+const K = k/ss # K=k'
 const Kmin = 10.0^-20
 const q = 10 # steady state for B=q/Q=1
 const qmin = 10.0^-20
-const Q = q/Ω # Q=q'
+const Q = q/ss # Q=q'
 const Qmin = 10.0^-20
-const f = 10 # Promoter switching
+const f = 10/(Ω^2) # Promoter switching
 const r = 10
 
 function gillespie()

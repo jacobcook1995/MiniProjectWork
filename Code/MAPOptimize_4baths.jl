@@ -26,7 +26,7 @@ const Qmin = 10.0^-20
 const f = 10 # Promoter switching
 const r = 10
 const F = 250 # removal rate
-const Ne = 2000 # number of elements in the system
+const Ne = 12000 # number of elements in the system
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
@@ -171,13 +171,16 @@ end
 # as start, end and saddle points
 function nullcline()
     # Literally just gonna hardcode the steady states in as I can't think of a better way to do this yet
-    ss1 = [ 74.9986666432; 0.0133335704; 1922.4875997765; 2.5004000071 ]
-    ss2 = [ 0.001333357; 749.9866664274; 1225.0124002197; 24.9995999929 ]
+    ss1 = [ 0.00133336; 749.987; 11225.0; 24.9996 ]
+    sad = [ 68.1818; 68.1818; 1296.0; 10567.6 ]
+    ss2 = [  74.9987; 0.0133336; 11922.5; 2.5004 ]
     print(ss1)
+    print("\n")
+    print(sad)
     print("\n")
     print(ss2)
     print("\n")
-    return (ss1,ss2)
+    return (ss1,sad,ss2)
 end
 
 function AP(thi, tau) # function to calculate action of a given path
@@ -263,9 +266,9 @@ function optSt2(tau,noit)
 end
 
 # Now define the paths
-start, finish = nullcline()
+start, saddle, finish = nullcline()
 const star = start
-const inflex = [50; 250; 850; 850]
+const inflex = saddle
 const fin = finish
 
 # First make a reasonable first guess of the path vector
@@ -283,7 +286,7 @@ const ps2 = collect(linspace(inflex[4],fin[4],(N/2)+1))
 const ps = vcat(ps1,ps2[2:length(ps2)])
 const thi1 = hcat(pa,pb,pw,ps)
 
-@time path, S = optSt2(5,5)
+@time path, S = optSt2(0.005,5)
 print("$(S)\n")
 plot(path[:,1],path[:,2])
 savefig("../Results/4BathGraph.png")

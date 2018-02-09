@@ -25,6 +25,12 @@ const r = 10
 const F = 250 # removal rate
 const N = 12000.0 # density within the system
 
+# A = x[1], B = x[2], W = x[3], S = x[4]
+function Wdot(x)
+    wdot = K*(x[1] + ϕ*x[2]) - Kmin*(1 + ϕ)*x[3] - F
+    return(wdot)
+end
+
 function Zeros()
     g(x) = F./(1 + ((r + f*x.^2)./(ϕ*r + (f/ϕ)*((F/K - x).^2)))) + K.*x - F
     three = false
@@ -53,6 +59,11 @@ function Zeros()
     gs = g(A)
     plot(A,gs)
     savefig("../Results/GraphZeros.png")
+    Wt = zeros(n)
+    for i = 1:n
+        Wt[i] = Wdot([ As[i] Bs[i] Ws[i] Ss[i] ])
+    end
+    print("$Wt\n")
     return(vars)
 end
 

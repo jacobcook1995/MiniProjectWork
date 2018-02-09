@@ -12,13 +12,13 @@ using Roots
 import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
-const Ω = 10 #30
+const Ω = 30
 const k = 100
 const K = k/Ω
 const q = 10
 const Q = q/Ω
 const r = 100000
-const f = 100000# 100000
+const f = 100000
 const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
@@ -368,9 +368,9 @@ end
 
 # Now define the paths
 start, saddle, finish = nullcline()
-const star = start + 0.05 # These are then set constant to allow better optimisation
-const inflex = start#saddle
-const fin = start - 0.05 #finish
+const star = start # These are then set constant to allow better optimisation
+const inflex = saddle
+const fin = finish
 
 # find saddle points
 const pa1 = collect(linspace(star[1],inflex[1],(N/2)+1))
@@ -385,4 +385,4 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
-@time run(3000,5)#38.9052734375
+@time run(38.9052734375,5)#

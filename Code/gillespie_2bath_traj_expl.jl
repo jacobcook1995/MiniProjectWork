@@ -10,22 +10,22 @@ using Plots
 import GR
 
 # Parameters
-const Ω = 20 # system size, maybe this isn't correct terminology
-const ss = 20 # Steady state size
-const k = 100 # steady state for A=k/K=1
+const Ω = 50 # system size, maybe this isn't correct terminology
+#const ss = 50 # Steady state size
+const K = 10
+const k = K*Ω # steady state for A=k/K=1
+const Q = 1
+const q = Q*Ω
 const kmin = 10.0^-20 # set all too 10.0^-20 for now
-const K = k/ss # K=k'
 const Kmin = 10.0^-20
-const q = 10 # steady state for B=q/Q=1
 const qmin = 10.0^-20
-const Q = q/ss # Q=q'
 const Qmin = 10.0^-20
 const f = 10/(Ω^2) # Promoter switching
 const r = 10
 
 function gillespie()
     Ti = 0.0  # initial time
-    Tf = 10000 # end of simulation time in s
+    Tf = 1000#0 # end of simulation time in s
     batchsize = 100000
     Traj = zeros(0,5)
     Tims = []
@@ -33,8 +33,8 @@ function gillespie()
     tims = zeros(batchsize)
 
     t = Ti # initialise
-    A = Ω
-    B = 0
+    A = 0
+    B = Ω
     a = 1
     b = 1
     trans = 0
@@ -210,6 +210,8 @@ function gillespie()
     plot(Tims,Traj[:,1:2])
     annotate!(0.5*Tf, 10, text("deltaS=$(ΔS)",:left))
     savefig("../Results/ExpressionLevelsHighA.png")
+    plot(Traj[:,1],Traj[:,2])
+    savefig("../Results/Trajs.png")
     # Don't feel that this is showing me anything particulary intresting
     #ents = log.(Wf./Wminf)
     #plot(ents)

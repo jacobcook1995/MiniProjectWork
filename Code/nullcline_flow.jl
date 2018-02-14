@@ -6,20 +6,25 @@
 using Plots # use GR instead of plots so that MeshGrid works
 import GR # need this to stop plotting in function bug
 
-const Ω = 30
-const k = 100
-const K = k/Ω #/s
-const q = 10 # asymmetric switches - second switch slower but same steady states.
-const Q = q/(2*Ω) #    As a result, flow diagram very different from symmetric case,
-     #    showing increased basin of attraction of fast switch
+# Parameters
+const Ω = 50 # system size, maybe this isn't correct terminology
+#const ss = 50 # Steady state size
+const K = 10
+const k = K*Ω # steady state for A=k/K=1
+const Q = 1
+const q = Q*Ω
+const kmin = 10.0^-20 # set all too 10.0^-20 for now
+const Kmin = 10.0^-20
+const qmin = 10.0^-20
+const Qmin = 10.0^-20
+const f = 25000/(Ω^2) # Promoter switching
+const r = 10
 
-const f = 0.01
-const r = 0.01
 const a = 2
 const b = 2
 const LA = Ω # side length of A axis of the grid
-const LB = 2*Ω # side length of B axis of the grid
-const δ = 1 # detail of grid
+const LB = Ω # side length of B axis of the grid
+const δ = 0.5 # detail of grid
 const δ2 = 0.01 # detail of nullclines
 
 # Find velocity of a point in species space

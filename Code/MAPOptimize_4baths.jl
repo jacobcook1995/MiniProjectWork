@@ -223,7 +223,7 @@ function AP(thi, tau) # function to calculate action of a given path
         end
     end
     if negs == true
-        S = 1000000000000 # large number to disfavour path
+        S = 1000000000000 # large number to disfavour paths that go negative
     end
 
     for i = 1:N
@@ -247,13 +247,13 @@ function AP(thi, tau) # function to calculate action of a given path
         d = D!(d, [posA; posB; posW; posS])
         for j = 1:4
             if i == 1
-                thiv = (thi[1+(j-1)*(N-1)] - star[j])/deltat
+                thiv = (thi[1 + (j-1)*(N-1)] - star[j])/deltat
             elseif i == N
                 thiv = (fin[j] - thi[(N-1)*j])/deltat
             else
-                thiv = (thi[i+(j-1)*(N-1)] - thi[i-1+(j-1)*(N-1)])/deltat
+                thiv = (thi[i + (j-1)*(N-1)] - thi[i - 1 + (j-1)*(N-1)])/deltat
             end
-            S += (0.5*deltat/d[j,j])*((thiv-h[j])^2)
+            S += (0.5*deltat/d[j,j])*((thiv - h[j])^2)
         end
     end
     return(S)
@@ -407,8 +407,6 @@ function optSt(nonfixed,tau)
     # Get results out of optimiser
     result = Optim.minimizer(results)
     S = Optim.minimum(results)
-    print(results)
-    print("\n")
     return(result, S)
 end
 
@@ -431,6 +429,12 @@ const star = start
 const inflex = saddle
 const fin = finish
 
+# Alternative construction of initial path
+# const pa = collect(linspace(star[1],fin[1],N+1))
+# const pb = collect(linspace(star[2],fin[2],N+1))
+# const pw = collect(linspace(star[3],fin[3],N+1))
+# const ps = collect(linspace(star[4],fin[4],N+1))
+
 # First make a reasonable first guess of the path vector
 const pa1 = collect(linspace(star[1],inflex[1],(N/2)+1))
 const pa2 = collect(linspace(inflex[1],fin[1],(N/2)+1))
@@ -446,7 +450,7 @@ const ps2 = collect(linspace(inflex[4],fin[4],(N/2)+1))
 const ps = vcat(ps1,ps2[2:length(ps2)])
 const thi1 = hcat(pa,pb,pw,ps)
 
-@time path, S = optSt2(20,5)
+@time path, S = optSt2(5,5)
 print("$(S)\n")
 plot(path[:,1],path[:,2])
 savefig("../Results/4BathGraph.png")

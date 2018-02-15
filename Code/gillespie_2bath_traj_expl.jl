@@ -20,7 +20,7 @@ const kmin = 10.0^-20 # set all too 10.0^-20 for now
 const Kmin = 10.0^-20
 const qmin = 10.0^-20
 const Qmin = 10.0^-20
-const f = 10/(Ω^2) # Promoter switching
+const f = 100/(Ω^2) # Promoter switching
 const r = 10
 
 function gillespie()
@@ -33,7 +33,7 @@ function gillespie()
     tims = zeros(batchsize)
 
     t = Ti # initialise
-    A = 0
+    A = Ω
     B = Ω
     a = 1
     b = 1
@@ -47,7 +47,7 @@ function gillespie()
         # set prior A and Bs
 
         # rates
-        rates = [ k*a, kmin*A, K*A, Kmin, r*b, qmin*B, Q*B, Qmin, f*B*(B-1)*a, (1-a)*r, f*A*(A-1)*b, (1-b)*r ]
+        rates = [ k*a, kmin*A, K*A, Kmin, q*b, qmin*B, Q*B, Qmin, f*B*(B-1)*a, (1-a)*r, f*A*(A-1)*b, (1-b)*r ]
         rs = rates/sum(rates)
         rone = rand() # first random number
 

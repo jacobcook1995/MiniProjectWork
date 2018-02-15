@@ -14,8 +14,8 @@ const k = 100 # steady state for A=k/K=1
 const K = k/Ω # K=k'
 const q = 10 # steady state for B=q/Q=1
 const Q = q/Ω # Q=q'
-const f = 1 # Promoter switching
-const r = 10
+const f = 0.01 # Promoter switching
+const r = 0.01
 
 # A function to find the crossing points of the nullclines so they can be used
 # as start, end and saddle points
@@ -370,7 +370,7 @@ function gille(Ti, Tf, itnum)
 
     gr()
     pone = plot(TS, St)
-    savefig("../Results/EntropiesvsTime$(itnum).png") # takes a really long time
+    #savefig("../../Results/EntropiesvsTime$(itnum).png") # takes a really long time
     ptwo = plot(TA, At)
     pthree = plot(TB, Bt)
     pfour = plot(Ta, at)
@@ -378,12 +378,12 @@ function gille(Ti, Tf, itnum)
 
     plot(ptwo, pthree, pfour, pfive, layout=(4,1))
     print("Plots combined!\n")
-    savefig("../Results/SolutionvsTime$(itnum).png") # savefig takes a really long time
+    savefig("../../Results/SolutionvsTime$(itnum).png") # savefig takes a really long time
 
     return(averages)
 end
 for num = 1:1
-    @time Averages  = gille(0.0, 10000, num)
+    @time Averages  = gille(0.0, 1000, num)
     print("$(Averages[1]),$(Averages[2]),$(Averages[3]),$(Averages[4])\n")
 end
 

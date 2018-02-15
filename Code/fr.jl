@@ -16,20 +16,28 @@ const kmin = 10.0^-20 # set all too 10.0^-20 for now
 const Kmin = 10.0^-20
 const qmin = 10.0^-20
 const Qmin = 10.0^-20
-const f = 10/(Ω^2) # Promoter switching
-const r = 1000
+const f = 25000/(Ω^2) # Promoter switching
+const r = 10
 
 const a = 2
 const b = 2
-const LA = 2*Ω # side length of A axis of the grid
-const LB = 2*Ω # side length of B axis of the grid
-const δ = 0.5 # detail of grid
+const LA = Ω # side length of A axis of the grid
+const LB = Ω # side length of B axis of the grid
+const δ = 0.1 # detail of grid
+const δ2 = 0.01 # detail of nullclines
 
 # function to calculate switching ratio
 function ratio(A, B)
     ratioa = r/(r + f*B*B)
     ratiob = r/(r + f*A*A)
     return(ratioa, ratiob)
+end
+
+# Produce nullcline functions to be plotted
+function nullclines(B)
+    A1 = k*r/K./(r+f*B.^a)
+    A2 = (r/f*(q./(Q*B)-1)).^(1/b)
+    return(A1, A2)
 end
 
 function main()
@@ -64,19 +72,31 @@ function main()
         end
     end
 
+    # B2 is used for plotting nullclines
+    B2 = 0:δ2:LB
+
+    # find nullclines to plot
+    s2 = convert(Int64, LB/δ2) + 1
+    A12 = zeros(s2,2)
+    A12[:,1], A12[:,2] = nullclines(B2)
+
     # Set plotting back end
     gr()
-    Aticks = collect(linspace(0,2*Ω,sA))
-    Bticks = collect(linspace(0,2*Ω,sB))
+    Aticks = collect(linspace(0,LA,sA))
+    Bticks = collect(linspace(0,LB,sB))
     # Make heatmap of change in A
     heatmap(Bticks, Aticks, δA, xlabel = "B", ylabel = "A")#, xticks = Bticks, yticks = Aticks)
+    plot!(A12, B2, xlim = (0,LA), ylim = (0,LB), legend = false)
     savefig("../Results/HeatMapA.png")
     # Make heatmap of change in B
     heatmap(Bticks, Aticks,δB, xlabel = "B", ylabel = "A")
+    plot!(A12, B2, xlim = (0,LA), ylim = (0,LB), legend = false)
     savefig("../Results/HeatMapB.png")
     heatmap(Bticks, Aticks, δA-δB, xlabel = "B", ylabel = "A")
+    plot!(A12, B2, xlim = (0,LA), ylim = (0,LB), legend = false)
     savefig("../Results/HeatMapA-B.png")
     heatmap(Bticks, Aticks, δB-δA, xlabel = "B", ylabel = "A")
+    plot!(A12, B2, xlim = (0,LA), ylim = (0,LB), legend = false)
     savefig("../Results/HeatMapB-A.png")
 end
 

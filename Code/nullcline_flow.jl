@@ -44,8 +44,8 @@ end
 
 # Produce nullcline functions to be plotted
 function nullclines(B)
-    A1 = k*r/K./(r+f*B.^a);
-    A2 = (r/f*(q./(Q*B)-1)).^(1/b);
+    A1 = k*r/K./(r+f*B.^a)
+    A2 = (r/f*(q./(Q*B)-1)).^(1/b)
     return(A1, A2)
 end
 

@@ -13,12 +13,16 @@ import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
 const Ω = 30
-const k = 100
-const K = k/Ω
-const q = 10
-const Q = q/Ω
-const r = 100000
-const f = 100000
+const K = 10
+const k = K*Ω # steady state for A=k/K=1
+const Q = 1
+const q = Q*Ω
+const kmin = 10.0^-20 # set all too 10.0^-20 for now
+const Kmin = 10.0^-20
+const qmin = 10.0^-20
+const Qmin = 10.0^-20
+const f = 1000/(Ω^2) # Promoter switching
+const r = 10
 const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
@@ -317,7 +321,10 @@ end
 # function to find the entropy production of a path that takes a certain time tau
 function EntProd(path,tau)
     # probably easiest to calculate the entropy production at each point in the path
-    ents = zeros(N+1,2)
+    ents = zeros(N+1, 2)
+    KE = zeros(N+1, 2)
+    PE = zeros(N+1, 2)
+    acts = zeros(N+1, 2)
     h = [0.0; 0.0]
     d = [0.0 0.0; 0.0 0.0]
     deltat = tau/N
@@ -332,10 +339,13 @@ function EntProd(path,tau)
             else
                 thiv = (path[i+1,j] - path[i-1,j])/(2*deltat)
             end
-            ents[i,j] = h[j]*thiv*deltat/d[j,j] # this will change things surely, or maybe not
+            ents[i,j] = -h[j]*thiv*deltat/d[j,j]
+            KE[i,j] = thiv*thiv*deltat/(2*d[j,j])
+            PE[i,j] = h[j]*h[j]*deltat/(2*d[j,j])
         end
     end
-    return(ents)
+    acts = KE + PE + ents
+    return(ents, KE, PE, acts)
 end
 
 
@@ -353,17 +363,23 @@ function run(tau,noit)
     pone = scatter!(pone, [star[1]], [star[2]], lab = "Start", seriescolor = :green) # put start point in
     pone = scatter!(pone, [inflex[1]], [inflex[2]], lab = "Saddle Point", seriescolor = :orange)
     pone = scatter!(pone, [fin[1]], [fin[2]], lab = "Finish", seriescolor = :red) # put end point in
-    ents =  EntProd(pathmin,t)
+    ents, kins, pots, acts =  EntProd(pathmin,t)
     entP = sum(ents)
-    print(entP)
-    print("\n")
-    ptwo = plot(pathmin[1:(N+1),1], ents, xaxis = "A", yaxis = "Entropy Production", marker=:auto)
+    kindif = sum(kins)
+    potdif = sum(pots)
+    act = sum(acts)
+    print("$entP\n")
+    print("$kindif\n")
+    print("$potdif\n")
+    print("$act\n")
+    points = [ (ents[:,1] + ents[:,2]) (kins[:,1] + kins[:,2]) (pots[:,1] + pots[:,2]) (acts[:,1] + acts[:,2]) ]
+    ptwo = plot(pathmin[1:(N+1),1], points, xaxis = "A", yaxis = "Entropy Production", marker=:auto)
     ptwo = scatter!(ptwo, [star[1]], [0.0], seriescolor = :green)
     ptwo = scatter!(ptwo, [inflex[1]], [0.0], seriescolor = :orange)
     ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red, leg=false)
-    annotate!(inflex[1]+3, minimum(ents)+0.01, text("Ent prod = $(entP)\nBlue is B\nRed is A", :left, font(5, "Courier")))
+    annotate!(inflex[1]+3, minimum(ents)+0.01, text("Action = $(act)\n", :left, font(5, "Courier")))
     plot(pone, ptwo, layout = (1,2))
-    savefig("../../Results/Entropy$(high2low).png")
+    savefig("../Results/Entropy$(high2low).png")
 end
 
 # Now define the paths
@@ -385,4 +401,4 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
-@time run(38.9052734375,5)#
+@time run(22.059814453125,5)#18.940185546875

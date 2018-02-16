@@ -20,7 +20,7 @@ const kmin = 10.0^-20 # set all too 10.0^-20 for now
 const Kmin = 10.0^-20
 const qmin = 10.0^-20
 const Qmin = 10.0^-20
-const f = 100/(Ω^2) # Promoter switching
+const f = 1000/(Ω^2) # Promoter switching
 const r = 10
 
 function gillespie()
@@ -33,7 +33,7 @@ function gillespie()
     tims = zeros(batchsize)
 
     t = Ti # initialise
-    A = Ω
+    A = 0
     B = Ω
     a = 1
     b = 1
@@ -207,15 +207,57 @@ function gillespie()
     print("$Back\n")
     print("$ΔS\n")
 
+    # Now a section to calculate kinetic energy v^2/2
+    KE = zeros(L - 1,4)
+    for i = 2:L
+        vA = (Traj[i,1] - Traj[i-1,1])/(Tims[i]-Tims[i-1])
+        vB = (Traj[i,2] - Traj[i-1,2])/(Tims[i]-Tims[i-1])
+        va = (Traj[i,3] - Traj[i-1,3])/(Tims[i]-Tims[i-1])
+        vb = (Traj[i,4] - Traj[i-1,4])/(Tims[i]-Tims[i-1])
+        KE[i-1,1] = (vA^2)/2
+        KE[i-1,2] = (vB^2)/2
+        KE[i-1,3] = (va^2)/2
+        KE[i-1,4] = (vb^2)/2
+    end
+
+    # Now a section to calculate Potential energy P^2/2
+    PE = zeros(L - 1,4)
+    for i = 2:L
+        PA1 = k*Traj[i-1,3] - kmin*Traj[i-1,1] - K*Traj[i-1,1] + Kmin - 2*f*Traj[i-1,1]*(Traj[i-1,1]-1)*Traj[i-1,4] + 2*(1-Traj[i-1,4])*r
+        PB1 = q*Traj[i-1,4] - qmin*Traj[i-1,2] - Q*Traj[i-1,2] + Qmin - 2*f*Traj[i-1,2]*(Traj[i-1,2]-1)*Traj[i-1,3] + 2*(1-Traj[i-1,3])*r
+        Pa1 = (1-Traj[i-1,3])*r - f*Traj[i-1,2]*(Traj[i-1,2]-1)*Traj[i-1,3]
+        Pb1 = (1-Traj[i-1,4])*r - f*Traj[i-1,1]*(Traj[i-1,1]-1)*Traj[i-1,4]
+        PA2 = k*Traj[i,3] - kmin*Traj[i,1] - K*Traj[i,1] + Kmin - 2*f*Traj[i,1]*(Traj[i,1]-1)*Traj[i,4] + 2*(1-Traj[i,4])*r
+        PB2 = q*Traj[i,4] - qmin*Traj[i,2] - Q*Traj[i,2] + Qmin - 2*f*Traj[i,2]*(Traj[i,2]-1)*Traj[i,3] + 2*(1-Traj[i,3])*r
+        Pa2 = (1-Traj[i,3])*r - f*Traj[i,2]*(Traj[i,2]-1)*Traj[i,3]
+        Pb2 = (1-Traj[i,4])*r - f*Traj[i,1]*(Traj[i,1]-1)*Traj[i,4]
+        PA = (PA1 + PA2)/2
+        PB = (PB1 + PB2)/2
+        Pa = (Pa1 + Pa2)/2
+        Pb = (Pb1 + Pb2)/2
+        PE[i-1,1] = (PA^2)/2
+        PE[i-1,2] = (PB^2)/2
+        PE[i-1,3] = (Pa^2)/2
+        PE[i-1,4] = (Pb^2)/2
+    end
+
     plot(Tims,Traj[:,1:2])
-    annotate!(0.5*Tf, 10, text("deltaS=$(ΔS)",:left))
+    annotate!(0.25*Tf, 10, text("deltaS = $(ΔS)",:left))
     savefig("../Results/ExpressionLevelsHighA.png")
-    plot(Traj[:,1],Traj[:,2])
-    savefig("../Results/Trajs.png")
+    # plot(Traj[:,1],Traj[:,2])
+    # savefig("../Results/Trajs.png")
     # Don't feel that this is showing me anything particulary intresting
     #ents = log.(Wf./Wminf)
     #plot(ents)
     #savefig("../Results/EntropyProduction.png")
+    AveP = sum(PE)/size(PE,1)
+    AveK = sum(KE)/size(KE,1)
+    plot(Tims[2:L],PE)
+    annotate!(0.25*Tf, 0.5*maximum(PE), text("Average PE = $(AveP)",:left))
+    savefig("../Results/Graph1.png")
+    plot(Tims[2:L],KE)
+    annotate!(0.25*Tf, 0.5*maximum(KE), text("Average KE = $(AveK)",:left))
+    savefig("../Results/Graph2.png")
 end
 
 @time gillespie()

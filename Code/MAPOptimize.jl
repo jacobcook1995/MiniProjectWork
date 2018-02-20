@@ -23,7 +23,7 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = true # Set if starting from high state or low state
+const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
@@ -325,6 +325,9 @@ function EntProd(path,tau)
     KE = zeros(N+1, 2)
     PE = zeros(N+1, 2)
     acts = zeros(N+1, 2)
+    nois1 = zeros(N+1, 2)
+    nois2 = zeros(N+1, 2)
+    nois3 = zeros(N+1, 2)
     h = [0.0; 0.0]
     d = [0.0 0.0; 0.0 0.0]
     deltat = tau/N
@@ -339,13 +342,22 @@ function EntProd(path,tau)
             else
                 thiv = (path[i+1,j] - path[i-1,j])/(2*deltat)
             end
-            ents[i,j] = -h[j]*thiv*deltat/d[j,j]
+            ents[i,j] = h[j]*thiv*deltat/d[j,j]
             KE[i,j] = thiv*thiv*deltat/(2*d[j,j])
             PE[i,j] = h[j]*h[j]*deltat/(2*d[j,j])
+            if j == 1
+                nois1[i,j] = 0.5*K/Ω
+                nois2[i,j] = 0.5*(thiv + K*path[i,1] - k*r/(r + f*path[i,2]^2))*K/(2*Ω*(k*r/(r + f*path[i,2]^2) + K*path[i,1]))
+                nois3[i,j] = (K^2)/(32*(Ω^2)*(k*r/(r + f*path[i,2]^2) + K*path[i,1]))
+            else
+                nois1[i,j] = 0.5*Q/Ω
+                nois2[i,j] = 0.5*(thiv + Q*path[i,2] - q*r/(r + f*path[i,1]^2))*Q/(2*Ω*(q*r/(r + f*path[i,1]^2) + Q*path[i,2]))
+                nois3[i,j] = (Q^2)/(32*(Ω^2)*(q*r/(r + f*path[i,1]^2) + Q*path[i,2]))
+            end
         end
     end
-    acts = KE + PE + ents
-    return(ents, KE, PE, acts)
+    acts = KE + PE - ents - nois1 + nois2 + nois3
+    return(ents, KE, PE, acts, nois1, nois2, nois3)
 end
 
 
@@ -363,23 +375,34 @@ function run(tau,noit)
     pone = scatter!(pone, [star[1]], [star[2]], lab = "Start", seriescolor = :green) # put start point in
     pone = scatter!(pone, [inflex[1]], [inflex[2]], lab = "Saddle Point", seriescolor = :orange)
     pone = scatter!(pone, [fin[1]], [fin[2]], lab = "Finish", seriescolor = :red) # put end point in
-    ents, kins, pots, acts =  EntProd(pathmin,t)
-    entP = sum(ents)
-    kindif = sum(kins)
-    potdif = sum(pots)
+    ents, kins, pots, acts, nois1, nois2, nois3 =  EntProd(pathmin,t)
+
+    # Block of code to write all this data to a file so I can go through it
+    if length(ARGS) >= 1
+        output_file = ARGS[1]
+        out_file = open(output_file, "w")
+        # open file for writing
+        for i = 1:size(ents,1)
+            linep1 = "$(ents[i,1]),$(ents[i,2]),$(kins[i,1]),$(kins[i,2]),$(pots[i,1]),$(pots[i,2])"
+            linep2 = "$(acts[i,1]),$(acts[i,2]),$(nois1[i,1]),$(nois1[i,2]),$(nois2[i,1]),$(nois2[i,2])"
+            linep3 = "$(nois3[i,1]),$(nois3[i,2])\n"
+            line = linep1 * linep2 * linep3
+            write(out_file, line)
+        end
+        close(out_file)
+    end
+
     act = sum(acts)
-    print("$entP\n")
-    print("$kindif\n")
-    print("$potdif\n")
-    print("$act\n")
-    points = [ (ents[:,1] + ents[:,2]) (kins[:,1] + kins[:,2]) (pots[:,1] + pots[:,2]) (acts[:,1] + acts[:,2]) ]
-    ptwo = plot(pathmin[1:(N+1),1], points, xaxis = "A", yaxis = "Entropy Production", marker=:auto)
+    points = [ (ents[:,1] + ents[:,2]), (kins[:,1] + kins[:,2]), (pots[:,1] + pots[:,2]), (acts[:,1] + acts[:,2]),
+                (nois1[:,1] + nois1[:,2]), (nois2[:,1] + nois2[:,2]), (nois3[:,1] + nois3[:,2]) ]
+    ptwo = plot(pathmin[1:(N+1),1], points, xaxis = "A", yaxis = "Entropy Production", marker = :auto)
     ptwo = scatter!(ptwo, [star[1]], [0.0], seriescolor = :green)
     ptwo = scatter!(ptwo, [inflex[1]], [0.0], seriescolor = :orange)
-    ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red, leg=false)
+    ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red, leg = false)
     annotate!(inflex[1]+3, minimum(ents)+0.01, text("Action = $(act)\n", :left, font(5, "Courier")))
     plot(pone, ptwo, layout = (1,2))
     savefig("../Results/Entropy$(high2low).png")
+
 end
 
 # Now define the paths
@@ -401,4 +424,4 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
-@time run(22.059814453125,5)#18.940185546875
+@time run(18.940185546875,5) # 22.059814453125

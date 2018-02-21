@@ -27,6 +27,7 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 100/(Ω^2) # Promoter switching
 const r = 10
+
 function gillespie()
     Na = 0 # counts of A and B, mainly to give an idea of statisical weight later on
     Nb = 0

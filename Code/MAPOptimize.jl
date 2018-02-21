@@ -134,7 +134,7 @@ function nullcline()
 end
 
 function AP(thi, tau) # function to calculate action of a given path
-    deltat = tau/N
+    deltat = tau/N # N segements making up the path, each of equal time
     S = 0 # initialise as zero
 
     # make an initial d and f
@@ -319,40 +319,52 @@ function linesear(tau,noit)
 end
 
 # function to find the entropy production of a path that takes a certain time tau
-function EntProd(path,tau)
+function EntProd(pathmin,tau)
     # probably easiest to calculate the entropy production at each point in the path
-    ents = zeros(N+1, 2)
-    KE = zeros(N+1, 2)
-    PE = zeros(N+1, 2)
-    acts = zeros(N+1, 2)
-    nois1 = zeros(N+1, 2)
-    nois2 = zeros(N+1, 2)
-    nois3 = zeros(N+1, 2)
+    ents = zeros(N, 2)
+    KE = zeros(N, 2)
+    PE = zeros(N, 2)
+    acts = zeros(N, 2)
+    nois1 = zeros(N, 2)
+    nois2 = zeros(N, 2)
+    nois3 = zeros(N, 2)
     h = [0.0; 0.0]
     d = [0.0 0.0; 0.0 0.0]
     deltat = tau/N
-    for i = 1:N+1
-        h = f!(h, path[i,:])
-        d = D!(d, path[i,:])
+    # Remove fixed points from path
+    path = pathmin[2:N,:]
+    for i = 1:N # This gives an extra contribution compared to the optimisation!
+        if i == 1
+            posA = (star[1] + path[i,1])/2
+            posB = (star[2] + path[i,2])/2
+        elseif i == N
+            posA = (path[i-1,1] + fin[1])/2
+            posB = (path[i-1,2] + fin[2])/2
+        else
+            posA = (path[i-1,1] + path[i,1])/2
+            posB = (path[i-1,2] + path[i,2])/2
+        end
+        h = f!(h, [posA posB])
+        d = D!(d, [posA posB])
         for j = 1:2
             if i == 1
-                thiv = (path[i+1,j] - path[i,j])/deltat
-            elseif i == N+1
-                thiv = (path[i,j] - path[i-1,j])/deltat
+                thiv = (path[i,j] - star[j])/deltat
+            elseif i == N
+                thiv = (fin[j] - path[i-1,j])/deltat
             else
-                thiv = (path[i+1,j] - path[i-1,j])/(2*deltat)
+                thiv = (path[i,j] - path[i-1,j])/(deltat)
             end
             ents[i,j] = h[j]*thiv*deltat/d[j,j]
             KE[i,j] = thiv*thiv*deltat/(2*d[j,j])
             PE[i,j] = h[j]*h[j]*deltat/(2*d[j,j])
             if j == 1
-                nois1[i,j] = 0.5*K/Ω
-                nois2[i,j] = 0.5*(thiv + K*path[i,1] - k*r/(r + f*path[i,2]^2))*K/(2*Ω*(k*r/(r + f*path[i,2]^2) + K*path[i,1]))
-                nois3[i,j] = (K^2)/(32*(Ω^2)*(k*r/(r + f*path[i,2]^2) + K*path[i,1]))
+                nois1[i,j] = deltat*0.5*K/Ω
+                nois2[i,j] = deltat*0.5*(thiv + K*posA - k*r/(r + f*posB^2))*K/(2*Ω*(k*r/(r + f*posB^2) + K*posA))
+                nois3[i,j] = deltat*(K^2)/(32*(Ω^2)*(k*r/(r + f*posB^2) + K*posA))
             else
-                nois1[i,j] = 0.5*Q/Ω
-                nois2[i,j] = 0.5*(thiv + Q*path[i,2] - q*r/(r + f*path[i,1]^2))*Q/(2*Ω*(q*r/(r + f*path[i,1]^2) + Q*path[i,2]))
-                nois3[i,j] = (Q^2)/(32*(Ω^2)*(q*r/(r + f*path[i,1]^2) + Q*path[i,2]))
+                nois1[i,j] = deltat*0.5*Q/Ω
+                nois2[i,j] = deltat*0.5*(thiv + Q*posB - q*r/(r + f*posA^2))*Q/(2*Ω*(q*r/(r + f*posA^2) + Q*posB))
+                nois3[i,j] = deltat*(Q^2)/(32*(Ω^2)*(q*r/(r + f*posA^2) + Q*posB))
             end
         end
     end
@@ -383,8 +395,8 @@ function run(tau,noit)
         out_file = open(output_file, "w")
         # open file for writing
         for i = 1:size(ents,1)
-            linep1 = "$(ents[i,1]),$(ents[i,2]),$(kins[i,1]),$(kins[i,2]),$(pots[i,1]),$(pots[i,2])"
-            linep2 = "$(acts[i,1]),$(acts[i,2]),$(nois1[i,1]),$(nois1[i,2]),$(nois2[i,1]),$(nois2[i,2])"
+            linep1 = "$(ents[i,1]),$(ents[i,2]),$(kins[i,1]),$(kins[i,2]),$(pots[i,1]),$(pots[i,2]),"
+            linep2 = "$(acts[i,1]),$(acts[i,2]),$(nois1[i,1]),$(nois1[i,2]),$(nois2[i,1]),$(nois2[i,2]),"
             linep3 = "$(nois3[i,1]),$(nois3[i,2])\n"
             line = linep1 * linep2 * linep3
             write(out_file, line)
@@ -395,7 +407,11 @@ function run(tau,noit)
     act = sum(acts)
     points = [ (ents[:,1] + ents[:,2]), (kins[:,1] + kins[:,2]), (pots[:,1] + pots[:,2]), (acts[:,1] + acts[:,2]),
                 (nois1[:,1] + nois1[:,2]), (nois2[:,1] + nois2[:,2]), (nois3[:,1] + nois3[:,2]) ]
-    ptwo = plot(pathmin[1:(N+1),1], points, xaxis = "A", yaxis = "Entropy Production", marker = :auto)
+    segcent = zeros(N,1)
+    for i = 1:N
+        segcent[i] = (pathmin[i,1] + pathmin[i+1,1])/2
+    end
+    ptwo = plot(segcent, points, xaxis = "A", yaxis = "Entropy Production", marker = :auto)
     ptwo = scatter!(ptwo, [star[1]], [0.0], seriescolor = :green)
     ptwo = scatter!(ptwo, [inflex[1]], [0.0], seriescolor = :orange)
     ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red, leg = false)
@@ -424,4 +440,4 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
-@time run(18.940185546875,5) # 22.059814453125
+@time run(17.572509765625,5) # 22.059814453125

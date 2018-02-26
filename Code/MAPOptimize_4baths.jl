@@ -450,10 +450,15 @@ const ps2 = collect(linspace(inflex[4],fin[4],(N/2)+1))
 const ps = vcat(ps1,ps2[2:length(ps2)])
 const thi1 = hcat(pa,pb,pw,ps)
 
-@time path, S = optSt2(5,5)
-print("$(S)\n")
-plot(path[:,1],path[:,2])
-savefig("../Results/4BathGraph.png")
-a =  sum(path,2)
-plot(a)
-savefig("../Results/4BathGraphTotal.png")
+# function test()
+#     ts = 10:10:1000
+#     S = zeros(length(ts),1)
+#     for i = 1:length(ts)
+#         pathmin, S[i] = optSt2(ts[i],5)
+#         print("$(ts[i])\n")
+#     end
+#     plot(ts,S)
+#     savefig("../Results/Graph.png")
+# end
+#
+# @time test()

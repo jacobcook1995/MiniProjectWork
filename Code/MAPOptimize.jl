@@ -175,6 +175,13 @@ function AP(thi, tau) # function to calculate action of a given path
                 thiv = (thi[i+(j-1)*(N-1)] - thi[i-1+(j-1)*(N-1)])/deltat
             end
             S += (0.5*deltat/d[j,j])*((thiv-h[j])^2)
+            # if j == 1
+            #     S -= (0.5*deltat*K/Ω)
+            #     S += 0.25*deltat*K*(thiv + K*posA - k*r/(r + f*posB^2))/(Ω*K*posA + k*r/(r + f*posB^2))
+            # else
+            #     S -= (0.5*deltat*Q/Ω)
+            #     S += 0.25*deltat*Q*(thiv + Q*posB - q*r/(r + f*posA^2))/(Ω*Q*posB + q*r/(r + f*posA^2))
+            # end
         end
     end
     return(S)
@@ -275,7 +282,7 @@ end
 function linesear(tau,noit)
     k = 0 # initialise counter
     t = tau
-    α = 2
+    α = 4
     β = 0.1
     while true
         h = 1/1000
@@ -358,11 +365,11 @@ function EntProd(pathmin,tau)
             KE[i,j] = thiv*thiv*deltat/(2*d[j,j])
             PE[i,j] = h[j]*h[j]*deltat/(2*d[j,j])
             if j == 1
-                nois1[i,j] = deltat*0.5*K/Ω
+                nois1[i,j] = deltat*0.5*-K/Ω
                 nois2[i,j] = deltat*0.5*(thiv + K*posA - k*r/(r + f*posB^2))*K/(2*Ω*(k*r/(r + f*posB^2) + K*posA))
                 nois3[i,j] = deltat*(K^2)/(32*(Ω^2)*(k*r/(r + f*posB^2) + K*posA))
             else
-                nois1[i,j] = deltat*0.5*Q/Ω
+                nois1[i,j] = deltat*0.5*-Q/Ω
                 nois2[i,j] = deltat*0.5*(thiv + Q*posB - q*r/(r + f*posA^2))*Q/(2*Ω*(q*r/(r + f*posA^2) + Q*posB))
                 nois3[i,j] = deltat*(Q^2)/(32*(Ω^2)*(q*r/(r + f*posA^2) + Q*posB))
             end
@@ -440,4 +447,16 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
-@time run(17.572509765625,5) # 22.059814453125
+#@time run(6,5) # 22.059814453125
+function test()
+    ts = 10:10:1000
+    S = zeros(length(ts),1)
+    for i = 1:length(ts)
+        pathmin, S[i] = optSt2(ts[i],5)
+        print("$(ts[i])\n")
+    end
+    plot(ts,S)
+    savefig("../Results/Graph2bath.png")
+end
+
+@time test()

@@ -423,6 +423,60 @@ function optSt2(tau,noit)
     return(pathfin, S)
 end
 
+# Function to obtain the correct data, from a file
+function readinmedata()
+    # Assign the first command line argument to a variable called input_file
+    input_file = ARGS[1]
+
+    # Open the input file for reading and close automatically at end
+    open(input_file, "r") do in_file
+        l = 0
+        A = zeros(151)
+        B = zeros(151)
+        S = zeros(151)
+        W = zeros(151)
+        # Use a for loop to process the rows in the input file one-by-one
+        points = Array{Float64}(0,4) # empty array for the points to be input to
+        n = Array{Int64}(0) # empty vector to store numbers
+        for line in eachline(in_file)
+            l += 1
+            # Write the row of data to the output file
+            # Check if it is a real point
+            real = true
+            # parse line by finding commas
+            comma = fill(0, 3)
+            j = 0
+            L = length(line)
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            B[l] = parse(Float64, line[1:(comma[1] - 1)])
+            A[l] = parse(Float64, line[(comma[1] + 1):end])
+            if l <= 7
+                ra = 2.52547 - (2.52547 - 11.3636)*(l-1)/72
+                rb = 0.044004 - (0.044004 - 11.3636)*(l-1)/72
+                A[l] *= ra
+                B[l] *= rb
+            else
+                ra = 11.3636 - (11.3636 - 0.0043)*(l-73)/78
+                rb = 11.3636 - (11.3636 - 25.2547)*(l-73)/78
+                A[l] *= ra
+                B[l] *= rb
+            end
+            S[l] = Ne - A[l] - B[l]
+            W[l] = 0
+        end
+        # plot(A,B)
+        # savefig("../Results/Graph321")
+        # plot(S,W)
+        # savefig("../Results/Graph123")
+        return(A,B,W,S)
+    end
+end
+
 # Now define the paths
 start, saddle, finish = Zeros()
 const star = start
@@ -436,29 +490,39 @@ const fin = finish
 # const ps = collect(linspace(star[4],fin[4],N+1))
 
 # First make a reasonable first guess of the path vector
-const pa1 = collect(linspace(star[1],inflex[1],(N/2)+1))
-const pa2 = collect(linspace(inflex[1],fin[1],(N/2)+1))
-const pa = vcat(pa1,pa2[2:length(pa2)])
-const pb1 = collect(linspace(star[2],inflex[2],(N/2)+1))
-const pb2 = collect(linspace(inflex[2],fin[2],(N/2)+1))
-const pb = vcat(pb1,pb2[2:length(pb2)])
-const pw1 = collect(linspace(star[3],inflex[3],(N/2)+1))
-const pw2 = collect(linspace(inflex[3],fin[3],(N/2)+1))
-const pw = vcat(pw1,pw2[2:length(pw2)])
-const ps1 = collect(linspace(star[4],inflex[4],(N/2)+1))
-const ps2 = collect(linspace(inflex[4],fin[4],(N/2)+1))
-const ps = vcat(ps1,ps2[2:length(ps2)])
+# const pa1 = collect(linspace(star[1],inflex[1],(N/2)+1))
+# const pa2 = collect(linspace(inflex[1],fin[1],(N/2)+1))
+# const pa = vcat(pa1,pa2[2:length(pa2)])
+# const pb1 = collect(linspace(star[2],inflex[2],(N/2)+1))
+# const pb2 = collect(linspace(inflex[2],fin[2],(N/2)+1))
+# const pb = vcat(pb1,pb2[2:length(pb2)])
+# const pw1 = collect(linspace(star[3],inflex[3],(N/2)+1))
+# const pw2 = collect(linspace(inflex[3],fin[3],(N/2)+1))
+# const pw = vcat(pw1,pw2[2:length(pw2)])
+# const ps1 = collect(linspace(star[4],inflex[4],(N/2)+1))
+# const ps2 = collect(linspace(inflex[4],fin[4],(N/2)+1))
+# const ps = vcat(ps1,ps2[2:length(ps2)])
+
+A, B, W, S = readinmedata()
+const pa = vcat(star[1],A[2:150],fin[1])
+const pb = vcat(star[2],B[2:150],fin[2])
+const pw = vcat(star[3],W[2:150],fin[3])
+const ps = vcat(star[4],S[2:150],fin[4])
 const thi1 = hcat(pa,pb,pw,ps)
 
-# function test()
-#     ts = 10:10:1000
-#     S = zeros(length(ts),1)
-#     for i = 1:length(ts)
-#         pathmin, S[i] = optSt2(ts[i],5)
-#         print("$(ts[i])\n")
-#     end
-#     plot(ts,S)
-#     savefig("../Results/Graph.png")
-# end
-#
-# @time test()
+function test()
+    pathmin, S = optSt2(80,1)
+    print("$S\n")
+    plot(pathmin[:,1],pathmin[:,2])
+    savefig("../Results/Graph8011.png")
+    plot(pathmin[:,3],pathmin[:,4])
+    savefig("../Results/Graph8021.png")
+    Total = pathmin[:,1] + pathmin[:,2] + pathmin[:,3] + pathmin[:,4]
+    totals = hcat(Total, pathmin)
+    plot(totals)
+    savefig("../Results/Graph8031.png")
+    # plot(Total)
+    # savefig("../Results/Graph8041.png")
+end
+
+@time test()

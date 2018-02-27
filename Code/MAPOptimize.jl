@@ -401,11 +401,15 @@ function run(tau,noit)
         output_file = ARGS[1]
         out_file = open(output_file, "w")
         # open file for writing
-        for i = 1:size(ents,1)
-            linep1 = "$(ents[i,1]),$(ents[i,2]),$(kins[i,1]),$(kins[i,2]),$(pots[i,1]),$(pots[i,2]),"
-            linep2 = "$(acts[i,1]),$(acts[i,2]),$(nois1[i,1]),$(nois1[i,2]),$(nois2[i,1]),$(nois2[i,2]),"
-            linep3 = "$(nois3[i,1]),$(nois3[i,2])\n"
-            line = linep1 * linep2 * linep3
+        # for i = 1:size(ents,1)
+        #     linep1 = "$(ents[i,1]),$(ents[i,2]),$(kins[i,1]),$(kins[i,2]),$(pots[i,1]),$(pots[i,2]),"
+        #     linep2 = "$(acts[i,1]),$(acts[i,2]),$(nois1[i,1]),$(nois1[i,2]),$(nois2[i,1]),$(nois2[i,2]),"
+        #     linep3 = "$(nois3[i,1]),$(nois3[i,2])\n"
+        #     line = linep1 * linep2 * linep3
+        #     write(out_file, line)
+        # end
+        for i = 1:size(pathmin,1)
+            line = "$(pathmin[i,1]),$(pathmin[i,2])\n"
             write(out_file, line)
         end
         close(out_file)
@@ -447,16 +451,16 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
-#@time run(6,5) # 22.059814453125
-function test()
-    ts = 10:10:1000
-    S = zeros(length(ts),1)
-    for i = 1:length(ts)
-        pathmin, S[i] = optSt2(ts[i],5)
-        print("$(ts[i])\n")
-    end
-    plot(ts,S)
-    savefig("../Results/Graph2bath.png")
-end
-
-@time test()
+@time run(18.940673828125,5) # 22.059814453125
+# function test()
+#     ts = 10:10:1000
+#     S = zeros(length(ts),1)
+#     for i = 1:length(ts)
+#         pathmin, S[i] = optSt2(ts[i],5)
+#         print("$(ts[i])\n")
+#     end
+#     plot(ts,S)
+#     savefig("../Results/Graph2bath.png")
+# end
+#
+# @time test()

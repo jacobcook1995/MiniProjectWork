@@ -455,24 +455,18 @@ function readinmedata()
             end
             B[l] = parse(Float64, line[1:(comma[1] - 1)])
             A[l] = parse(Float64, line[(comma[1] + 1):end])
-            if l <= 7
-                ra = 2.52547 - (2.52547 - 11.3636)*(l-1)/72
-                rb = 0.044004 - (0.044004 - 11.3636)*(l-1)/72
-                A[l] *= ra
-                B[l] *= rb
-            else
-                ra = 11.3636 - (11.3636 - 0.0043)*(l-73)/78
-                rb = 11.3636 - (11.3636 - 25.2547)*(l-73)/78
-                A[l] *= ra
-                B[l] *= rb
-            end
-            S[l] = Ne - A[l] - B[l]
-            W[l] = 0
+
+            ra = 2.52547 - (2.52547 - 0.0043)*(l-1)/150
+            rb = 0.044004 - (0.044004 - 25.2547)*(l-1)/150
+            A[l] *= ra
+            B[l] *= rb
+            S[l] = 0
+            W[l] = Ne - A[l] - B[l]
         end
-        # plot(A,B)
-        # savefig("../Results/Graph321")
-        # plot(S,W)
-        # savefig("../Results/Graph123")
+        plot(A,B)
+        savefig("../Results/Graph321")
+        plot(S,W)
+        savefig("../Results/Graph123")
         return(A,B,W,S)
     end
 end
@@ -511,7 +505,7 @@ const ps = vcat(star[4],S[2:150],fin[4])
 const thi1 = hcat(pa,pb,pw,ps)
 
 function test()
-    pathmin, S = optSt2(80,1)
+    pathmin, S = optSt2(80,5)
     print("$S\n")
     plot(pathmin[:,1],pathmin[:,2])
     savefig("../Results/Graph8011.png")

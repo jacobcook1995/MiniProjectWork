@@ -28,6 +28,15 @@ const high2low = false # Set if starting from high state or low state
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
 
+# Multiplicative Guassian noise matrix
+function e!(E, x)
+    E[1,1] = sqrt(k*r/(r+f*x[2]*x[2]) + K*x[1])
+    E[1,2] = 0
+    E[2,1] = 0
+    E[2,2] = sqrt(q*r/(r+f*x[1]*x[1]) + Q*x[2])
+    return E
+end
+
 # Now construct the three relevant vectors of equations
 function f!(F, x)
     F[1] = k*r/(r+f*x[2]*x[2]) - K*x[1]
@@ -133,6 +142,23 @@ function nullcline()
     return (ss1,sad,ss2)
 end
 
+# Function to compute the normalisation constant for the multiplicative noise case
+# Should input whole path inclusive of start and end points
+function norml(τ,path)
+    norm = log(1)
+    Δt = τ/N
+    E = [ 0.0 0.0; 0.0 0.0 ]
+    for i = 1:N
+        posA = (path[i+1,1] + path[i,1])/2
+        posB = (path[i+1,2] + path[i,2])/2
+        # Find noise matrix then compute determinent of it
+        E = e!(E, [posA; posB])
+        norm += logdet(E) # include new determinent in the product
+    end
+    term = norm # invert the norm
+    return(term)
+end
+
 function AP(thi, tau) # function to calculate action of a given path
     deltat = tau/N # N segements making up the path, each of equal time
     S = 0 # initialise as zero
@@ -174,14 +200,14 @@ function AP(thi, tau) # function to calculate action of a given path
             else
                 thiv = (thi[i+(j-1)*(N-1)] - thi[i-1+(j-1)*(N-1)])/deltat
             end
-            S += (0.5*deltat/d[j,j])*((thiv-h[j])^2)
-            # if j == 1
-            #     S -= (0.5*deltat*K/Ω)
-            #     S += 0.25*deltat*K*(thiv + K*posA - k*r/(r + f*posB^2))/(Ω*K*posA + k*r/(r + f*posB^2))
-            # else
-            #     S -= (0.5*deltat*Q/Ω)
-            #     S += 0.25*deltat*Q*(thiv + Q*posB - q*r/(r + f*posA^2))/(Ω*Q*posB + q*r/(r + f*posA^2))
-            # end
+            S += (0.5/d[j,j])*((thiv-h[j])^2)
+            if j == 1
+                S -= (0.5*K/Ω)/deltat
+            #     S += 0.25*K*(thiv + K*posA - k*r/(r + f*posB^2))/(Ω*K*posA + k*r/(r + f*posB^2))
+            else
+                S -= (0.5*Q/Ω)/deltat
+            #     S += 0.25*Q*(thiv + Q*posB - q*r/(r + f*posA^2))/(Ω*Q*posB + q*r/(r + f*posA^2))
+            end
         end
     end
     return(S)
@@ -451,16 +477,21 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
-@time run(18.940673828125,5) # 22.059814453125
-# function test()
-#     ts = 10:10:1000
-#     S = zeros(length(ts),1)
-#     for i = 1:length(ts)
-#         pathmin, S[i] = optSt2(ts[i],5)
-#         print("$(ts[i])\n")
-#     end
-#     plot(ts,S)
-#     savefig("../Results/Graph2bath.png")
-# end
-#
-# @time test()
+#@time run(18.940673828125,5) # 22.059814453125
+function test()
+    ts = 30:1:100
+    S = zeros(length(ts),1)
+    logP = zeros(length(ts),1)
+    for i = 1:length(ts)
+        deltat = ts[i]/N
+        pathmin, S[i] = optSt2(ts[i],5)
+        norm = norml(ts[i], pathmin)
+        logP[i] = norm + deltat*Ω*S[i]
+    end
+    plot(ts,S)
+    savefig("../Results/GraphS.png")
+    plot(ts,logP)
+    savefig("../Results/GraphlogP.png")
+end
+
+@time test()

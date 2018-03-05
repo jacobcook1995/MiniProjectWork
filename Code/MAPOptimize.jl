@@ -12,7 +12,7 @@ using Roots
 import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
-const Ω = 30
+const Ω = 300
 const K = 10
 const k = K*Ω # steady state for A=k/K=1
 const Q = 1
@@ -21,9 +21,10 @@ const kmin = 10.0^-20 # set all too 10.0^-20 for now
 const Kmin = 10.0^-20
 const qmin = 10.0^-20
 const Qmin = 10.0^-20
+const higherterm = true # Bool to determine if higher terms should be included
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = false # Set if starting from high state or low state
+const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
@@ -145,7 +146,7 @@ end
 # Function to compute the normalisation constant for the multiplicative noise case
 # Should input whole path inclusive of start and end points
 function norml(τ,path)
-    norm = log(1)
+    norm = 0#log(1)
     Δt = τ/N
     E = [ 0.0 0.0; 0.0 0.0 ]
     for i = 1:N
@@ -155,8 +156,7 @@ function norml(τ,path)
         E = e!(E, [posA; posB])
         norm += logdet(E) # include new determinent in the product
     end
-    term = norm # invert the norm
-    return(term)
+    return(norm)
 end
 
 function AP(thi, tau) # function to calculate action of a given path
@@ -200,14 +200,19 @@ function AP(thi, tau) # function to calculate action of a given path
             else
                 thiv = (thi[i+(j-1)*(N-1)] - thi[i-1+(j-1)*(N-1)])/deltat
             end
-            S += (0.5/d[j,j])*((thiv-h[j])^2)
-            if j == 1
-                S -= (0.5*K/Ω)/deltat
-            #     S += 0.25*K*(thiv + K*posA - k*r/(r + f*posB^2))/(Ω*K*posA + k*r/(r + f*posB^2))
-            else
-                S -= (0.5*Q/Ω)/deltat
-            #     S += 0.25*Q*(thiv + Q*posB - q*r/(r + f*posA^2))/(Ω*Q*posB + q*r/(r + f*posA^2))
+            S += (0.5*deltat/d[j,j])*((thiv-h[j])^2)
+            if higherterm == true
+                if j == 1
+                    S -= (0.5*deltat*K/Ω)
+                    S += 0.25*deltat*K*(thiv + K*posA - k*r/(r + f*posB^2))/(Ω*K*posA + k*r/(r + f*posB^2))
+                    S += (K^2)*deltat/(32*(Ω^2)*(k*r/(r + f*posB^2) + K*posA))
+                else
+                    S -= (0.5*deltat*Q/Ω)
+                    S += 0.25*deltat*Q*(thiv + Q*posB - q*r/(r + f*posA^2))/(Ω*Q*posB + q*r/(r + f*posA^2))
+                    S += (Q^2)*deltat/(32*(Ω^2)*(q*r/(r + f*posA^2) + Q*posB))
+                end
             end
+
         end
     end
     return(S)
@@ -427,15 +432,11 @@ function run(tau,noit)
         output_file = ARGS[1]
         out_file = open(output_file, "w")
         # open file for writing
-        # for i = 1:size(ents,1)
-        #     linep1 = "$(ents[i,1]),$(ents[i,2]),$(kins[i,1]),$(kins[i,2]),$(pots[i,1]),$(pots[i,2]),"
-        #     linep2 = "$(acts[i,1]),$(acts[i,2]),$(nois1[i,1]),$(nois1[i,2]),$(nois2[i,1]),$(nois2[i,2]),"
-        #     linep3 = "$(nois3[i,1]),$(nois3[i,2])\n"
-        #     line = linep1 * linep2 * linep3
-        #     write(out_file, line)
-        # end
-        for i = 1:size(pathmin,1)
-            line = "$(pathmin[i,1]),$(pathmin[i,2])\n"
+        for i = 1:size(ents,1)
+            linep1 = "$(ents[i,1]),$(ents[i,2]),$(kins[i,1]),$(kins[i,2]),$(pots[i,1]),$(pots[i,2]),"
+            linep2 = "$(acts[i,1]),$(acts[i,2]),$(nois1[i,1]),$(nois1[i,2]),$(nois2[i,1]),$(nois2[i,2]),"
+            linep3 = "$(nois3[i,1]),$(nois3[i,2])\n"
+            line = linep1 * linep2 * linep3
             write(out_file, line)
         end
         close(out_file)
@@ -454,7 +455,7 @@ function run(tau,noit)
     ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red, leg = false)
     annotate!(inflex[1]+3, minimum(ents)+0.01, text("Action = $(act)\n", :left, font(5, "Courier")))
     plot(pone, ptwo, layout = (1,2))
-    savefig("../Results/Entropy$(high2low).png")
+    savefig("../Results/Entropy$(high2low)$(higherterm).png")
 
 end
 
@@ -479,19 +480,29 @@ const thi1 = hcat(pa,pb)
 
 #@time run(18.940673828125,5) # 22.059814453125
 function test()
-    ts = 30:1:100
+    ts = collect(10:10:1000) # collected so that 1st element can be changed
     S = zeros(length(ts),1)
     logP = zeros(length(ts),1)
     for i = 1:length(ts)
-        deltat = ts[i]/N
         pathmin, S[i] = optSt2(ts[i],5)
         norm = norml(ts[i], pathmin)
-        logP[i] = norm + deltat*Ω*S[i]
+        logP[i] = norm + Ω*S[i]
+        print("$(ts[i]),$(S[i]),$(logP[i])\n")
     end
     plot(ts,S)
-    savefig("../Results/GraphS.png")
+    savefig("../Results/GraphSunbinding$(Ω).png")
     plot(ts,logP)
-    savefig("../Results/GraphlogP.png")
+    savefig("../Results/GraphlogP$(Ω).png")
 end
 
-@time test()
+function main()
+   t = 200
+   pathmin, S = optSt2(t,50)
+   plot(pathmin[:,1],pathmin[:,2])
+   savefig("../Results/GRAPHHHH$(Ω).png")
+   print("$S\n")
+end
+
+@time run(100,5)
+#@time test()
+#@time main()

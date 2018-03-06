@@ -70,42 +70,13 @@ function symbolically()
     D = e*eT
     Dmin = inv(D)
 
-    # Now try substitutions to get into numeric form
-    K1 = 10
-    k1 = K1*Ω # steady state for A=k/K=1
-    Q1 = 1
-    q1 = Q1*Ω
-    kmin1 = 10.0^-20 # set all too 10.0^-20 for now
-    Kmin1 = 10.0^-20
-    qmin1 = 10.0^-20
-    Qmin1 = 10.0^-20
-    f1 = 1000/(Ω^2) # Promoter switching
-    r1 = 10
-    F1 = 250 # removal rate
-    A1 = 10
-    B1 = 10
-    W1 = 10
-    S1 = 10
-    # There's maybe a more compact way of doing this
-    Dmin2 = subs(Dmin, K, K1) |> Sym
-    Dmin2 = subs(Dmin2, k, k1) |> Sym
-    Dmin2 = subs(Dmin2, Q, Q1) |> Sym
-    Dmin2 = subs(Dmin2, q, q1) |> Sym
-    Dmin2 = subs(Dmin2, kmin, kmin1) |> Sym
-    Dmin2 = subs(Dmin2, Kmin, Kmin1) |> Sym
-    Dmin2 = subs(Dmin2, qmin, qmin1) |> Sym
-    Dmin2 = subs(Dmin2, Qmin, Qmin1) |> Sym
-    Dmin2 = subs(Dmin2, f, f1) |> Sym
-    Dmin2 = subs(Dmin2, r, r1) |> Sym
-    Dmin2 = subs(Dmin2, F, F1) |> Sym
-    Dmin2 = subs(Dmin2, A, A1) |> Sym
-    Dmin2 = subs(Dmin2, B, B1) |> Sym
-    Dmin2 = subs(Dmin2, W, W1) |> Sym
-    Dmin2 = subs(Dmin2, S, S1) |> float
-    print(map(SymPy._str,Dmin))
-    print("\n")
-    return(Dmin,Dmin2)
+    return(Dmin)
 end
 
 @time Dmin1 = numerically()
-@time Dmin2, Dmin3 = symbolically() # Dmin2 is symbolic, Dmin3 is numeric
+@time Dmin2 = symbolically()
+
+print(Dmin1)
+print("\n")
+print(Dmin2)
+print("\n")

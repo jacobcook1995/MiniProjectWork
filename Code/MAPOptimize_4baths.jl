@@ -13,17 +13,16 @@ using Roots
 import GR # Need this to stop world age plotting error?
 
 # Parameters
-const Ω = 30 # system size
+const Ω = 300 # system size
 const ϕ = 0.1 # ratio ϕ = q/k
-const k = 100 # steady state for A=k/K=1
-const kmin = 10.0^-20 # set all too 10.0^-20 for now
-const K = k/Ω # K=k'
-const Kmin = 10.0^-20
-const q = k*ϕ # steady state for B=q/Q=1
+const K = 10
+const k = K*Ω # steady state for A=k/K=1
+const Q = K*ϕ
+const q = Q*Ω
 const qmin = 10.0^-20
 const Q = q/Ω # Q=q'
 const Qmin = 10.0^-20
-const f = 10 # Promoter switching
+const f = 1000/(Ω^2) # Promoter switching
 const r = 10
 const F = 250 # removal rate
 const Ne = 12000 # number of elements in the system

@@ -40,12 +40,18 @@ end
 
 # Gonna try numerically first
 function numerically()
+    h = 1*(10.0^-8)
+    v1 = h*[ 0; 0; 0; 1 ]
+    v = [ 10; 10; 10; 10 ]
     e = [ 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 ]
-    e = e!(e, [ 10; 10; 10; 10 ])
-    eT = transpose(e)
-    D = e*eT
-    H = D*D
-    Dmin = inv(H)
+    e1 = e!(e, v)
+    eT1 = transpose(e1)
+    D1 = e1*eT1
+    v2 = v + v1
+    e2 = e!(e, v2)
+    eT2 = transpose(e2)
+    D2 = e2*eT2
+    Dmin = (D2 - D1)/h
     return(Dmin)
 end
 
@@ -83,9 +89,7 @@ function symbolically()
     F1 = 250 # removal rate
     eT = transpose(e)
     D = e*eT
-    #Dmin = inv(D)
-    H = D*D
-    Dmin = inv(H)
+    Dmin = diff(D,S)
     Dmin = subs(Dmin, A, 10)
     Dmin = subs(Dmin, B, 10)
     Dmin = subs(Dmin, S, 10)
@@ -104,10 +108,10 @@ function symbolically()
     return(Dmin)
 end
 
-@time Dmin1 = numerically()
-@time Dmin2 = symbolically()
+@time D1 = numerically()
+@time D3 = symbolically()
 #
-print(Dmin1)
+print(D1)
 print("\n")
-print(Dmin2)
+print(D3)
 print("\n")

@@ -57,7 +57,7 @@ function Dmin1()
 end
 
 # Diffusion matrix squared function in inverse form, this will become a global constant matrix
-function D2(x)
+function D2()
     # Locally overwrites global constants to be variables
     r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
     A, B, W, S = symbols("A,B,W,S")
@@ -78,6 +78,98 @@ function D2(x)
     D2 = D*D
     Dmin2 = inv(D2)
     return(Dmin2)
+end
+
+# Diffusion matrix differentiated in A, this will become a global constant matix
+function DA()
+    # Locally overwrites global constants to be variables
+    r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
+    A, B, W, S = symbols("A,B,W,S")
+    # Make a symbolic version of the matrix, needs no input in this case
+    e = Array{Sym}(4,4)
+    e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
+    e[1,1] = sqrt(k*S*r/(r + f*B^2) + K*A + kmin*A + Kmin*W) #gA
+    e[2,2] = sqrt(q*S*r/(r + f*A^2) + Q*B + qmin*B + Qmin*W) #gB
+    e[3,1] = -sqrt(K*A + Kmin*W) #-gWA
+    e[3,2] = -sqrt(Q*B + Qmin*W) #-gWB
+    e[3,3] = sqrt(F) #gW
+    e[4,1] = -sqrt(k*S*r/(r + f*B^2) + kmin*A) #-gSA
+    e[4,2] = -sqrt(q*S*r/(r + f*A^2) + qmin*B) #-gSB
+    e[4,4] = sqrt(F) #gS
+    # Now do the transformations required
+    eT = transpose(e)
+    D = e*eT
+    DA = diff(D, A)
+    return(DA)
+end
+
+# Diffusion matrix differentiated in B, this will become a global constant matix
+function DB()
+    # Locally overwrites global constants to be variables
+    r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
+    A, B, W, S = symbols("A,B,W,S")
+    # Make a symbolic version of the matrix, needs no input in this case
+    e = Array{Sym}(4,4)
+    e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
+    e[1,1] = sqrt(k*S*r/(r + f*B^2) + K*A + kmin*A + Kmin*W) #gA
+    e[2,2] = sqrt(q*S*r/(r + f*A^2) + Q*B + qmin*B + Qmin*W) #gB
+    e[3,1] = -sqrt(K*A + Kmin*W) #-gWA
+    e[3,2] = -sqrt(Q*B + Qmin*W) #-gWB
+    e[3,3] = sqrt(F) #gW
+    e[4,1] = -sqrt(k*S*r/(r + f*B^2) + kmin*A) #-gSA
+    e[4,2] = -sqrt(q*S*r/(r + f*A^2) + qmin*B) #-gSB
+    e[4,4] = sqrt(F) #gS
+    # Now do the transformations required
+    eT = transpose(e)
+    D = e*eT
+    DB = diff(D, B)
+    return(DB)
+end
+
+# Diffusion matrix differentiated in W, this will become a global constant matix
+function DW()
+    # Locally overwrites global constants to be variables
+    r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
+    A, B, W, S = symbols("A,B,W,S")
+    # Make a symbolic version of the matrix, needs no input in this case
+    e = Array{Sym}(4,4)
+    e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
+    e[1,1] = sqrt(k*S*r/(r + f*B^2) + K*A + kmin*A + Kmin*W) #gA
+    e[2,2] = sqrt(q*S*r/(r + f*A^2) + Q*B + qmin*B + Qmin*W) #gB
+    e[3,1] = -sqrt(K*A + Kmin*W) #-gWA
+    e[3,2] = -sqrt(Q*B + Qmin*W) #-gWB
+    e[3,3] = sqrt(F) #gW
+    e[4,1] = -sqrt(k*S*r/(r + f*B^2) + kmin*A) #-gSA
+    e[4,2] = -sqrt(q*S*r/(r + f*A^2) + qmin*B) #-gSB
+    e[4,4] = sqrt(F) #gS
+    # Now do the transformations required
+    eT = transpose(e)
+    D = e*eT
+    DW = diff(D, W)
+    return(DW)
+end
+
+# Diffusion matrix differentiated in S, this will become a global constant matix
+function DS()
+    # Locally overwrites global constants to be variables
+    r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
+    A, B, W, S = symbols("A,B,W,S")
+    # Make a symbolic version of the matrix, needs no input in this case
+    e = Array{Sym}(4,4)
+    e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
+    e[1,1] = sqrt(k*S*r/(r + f*B^2) + K*A + kmin*A + Kmin*W) #gA
+    e[2,2] = sqrt(q*S*r/(r + f*A^2) + Q*B + qmin*B + Qmin*W) #gB
+    e[3,1] = -sqrt(K*A + Kmin*W) #-gWA
+    e[3,2] = -sqrt(Q*B + Qmin*W) #-gWB
+    e[3,3] = sqrt(F) #gW
+    e[4,1] = -sqrt(k*S*r/(r + f*B^2) + kmin*A) #-gSA
+    e[4,2] = -sqrt(q*S*r/(r + f*A^2) + qmin*B) #-gSB
+    e[4,4] = sqrt(F) #gS
+    # Now do the transformations required
+    eT = transpose(e)
+    D = e*eT
+    DS = diff(D, S)
+    return(DS)
 end
 
 # Now construct the three relevant vectors of equations
@@ -151,38 +243,54 @@ function D2!(D2, x)
 end
 
 function DA!(DA, x)
-    DA[1,1] = (K + kmin)
-    DA[2,2] = -2*q*x[4]*r*x[1]/((r + f*x[1]*x[1])^2)
-    DA[3,3] = K
-    DA[4,4] = kmin - 2*q*x[4]*r*x[1]/((r + f*x[1]*x[1])^2)
-    DA[1,2:4] = DA[2,1] = DA[2,3:4] = DA[3,1:2] = DA[3,4] = DA[4,1:3] = 0
+    A, B, W, S = symbols("A,B,W,S")
+    K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
+    vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
+    vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
+    DA = subs(DAconst, A, x[1]) |> Sym
+    for i = 1:length(vars)
+        DA = subs(DA, vars[i], vals[i]) |> Sym
+    end
+    DA = subs(DA, S, x[4]) |> float
     return DA
 end
 
 function DB!(DB, x)
-    DB[1,1] = -2*k*x[4]*r*x[2]/((r + f*x[2]+x[2])^2)
-    DB[2,2] = (Q + qmin)
-    DB[3,3] = Q
-    DB[4,4] = qmin - 2*k*x[4]*r*x[2]/((r + f*x[2]*x[2])^2)
-    DB[1,2:4] = DB[2,1] = DB[2,3:4] = DB[3,1:2] = DB[3,4] = DB[4,1:3] = 0
+    A, B, W, S = symbols("A,B,W,S")
+    K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
+    vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
+    vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
+    DB = subs(DBconst, A, x[1]) |> Sym
+    for i = 1:length(vars)
+        DB = subs(DB, vars[i], vals[i]) |> Sym
+    end
+    DB = subs(DB, S, x[4]) |> float
     return DB
 end
 
 function DW!(DW, x)
-    DW[1,1] = Kmin
-    DW[2,2] = Qmin
-    DW[3,3] = Kmin*(1 + ϕ)
-    DW[4,4] = 0
-    DW[1,2:4] = DW[2,1] = DW[2,3:4] = DW[3,1:2] = DW[3,4] = DW[4,1:3] = 0
+    A, B, W, S = symbols("A,B,W,S")
+    K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
+    vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
+    vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
+    DW = subs(DWconst, A, x[1]) |> Sym
+    for i = 1:length(vars)
+        DW = subs(DW, vars[i], vals[i]) |> Sym
+    end
+    DW = subs(DW, S, x[4]) |> float
     return DW
 end
 
 function DS!(DS, x)
-    DS[1,1] = k*r/(r + f*x[2]*x[2])
-    DS[2,2] = q*r/(r + f*x[1]*x[1])
-    DS[3,3] = 0
-    DS[4,4] = k*r/(r + f*x[2]*x[2]) + q*r/(r + f*x[1]*x[1])
-    DS[1,2:4] = DS[2,1] = DS[2,3:4] = DS[3,1:2] = DS[3,4] = DS[4,1:3] = 0
+    A, B, W, S = symbols("A,B,W,S")
+    K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
+    vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
+    vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
+    DS = subs(DSconst, A, x[1]) |> Sym
+    for i = 1:length(vars)
+        DS = subs(DS, vars[i], vals[i]) |> Sym
+    end
+    DS = subs(DS, S, x[4]) |> float
     return DS
 end
 
@@ -556,8 +664,16 @@ const ps = vcat(ps1,ps2[2:length(ps2)])
 
 D = Dmin1()
 const Dminconst = D
-D = D2([ r; f; q; Q; Qmin; k; kmin; K; Kmin; F ])
+D = D2()
 const D2const = D
+D = DA()
+const DAconst = D
+D = DB()
+const DBconst = D
+D = DW()
+const DWconst = D
+D = DS()
+const DSconst = D
 
 
 # A, B, W, S = readinmedata()
@@ -584,11 +700,8 @@ end
 
 function main()
     D = [ 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 ]
-    D = D!(D, [10; 10; 10; 10])
-    print(D)
-    print("\n")
-    D2 = D2!(D, [10; 10; 10; 10])
-    print(D2)
+    DS = DS!(D, [10; 10; 10; 10])
+    print(DS)
     print("\n")
 end
 

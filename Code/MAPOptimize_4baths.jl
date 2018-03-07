@@ -10,6 +10,7 @@
 using Optim
 using Plots
 using Roots
+using SymPy
 import GR # Need this to stop world age plotting error?
 
 # Parameters
@@ -19,8 +20,9 @@ const K = 10
 const k = K*Ω # steady state for A=k/K=1
 const Q = K*ϕ
 const q = Q*Ω
+const kmin = 10.0^-20 # set all too 10.0^-20 for now
+const Kmin = 10.0^-20
 const qmin = 10.0^-20
-const Q = q/Ω # Q=q'
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
@@ -30,6 +32,53 @@ const Ne = 12000 # number of elements in the system
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
 const high2low = false # Set if starting from high state or low state
+
+# Inverse Diffusion matrix function in inverse form, this will become a global constant matrix
+function Dmin1()
+    # Locally overwrites global constants to be variables
+    r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
+    A, B, W, S = symbols("A,B,W,S")
+    # Make a symbolic version of the matrix, needs no input in this case
+    e = Array{Sym}(4,4)
+    e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
+    e[1,1] = sqrt(k*S*r/(r + f*B^2) + K*A + kmin*A + Kmin*W) #gA
+    e[2,2] = sqrt(q*S*r/(r + f*A^2) + Q*B + qmin*B + Qmin*W) #gB
+    e[3,1] = -sqrt(K*A + Kmin*W) #-gWA
+    e[3,2] = -sqrt(Q*B + Qmin*W) #-gWB
+    e[3,3] = sqrt(F) #gW
+    e[4,1] = -sqrt(k*S*r/(r + f*B^2) + kmin*A) #-gSA
+    e[4,2] = -sqrt(q*S*r/(r + f*A^2) + qmin*B) #-gSB
+    e[4,4] = sqrt(F) #gS
+    # Now do the transformations required
+    eT = transpose(e)
+    D = e*eT
+    Dmin = inv(D)
+    return(Dmin)
+end
+
+# Diffusion matrix squared function in inverse form, this will become a global constant matrix
+function D2(x)
+    # Locally overwrites global constants to be variables
+    r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
+    A, B, W, S = symbols("A,B,W,S")
+    # Make a symbolic version of the matrix, needs no input in this case
+    e = Array{Sym}(4,4)
+    e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
+    e[1,1] = sqrt(k*S*r/(r + f*B^2) + K*A + kmin*A + Kmin*W) #gA
+    e[2,2] = sqrt(q*S*r/(r + f*A^2) + Q*B + qmin*B + Qmin*W) #gB
+    e[3,1] = -sqrt(K*A + Kmin*W) #-gWA
+    e[3,2] = -sqrt(Q*B + Qmin*W) #-gWB
+    e[3,3] = sqrt(F) #gW
+    e[4,1] = -sqrt(k*S*r/(r + f*B^2) + kmin*A) #-gSA
+    e[4,2] = -sqrt(q*S*r/(r + f*A^2) + qmin*B) #-gSB
+    e[4,4] = sqrt(F) #gS
+    # Now do the transformations required
+    eT = transpose(e)
+    D = e*eT
+    D2 = D*D
+    Dmin2 = inv(D2)
+    return(Dmin2)
+end
 
 # Now construct the three relevant vectors of equations
 # x[1] = A, x[2] = B, x[3] = W, x[4] = S
@@ -73,22 +122,31 @@ function fS!(FS, x)
     return FS
 end
 
-# Diffusion matrix containing the noise on each term (squared)
+
+# Inverse Diffusion matrix containing the noise on each term (squared)
 function D!(D, x)
-    D[1,1] = k*x[4]*r/(r + f*x[2]*x[2]) + (K + kmin)*x[1] + Kmin*x[3]
-    D[2,2] = q*x[4]*r/(r + f*x[1]*x[1]) + (Q + qmin)*x[2] + Qmin*x[3]
-    D[3,3] = K*(x[1] + ϕ*x[2]) + Kmin*(1 + ϕ)*x[3] + F
-    D[4,4] = k*x[4]*r/(r + f*x[2]*x[2]) + kmin*x[1] + q*x[4]*r/(r + f*x[1]*x[1]) + qmin*x[2] + F
-    D[1,2:4] = D[2,1] = D[2,3:4] = D[3,1:2] = D[3,4] = D[4,1:3] = 0
+    A, B, W, S = symbols("A,B,W,S")
+    K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
+    vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
+    vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
+    D = subs(Dminconst, A, x[1]) |> Sym
+    for i = 1:length(vars)
+        D = subs(D, vars[i], vals[i]) |> Sym
+    end
+    D = subs(D, S, x[4]) |> float
     return D
 end
 
 function D2!(D2, x)
-    D2[1,1] = (k*x[4]*r/(r + f*x[2]*x[2]) + (K + kmin)*x[1] + Kmin*x[3])^2
-    D2[2,2] = (q*x[4]*r/(r + f*x[1]*x[1]) + (Q + qmin)*x[2] + Qmin*x[3])^2
-    D2[3,3] = (K*(x[1] + ϕ*x[2]) + Kmin*(1 + ϕ)*x[3] + F)^2
-    D2[4,4] = (k*x[4]*r/(r + f*x[2]*x[2]) + kmin*x[1] + q*x[4]*r/(r + f*x[1]*x[1]) + qmin*x[2] + F)^2
-    D2[1,2:4] = D2[2,1] = D2[2,3:4] = D2[3,1:2] = D2[3,4] = D2[4,1:3] = 0
+    A, B, W, S = symbols("A,B,W,S")
+    K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
+    vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
+    vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
+    D2 = subs(D2const, A, x[1]) |> Sym
+    for i = 1:length(vars)
+        D2 = subs(D2, vars[i], vals[i]) |> Sym
+    end
+    D2 = subs(D2, S, x[4]) |> float
     return D2
 end
 
@@ -483,25 +541,31 @@ const fin = finish
 # const ps = collect(linspace(star[4],fin[4],N+1))
 
 # First make a reasonable first guess of the path vector
-# const pa1 = collect(linspace(star[1],inflex[1],(N/2)+1))
-# const pa2 = collect(linspace(inflex[1],fin[1],(N/2)+1))
-# const pa = vcat(pa1,pa2[2:length(pa2)])
-# const pb1 = collect(linspace(star[2],inflex[2],(N/2)+1))
-# const pb2 = collect(linspace(inflex[2],fin[2],(N/2)+1))
-# const pb = vcat(pb1,pb2[2:length(pb2)])
-# const pw1 = collect(linspace(star[3],inflex[3],(N/2)+1))
-# const pw2 = collect(linspace(inflex[3],fin[3],(N/2)+1))
-# const pw = vcat(pw1,pw2[2:length(pw2)])
-# const ps1 = collect(linspace(star[4],inflex[4],(N/2)+1))
-# const ps2 = collect(linspace(inflex[4],fin[4],(N/2)+1))
-# const ps = vcat(ps1,ps2[2:length(ps2)])
+const pa1 = collect(linspace(star[1],inflex[1],(N/2)+1))
+const pa2 = collect(linspace(inflex[1],fin[1],(N/2)+1))
+const pa = vcat(pa1,pa2[2:length(pa2)])
+const pb1 = collect(linspace(star[2],inflex[2],(N/2)+1))
+const pb2 = collect(linspace(inflex[2],fin[2],(N/2)+1))
+const pb = vcat(pb1,pb2[2:length(pb2)])
+const pw1 = collect(linspace(star[3],inflex[3],(N/2)+1))
+const pw2 = collect(linspace(inflex[3],fin[3],(N/2)+1))
+const pw = vcat(pw1,pw2[2:length(pw2)])
+const ps1 = collect(linspace(star[4],inflex[4],(N/2)+1))
+const ps2 = collect(linspace(inflex[4],fin[4],(N/2)+1))
+const ps = vcat(ps1,ps2[2:length(ps2)])
 
-A, B, W, S = readinmedata()
-const pa = vcat(star[1],A[2:150],fin[1])
-const pb = vcat(star[2],B[2:150],fin[2])
-const pw = vcat(star[3],W[2:150],fin[3])
-const ps = vcat(star[4],S[2:150],fin[4])
-const thi1 = hcat(pa,pb,pw,ps)
+D = Dmin1()
+const Dminconst = D
+D = D2([ r; f; q; Q; Qmin; k; kmin; K; Kmin; F ])
+const D2const = D
+
+
+# A, B, W, S = readinmedata()
+# const pa = vcat(star[1],A[2:150],fin[1])
+# const pb = vcat(star[2],B[2:150],fin[2])
+# const pw = vcat(star[3],W[2:150],fin[3])
+# const ps = vcat(star[4],S[2:150],fin[4])
+# const thi1 = hcat(pa,pb,pw,ps)
 
 function test()
     pathmin, S = optSt2(80,5)
@@ -518,4 +582,15 @@ function test()
     # savefig("../Results/Graph8041.png")
 end
 
-@time test()
+function main()
+    D = [ 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 ]
+    D = D!(D, [10; 10; 10; 10])
+    print(D)
+    print("\n")
+    D2 = D2!(D, [10; 10; 10; 10])
+    print(D2)
+    print("\n")
+end
+
+@time main()
+#@time test()

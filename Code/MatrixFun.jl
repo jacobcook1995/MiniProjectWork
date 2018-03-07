@@ -8,11 +8,12 @@ using Roots
 using SymPy
 import GR # Need this to stop world age plotting error?
 
-# Firstly should define constants
-const Ω = 300
+# Parameters
+const Ω = 300 # system size
+const ϕ = 0.1 # ratio ϕ = q/k
 const K = 10
 const k = K*Ω # steady state for A=k/K=1
-const Q = 1
+const Q = K*ϕ
 const q = Q*Ω
 const kmin = 10.0^-20 # set all too 10.0^-20 for now
 const Kmin = 10.0^-20
@@ -43,17 +44,18 @@ function numerically()
     e = e!(e, [ 10; 10; 10; 10 ])
     eT = transpose(e)
     D = e*eT
-    Dmin = inv(D)
+    H = D*D
+    Dmin = inv(H)
     return(Dmin)
 end
 
 # Now gonna try symbolically
 function symbolically()
-    # Locally overwrites global constants to be variables
+    # # Locally overwrites global constants to be variables
     r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
     A, B, W, S = symbols("A,B,W,S")
-
-    # Make a symbolic version of the matrix, needs no input in this case
+    #
+    # # Make a symbolic version of the matrix, needs no input in this case
     e = Array{Sym}(4,4)
     e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
     e[1,1] = sqrt(k*S*r/(r + f*B^2) + K*A + kmin*A + Kmin*W) #gA
@@ -66,16 +68,45 @@ function symbolically()
     e[4,4] = sqrt(F) #gS
 
     # Now do the transformations required
+
+    # Dmin = inv(D)
+    K1 = 10
+    k1 = K1*Ω # steady state for A=k/K=1
+    Q1 = K1*ϕ
+    q1 = Q1*Ω
+    kmin1 = 10.0^-20 # set all too 10.0^-20 for now
+    Kmin1 = 10.0^-20
+    qmin1 = 10.0^-20
+    Qmin1 = 10.0^-20
+    f1 = 1000/(Ω^2) # Promoter switching
+    r1 = 10
+    F1 = 250 # removal rate
     eT = transpose(e)
     D = e*eT
-    Dmin = inv(D)
-
+    #Dmin = inv(D)
+    H = D*D
+    Dmin = inv(H)
+    Dmin = subs(Dmin, A, 10)
+    Dmin = subs(Dmin, B, 10)
+    Dmin = subs(Dmin, S, 10)
+    Dmin = subs(Dmin, W, 10)
+    Dmin = subs(Dmin, K, K1)
+    Dmin = subs(Dmin, k, k1)
+    Dmin = subs(Dmin, Q, Q1)
+    Dmin = subs(Dmin, q, q1)
+    Dmin = subs(Dmin, kmin, kmin1)
+    Dmin = subs(Dmin, Kmin, Kmin1)
+    Dmin = subs(Dmin, qmin, qmin1)
+    Dmin = subs(Dmin, Qmin, Qmin1)
+    Dmin = subs(Dmin, f, f1)
+    Dmin = subs(Dmin, r, r1)
+    Dmin = subs(Dmin, F, F1) |> float
     return(Dmin)
 end
 
 @time Dmin1 = numerically()
 @time Dmin2 = symbolically()
-
+#
 print(Dmin1)
 print("\n")
 print(Dmin2)

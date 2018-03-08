@@ -56,31 +56,7 @@ function Dmin1()
     return(Dmin)
 end
 
-# Diffusion matrix squared function in inverse form, this will become a global constant matrix
-function D2()
-    # Locally overwrites global constants to be variables
-    r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
-    A, B, W, S = symbols("A,B,W,S")
-    # Make a symbolic version of the matrix, needs no input in this case
-    e = Array{Sym}(4,4)
-    e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
-    e[1,1] = sqrt(k*S*r/(r + f*B^2) + K*A + kmin*A + Kmin*W) #gA
-    e[2,2] = sqrt(q*S*r/(r + f*A^2) + Q*B + qmin*B + Qmin*W) #gB
-    e[3,1] = -sqrt(K*A + Kmin*W) #-gWA
-    e[3,2] = -sqrt(Q*B + Qmin*W) #-gWB
-    e[3,3] = sqrt(F) #gW
-    e[4,1] = -sqrt(k*S*r/(r + f*B^2) + kmin*A) #-gSA
-    e[4,2] = -sqrt(q*S*r/(r + f*A^2) + qmin*B) #-gSB
-    e[4,4] = sqrt(F) #gS
-    # Now do the transformations required
-    eT = transpose(e)
-    D = e*eT
-    D2 = D*D
-    Dmin2 = inv(D2)
-    return(Dmin2)
-end
-
-# Diffusion matrix differentiated in A, this will become a global constant matix
+# Inverse Diffusion matrix differentiated in A, this will become a global constant matix
 function DA()
     # Locally overwrites global constants to be variables
     r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
@@ -99,11 +75,12 @@ function DA()
     # Now do the transformations required
     eT = transpose(e)
     D = e*eT
-    DA = diff(D, A)
+    Dmin = inv(D)
+    DA = diff(Dmin, A)
     return(DA)
 end
 
-# Diffusion matrix differentiated in B, this will become a global constant matix
+# Inverse Diffusion matrix differentiated in B, this will become a global constant matix
 function DB()
     # Locally overwrites global constants to be variables
     r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
@@ -122,11 +99,12 @@ function DB()
     # Now do the transformations required
     eT = transpose(e)
     D = e*eT
-    DB = diff(D, B)
+    Dmin = inv(D)
+    DB = diff(Dmin, B)
     return(DB)
 end
 
-# Diffusion matrix differentiated in W, this will become a global constant matix
+# Inverse Diffusion matrix differentiated in W, this will become a global constant matix
 function DW()
     # Locally overwrites global constants to be variables
     r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
@@ -145,11 +123,12 @@ function DW()
     # Now do the transformations required
     eT = transpose(e)
     D = e*eT
-    DW = diff(D, W)
+    Dmin = inv(D)
+    DW = diff(Dmin, W)
     return(DW)
 end
 
-# Diffusion matrix differentiated in S, this will become a global constant matix
+# Inverse Diffusion matrix differentiated in S, this will become a global constant matix
 function DS()
     # Locally overwrites global constants to be variables
     r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
@@ -168,7 +147,8 @@ function DS()
     # Now do the transformations required
     eT = transpose(e)
     D = e*eT
-    DS = diff(D, S)
+    Dmin = inv(D)
+    DS = diff(Dmin, S)
     return(DS)
 end
 
@@ -227,20 +207,6 @@ function D!(D, x)
     end
     D = subs(D, S, x[4]) |> float
     return D
-end
-
-# Don't think I actually need this in this case
-function D2!(D2, x)
-    A, B, W, S = symbols("A,B,W,S")
-    K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
-    vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
-    vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
-    D2 = subs(D2const, A, x[1]) |> Sym
-    for i = 1:length(vars)
-        D2 = subs(D2, vars[i], vals[i]) |> Sym
-    end
-    D2 = subs(D2, S, x[4]) |> float
-    return D2
 end
 
 function DA!(DA, x)
@@ -476,7 +442,6 @@ function g!(grads, thi, tau)
         fuw[:,i] = fW!(fuw[:,i], [posA; posB; posW; posS])
         fus[:,i] = fS!(fus[:,i], [posA; posB; posW; posS])
         d[:,:,i] = D!(d[:,:,i], [posA; posB; posW; posS])
-        d2[:,:,i] = D2!(d2[:,:,i], [posA; posB; posW; posS])
         da[:,:,i] = DA!(da[:,:,i], [posA; posB; posW; posS])
         db[:,:,i] = DB!(db[:,:,i], [posA; posB; posW; posS])
         dw[:,:,i] = DW!(dw[:,:,i], [posA; posB; posW; posS])
@@ -665,8 +630,6 @@ const ps = vcat(ps1,ps2[2:length(ps2)])
 
 D = Dmin1()
 const Dminconst = D
-D = D2()
-const D2const = D
 D = DA()
 const DAconst = D
 D = DB()
@@ -682,7 +645,7 @@ const DSconst = D
 # const pb = vcat(star[2],B[2:150],fin[2])
 # const pw = vcat(star[3],W[2:150],fin[3])
 # const ps = vcat(star[4],S[2:150],fin[4])
-# const thi1 = hcat(pa,pb,pw,ps)
+const thi1 = hcat(pa,pb,pw,ps)
 
 function test()
     pathmin, S = optSt2(80,5)
@@ -701,10 +664,10 @@ end
 
 function main()
     D = [ 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 ]
-    DS = DS!(D, [10; 10; 10; 10])
-    print(DS)
+    DA = DS!(D, [10; 10; 10; 10])
+    print(DA)
     print("\n")
 end
 
-@time main()
-#@time test()
+#@time main()
+@time test()

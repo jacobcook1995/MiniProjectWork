@@ -396,16 +396,9 @@ function g!(grads, thi, tau)
     deltat = tau/N
     # probably best to pre-calculate the all the f vectors and D matrices
     fu = zeros(4,N)
-    fua = zeros(4,N)
-    fub = zeros(4,N)
-    fuw = zeros(4,N)
-    fus = zeros(4,N)
+    fp = zeros(4,N,4)
     d = zeros(4,4,N)
-    d2 = zeros(4,4,N)
-    da = zeros(4,4,N)
-    db = zeros(4,4,N)
-    dw = zeros(4,4,N)
-    ds = zeros(4,4,N)
+    dp = zeros(4,4,N,4)
     thidot = zeros(4,N)
     for i = 1:N
         if i == 1
@@ -437,92 +430,34 @@ function g!(grads, thi, tau)
             thidot[4,i] = (thi[i + 3*(N-1)] - thi[i - 1 + 3*(N-1)])/deltat
         end
         fu[:,i] = f!(fu[:,i], [posA; posB; posW; posS])
-        fua[:,i] = fA!(fua[:,i], [posA; posB; posW; posS])
-        fub[:,i] = fB!(fub[:,i], [posA; posB; posW; posS])
-        fuw[:,i] = fW!(fuw[:,i], [posA; posB; posW; posS])
-        fus[:,i] = fS!(fus[:,i], [posA; posB; posW; posS])
+        fp[:,i,1] = fA!(fp[:,i,1], [posA; posB; posW; posS]) # first dimension vector element
+        fp[:,i,2] = fB!(fp[:,i,2], [posA; posB; posW; posS]) # second is s, third is direction of differentiation
+        fp[:,i,3] = fW!(fp[:,i,3], [posA; posB; posW; posS])
+        fp[:,i,4] = fS!(fp[:,i,4], [posA; posB; posW; posS])
         d[:,:,i] = D!(d[:,:,i], [posA; posB; posW; posS])
-        da[:,:,i] = DA!(da[:,:,i], [posA; posB; posW; posS])
-        db[:,:,i] = DB!(db[:,:,i], [posA; posB; posW; posS])
-        dw[:,:,i] = DW!(dw[:,:,i], [posA; posB; posW; posS])
-        ds[:,:,i] = DS!(ds[:,:,i], [posA; posB; posW; posS])
+        dp[:,:,i,1] = DA!(dp[:,:,i,1], [posA; posB; posW; posS]) # first two dimensions matrix dimensions
+        dp[:,:,i,2] = DB!(dp[:,:,i,2], [posA; posB; posW; posS]) # third is s, fourth is direction of differentiation
+        dp[:,:,i,3] = DW!(dp[:,:,i,3], [posA; posB; posW; posS])
+        dp[:,:,i,4] = DS!(dp[:,:,i,4], [posA; posB; posW; posS])
     end
 
     for i = 1:(N-1)
         for j = 1:4
             # Do each term on a seperate line for clarity
-            grads[i+(N-1)*(j-1)] = 0
-            grads[i+(N-1)*(j-1)] += (thidot[j,i] - fu[j,i])/d[j,j,i]
-            grads[i+(N-1)*(j-1)] -= (thidot[j,i+1] - fu[j,i+1])/d[j,j,i+1]
-            # terms are different depending on j, hence this elseif statement
-            if j == 1
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[1,i+1]-fu[1,i+1])*(fua[1,i+1]/d[1,1,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[2,i+1]-fu[2,i+1])*(fua[2,i+1]/d[2,2,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[3,i+1]-fu[3,i+1])*(fua[3,i+1]/d[3,3,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[4,i+1]-fu[4,i+1])*(fua[4,i+1]/d[4,4,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[1,i]-fu[1,i])*(fua[1,i]/d[1,1,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[2,i]-fu[2,i])*(fua[2,i]/d[2,2,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[3,i]-fu[3,i])*(fua[3,i]/d[3,3,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[4,i]-fu[4,i])*(fua[4,i]/d[4,4,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(da[1,1,i+1]/d2[1,1,i+1])*((thidot[1,i+1]-fu[1,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(da[2,2,i+1]/d2[2,2,i+1])*((thidot[2,i+1]-fu[2,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(da[3,3,i+1]/d2[3,3,i+1])*((thidot[3,i+1]-fu[3,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(da[4,4,i+1]/d2[4,4,i+1])*((thidot[4,i+1]-fu[4,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(da[1,1,i]/d2[1,1,i])*((thidot[1,i]-fu[1,i])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(da[2,2,i]/d2[2,2,i])*((thidot[2,i]-fu[2,i])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(da[3,3,i]/d2[3,3,i])*((thidot[3,i]-fu[3,i])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(da[4,4,i]/d2[4,4,i])*((thidot[4,i]-fu[4,i])^2)
-            elseif j == 2
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[1,i+1]-fu[1,i+1])*(fub[1,i+1]/d[1,1,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[2,i+1]-fu[2,i+1])*(fub[2,i+1]/d[2,2,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[3,i+1]-fu[3,i+1])*(fub[3,i+1]/d[3,3,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[4,i+1]-fu[4,i+1])*(fub[4,i+1]/d[4,4,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[1,i]-fu[1,i])*(fub[1,i]/d[1,1,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[2,i]-fu[2,i])*(fub[2,i]/d[2,2,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[3,i]-fu[3,i])*(fub[3,i]/d[3,3,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[4,i]-fu[4,i])*(fub[4,i]/d[4,4,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(db[1,1,i+1]/d2[1,1,i+1])*((thidot[1,i+1]-fu[1,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(db[2,2,i+1]/d2[2,2,i+1])*((thidot[2,i+1]-fu[2,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(db[3,3,i+1]/d2[3,3,i+1])*((thidot[3,i+1]-fu[3,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(db[4,4,i+1]/d2[4,4,i+1])*((thidot[4,i+1]-fu[4,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(db[1,1,i]/d2[1,1,i])*((thidot[1,i]-fu[1,i])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(db[2,2,i]/d2[2,2,i])*((thidot[2,i]-fu[2,i])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(db[3,3,i]/d2[3,3,i])*((thidot[3,i]-fu[3,i])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(db[4,4,i]/d2[4,4,i])*((thidot[4,i]-fu[4,i])^2)
-            elseif j == 3
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[1,i+1]-fu[1,i+1])*(fuw[1,i+1]/d[1,1,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[2,i+1]-fu[2,i+1])*(fuw[2,i+1]/d[2,2,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[3,i+1]-fu[3,i+1])*(fuw[3,i+1]/d[3,3,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[4,i+1]-fu[4,i+1])*(fuw[4,i+1]/d[4,4,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[1,i]-fu[1,i])*(fuw[1,i]/d[1,1,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[2,i]-fu[2,i])*(fuw[2,i]/d[2,2,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[3,i]-fu[3,i])*(fuw[3,i]/d[3,3,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[4,i]-fu[4,i])*(fuw[4,i]/d[4,4,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(dw[1,1,i+1]/d2[1,1,i+1])*((thidot[1,i+1]-fu[1,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(dw[2,2,i+1]/d2[2,2,i+1])*((thidot[2,i+1]-fu[2,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(dw[3,3,i+1]/d2[3,3,i+1])*((thidot[3,i+1]-fu[3,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(dw[4,4,i+1]/d2[4,4,i+1])*((thidot[4,i+1]-fu[4,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(dw[1,1,i]/d2[1,1,i])*((thidot[1,i]-fu[1,i])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(dw[2,2,i]/d2[2,2,i])*((thidot[2,i]-fu[2,i])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(dw[3,3,i]/d2[3,3,i])*((thidot[3,i]-fu[3,i])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(dw[4,4,i]/d2[4,4,i])*((thidot[4,i]-fu[4,i])^2)
-            elseif j == 4
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[1,i+1]-fu[1,i+1])*(fus[1,i+1]/d[1,1,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[2,i+1]-fu[2,i+1])*(fus[2,i+1]/d[2,2,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[3,i+1]-fu[3,i+1])*(fus[3,i+1]/d[3,3,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[4,i+1]-fu[4,i+1])*(fus[4,i+1]/d[4,4,i+1])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[1,i]-fu[1,i])*(fus[1,i]/d[1,1,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[2,i]-fu[2,i])*(fus[2,i]/d[2,2,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[3,i]-fu[3,i])*(fus[3,i]/d[3,3,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/2)*(thidot[4,i]-fu[4,i])*(fus[4,i]/d[4,4,i])
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(ds[1,1,i+1]/d2[1,1,i+1])*((thidot[1,i+1]-fu[1,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(ds[2,2,i+1]/d2[2,2,i+1])*((thidot[2,i+1]-fu[2,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(ds[3,3,i+1]/d2[3,3,i+1])*((thidot[3,i+1]-fu[3,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(ds[4,4,i+1]/d2[4,4,i+1])*((thidot[4,i+1]-fu[4,i+1])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(ds[1,1,i]/d2[1,1,i])*((thidot[1,i]-fu[1,i])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(ds[2,2,i]/d2[2,2,i])*((thidot[2,i]-fu[2,i])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(ds[3,3,i]/d2[3,3,i])*((thidot[3,i]-fu[3,i])^2)
-                grads[i+(N-1)*(j-1)] -= (deltat/4)*(ds[4,4,i]/d2[4,4,i])*((thidot[4,i]-fu[4,i])^2)
+            grads[i+(N-1)*(j-1)] = 0 # i = s, j = l, l = i, m = j
+            for l = 1:4
+                grads[i+(N-1)*(j-1)] += (d[j,l,i]/2)*(thidot[l,i] - fu[l,i])
+                grads[i+(N-1)*(j-1)] -= (d[j,l,i+1]/2)*(thidot[l,i+1] - fu[l,i+1])
+                grads[i+(N-1)*(j-1)] += (d[l,j,i]/2)*(thidot[l,i] - fu[l,i])
+                grads[i+(N-1)*(j-1)] -= (d[l,j,i+1]/2)*(thidot[l,i+1] - fu[l,i+1])
+                for m = 1:4
+                    grads[i+(N-1)*(j-1)] -= (deltat/4)*(thidot[m,i] - fu[m,i])*(fp[l,i,j]*d[l,m,i])
+                    grads[i+(N-1)*(j-1)] -= (deltat/4)*(thidot[m,i+1] - fu[m,i+1])*(fp[l,i+1,j]*d[l,m,i+1])
+                    grads[i+(N-1)*(j-1)] -= (deltat/4)*(thidot[m,i] - fu[m,i])*(fp[l,i,j]*d[m,l,i])
+                    grads[i+(N-1)*(j-1)] -= (deltat/4)*(thidot[m,i+1] - fu[m,i+1])*(fp[l,i+1,j]*d[m,l,i+1])
+                    grads[i+(N-1)*(j-1)] += (deltat/4)*(thidot[l,i] - fu[l,i])*dp[l,m,i,j]*(thidot[m,i] - fu[m,i])
+                    grads[i+(N-1)*(j-1)] += (deltat/4)*(thidot[l,i+1] - fu[l,i+1])*dp[l,m,i+1,j]*(thidot[m,i+1] - fu[m,i+1])
+                end
             end
         end
     end
@@ -628,6 +563,7 @@ const ps1 = collect(linspace(star[4],inflex[4],(N/2)+1))
 const ps2 = collect(linspace(inflex[4],fin[4],(N/2)+1))
 const ps = vcat(ps1,ps2[2:length(ps2)])
 
+# Symbolic matrices for each direction are set as global constants
 D = Dmin1()
 const Dminconst = D
 D = DA()
@@ -663,11 +599,10 @@ function test()
 end
 
 function main()
-    D = [ 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 ]
-    DA = DS!(D, [10; 10; 10; 10])
-    print(DA)
-    print("\n")
+    pathmin, S = optSt2(50,1)
+    print("$(S)\n")
+    plot(pathmin[:,1],pathmin[:,2])
 end
 
-#@time main()
-@time test()
+@time main()
+# @time test()

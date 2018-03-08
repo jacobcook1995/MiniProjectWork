@@ -229,6 +229,7 @@ function D!(D, x)
     return D
 end
 
+# Don't think I actually need this in this case
 function D2!(D2, x)
     A, B, W, S = symbols("A,B,W,S")
     K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")

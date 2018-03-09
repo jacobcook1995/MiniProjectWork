@@ -33,6 +33,18 @@ const Ne = 12000 # number of elements in the system
 const N = 30#150 # number of segments optimised over
 const high2low = false # Set if starting from high state or low state
 
+# Global memory preallocation
+#const d = zeros(4,4) # function being a bit weird about this really
+#const h = zeros(4)
+const thiv = zeros(4) # like can get this one to work but not the other two?
+
+# probably best to pre-calculate the all the f vectors and D matrices
+const fu = zeros(4,N)
+const fp = zeros(4,N,4)
+const dg = zeros(4,4,N)
+const dp = zeros(4,4,N,4)
+const thidot = zeros(4,N)
+
 # Inverse Diffusion matrix function in inverse form, this will become a global constant matrix
 function Dmin1()
     # Locally overwrites global constants to be variables
@@ -201,21 +213,6 @@ function D!(D, x)
     vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
     vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
     #Dminconst = Dmin1()
-    if x[1] <= 0 || x[2] <= 0 || x[3] <= 0 || x[4] <= 0
-        print("$(x[1]),$(x[2]),$(x[3]),$(x[4])\n")
-        if x[1] <=0
-            x[1] = 0
-        end
-        if x[2] <=0
-            x[2] = 0
-        end
-        if x[3] <=0
-            x[3] = 0
-        end
-        if x[4] <=0
-            x[4] = 0
-        end
-    end
     D = subs(Dminconst, A, x[1]) |> Sym
     for i = 1:length(vars)
         D = subs(D, vars[i], vals[i]) |> Sym
@@ -230,21 +227,6 @@ function DA!(Da, x)
     vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
     vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
     #DAconst = DA()
-    if x[1] <= 0 || x[2] <= 0 || x[3] <= 0 || x[4] <= 0
-        print("$(x[1]),$(x[2]),$(x[3]),$(x[4])\n")
-        if x[1] <=0
-            x[1] = 0
-        end
-        if x[2] <=0
-            x[2] = 0
-        end
-        if x[3] <=0
-            x[3] = 0
-        end
-        if x[4] <=0
-            x[4] = 0
-        end
-    end
     Da = subs(DAconst, A, x[1]) |> Sym
     for i = 1:length(vars)
         Da = subs(Da, vars[i], vals[i]) |> Sym
@@ -259,21 +241,6 @@ function DB!(Db, x)
     vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
     vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
     #DBconst = DB()
-    if x[1] <= 0 || x[2] <= 0 || x[3] <= 0 || x[4] <= 0
-        print("$(x[1]),$(x[2]),$(x[3]),$(x[4])\n")
-        if x[1] <=0
-            x[1] = 0
-        end
-        if x[2] <=0
-            x[2] = 0
-        end
-        if x[3] <=0
-            x[3] = 0
-        end
-        if x[4] <=0
-            x[4] = 0
-        end
-    end
     Db = subs(DBconst, A, x[1]) |> Sym
     for i = 1:length(vars)
         Db = subs(Db, vars[i], vals[i]) |> Sym
@@ -288,21 +255,6 @@ function DW!(Dw, x)
     vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
     vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
     #DWconst = DW()
-    if x[1] <= 0 || x[2] <= 0 || x[3] <= 0 || x[4] <= 0
-        print("$(x[1]),$(x[2]),$(x[3]),$(x[4])\n")
-        if x[1] <=0
-            x[1] = 0
-        end
-        if x[2] <=0
-            x[2] = 0
-        end
-        if x[3] <=0
-            x[3] = 0
-        end
-        if x[4] <=0
-            x[4] = 0
-        end
-    end
     Dw = subs(DWconst, A, x[1]) |> Sym
     for i = 1:length(vars)
         Dw = subs(Dw, vars[i], vals[i]) |> Sym
@@ -317,21 +269,6 @@ function DS!(Ds, x)
     vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
     vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
     #DSconst = DS()
-    if x[1] <= 0 || x[2] <= 0 || x[3] <= 0 || x[4] <= 0
-        print("$(x[1]),$(x[2]),$(x[3]),$(x[4])\n")
-        if x[1] <=0
-            x[1] = 0
-        end
-        if x[2] <=0
-            x[2] = 0
-        end
-        if x[3] <=0
-            x[3] = 0
-        end
-        if x[4] <=0
-            x[4] = 0
-        end
-    end
     Ds = subs(DSconst, A, x[1]) |> Sym
     for i = 1:length(vars)
         Ds = subs(Ds, vars[i], vals[i]) |> Sym
@@ -420,24 +357,8 @@ end
 function AP(thi, tau) # function to calculate action of a given path
     deltat = tau/N
     S = 0 # initialise as zero
-
-    # make an initial d and f
-    d = [ 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 ]
-    h = [ 0.0; 0.0; 0.0; 0.0 ]
-    thiv = [ 0.0; 0.0; 0.0; 0.0 ]
-    # need a step to massively disfavour paths that go negative
-    negs = false
-    for i = 1:N-1
-        for j = 1:4
-            if thi[i+(N-1)*(j-1)] < 0
-                negs = true
-            end
-        end
-    end
-    if negs == true
-        S = 10000000000000000000000000000000000000000000000000000 # large number to disfavour paths that go negative
-    end
-
+    h = zeros(4)
+    d = zeros(4,4)
     for i = 1:N
         if i == 1
             posA = (thi[1] + star[1])/2
@@ -467,8 +388,8 @@ function AP(thi, tau) # function to calculate action of a given path
             thiv[3] = (thi[i + 2*(N-1)] - thi[i - 1 + 2*(N-1)])/deltat
             thiv[4] = (thi[i + 3*(N-1)] - thi[i - 1 + 3*(N-1)])/deltat
         end
-        h = f!(h, [posA; posB; posW; posS])
         d = D!(d, [posA; posB; posW; posS])
+        h = f!(h, [posA; posB; posW; posS])
         for j = 1:4
             for l = 1:4
                 S += (deltat/2)*(thiv[j] - h[j])*d[j,l]*(thiv[l] - h[l])
@@ -480,13 +401,9 @@ end
 
 # Should now write a function for the gradient to be used for the iteration
 function g!(grads, thi, tau)
+    toc()
+    tic()
     deltat = tau/N
-    # probably best to pre-calculate the all the f vectors and D matrices
-    fu = zeros(4,N)
-    fp = zeros(4,N,4)
-    d = zeros(4,4,N)
-    dp = zeros(4,4,N,4)
-    thidot = zeros(4,N)
     for i = 1:N
         if i == 1
             posA = (thi[1] + star[1])/2
@@ -521,7 +438,7 @@ function g!(grads, thi, tau)
         fp[:,i,2] = fB!(fp[:,i,2], [posA; posB; posW; posS]) # second is s, third is direction of differentiation
         fp[:,i,3] = fW!(fp[:,i,3], [posA; posB; posW; posS])
         fp[:,i,4] = fS!(fp[:,i,4], [posA; posB; posW; posS])
-        d[:,:,i] = D!(d[:,:,i], [posA; posB; posW; posS])
+        dg[:,:,i] = D!(dg[:,:,i], [posA; posB; posW; posS])
         dp[:,:,i,1] = DA!(dp[:,:,i,1], [posA; posB; posW; posS]) # first two dimensions matrix dimensions
         dp[:,:,i,2] = DB!(dp[:,:,i,2], [posA; posB; posW; posS]) # third is s, fourth is direction of differentiation
         dp[:,:,i,3] = DW!(dp[:,:,i,3], [posA; posB; posW; posS])
@@ -533,15 +450,15 @@ function g!(grads, thi, tau)
             # Do each term on a seperate line for clarity
             grads[i+(N-1)*(j-1)] = 0 # i = s, j = l, l = i, m = j
             for l = 1:4
-                grads[i+(N-1)*(j-1)] += (d[j,l,i]/2)*(thidot[l,i] - fu[l,i])
-                grads[i+(N-1)*(j-1)] -= (d[j,l,i+1]/2)*(thidot[l,i+1] - fu[l,i+1])
-                grads[i+(N-1)*(j-1)] += (d[l,j,i]/2)*(thidot[l,i] - fu[l,i])
-                grads[i+(N-1)*(j-1)] -= (d[l,j,i+1]/2)*(thidot[l,i+1] - fu[l,i+1])
+                grads[i+(N-1)*(j-1)] += (dg[j,l,i]/2)*(thidot[l,i] - fu[l,i])
+                grads[i+(N-1)*(j-1)] -= (dg[j,l,i+1]/2)*(thidot[l,i+1] - fu[l,i+1])
+                grads[i+(N-1)*(j-1)] += (dg[l,j,i]/2)*(thidot[l,i] - fu[l,i])
+                grads[i+(N-1)*(j-1)] -= (dg[l,j,i+1]/2)*(thidot[l,i+1] - fu[l,i+1])
                 for m = 1:4
-                    grads[i+(N-1)*(j-1)] -= (deltat/4)*(thidot[m,i] - fu[m,i])*(fp[l,i,j]*d[l,m,i])
-                    grads[i+(N-1)*(j-1)] -= (deltat/4)*(thidot[m,i+1] - fu[m,i+1])*(fp[l,i+1,j]*d[l,m,i+1])
-                    grads[i+(N-1)*(j-1)] -= (deltat/4)*(thidot[m,i] - fu[m,i])*(fp[l,i,j]*d[m,l,i])
-                    grads[i+(N-1)*(j-1)] -= (deltat/4)*(thidot[m,i+1] - fu[m,i+1])*(fp[l,i+1,j]*d[m,l,i+1])
+                    grads[i+(N-1)*(j-1)] -= (deltat/4)*(thidot[m,i] - fu[m,i])*(fp[l,i,j]*dg[l,m,i])
+                    grads[i+(N-1)*(j-1)] -= (deltat/4)*(thidot[m,i+1] - fu[m,i+1])*(fp[l,i+1,j]*dg[l,m,i+1])
+                    grads[i+(N-1)*(j-1)] -= (deltat/4)*(thidot[m,i] - fu[m,i])*(fp[l,i,j]*dg[m,l,i])
+                    grads[i+(N-1)*(j-1)] -= (deltat/4)*(thidot[m,i+1] - fu[m,i+1])*(fp[l,i+1,j]*dg[m,l,i+1])
                     grads[i+(N-1)*(j-1)] += (deltat/4)*(thidot[l,i] - fu[l,i])*dp[l,m,i,j]*(thidot[m,i] - fu[m,i])
                     grads[i+(N-1)*(j-1)] += (deltat/4)*(thidot[l,i+1] - fu[l,i+1])*dp[l,m,i+1,j]*(thidot[m,i+1] - fu[m,i+1])
                 end
@@ -554,23 +471,12 @@ end
 
 # function to actually perform the optimisation
 function optSt(nonfixed,tau)
-    # lower = zeros((N-1)*4) # No species can drop below zero
-    # upper = Ne*ones((N-1)*4) # No species can have more than the total amount in the system
-    lower = zeros(4*(N-1))
-    upper = Ne*ones(4*(N-1))
+    lower = zeros(4*(N-1)) # No species can drop below zero
+    upper = Ne*ones(4*(N-1)) # No species can have more than the total amount in the system
     initial_x = nonfixed
-    print(upper)
-    print("\n")
-    print("$(length(upper))\n")
-    print(nonfixed)
-    print("\n")
-    print("$(length(nonfixed))\n")
+
     od = OnceDifferentiable(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), initial_x)
-    results = optimize(od, initial_x, lower, upper, Fminbox{LBFGS}())
-    # od = OnceDifferentiable(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), nonfixed) # Find the differentiatals
-    # results = optimize(od, nonfixed ,lower, upper, Fminbox{LBFGS}(),
-    #                     Optim.Options(g_tol = 0.0, f_tol = 0.0, x_tol = 0.0,
-    #                     iterations = 1000, allow_f_increases = true))
+    results = optimize(od, initial_x, lower, upper, Fminbox{LBFGS}(), allow_f_increases = true)
     # results = optimize(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), nonfixed, LBFGS(),
     #                     Optim.Options(g_tol = 0.0, f_tol = 0.0, x_tol = 0.0,
     #                     iterations = 10000, allow_f_increases = true))
@@ -660,12 +566,14 @@ const pa = vcat(pa1,pa2[2:length(pa2)])
 const pb1 = collect(linspace(star[2],inflex[2],(N/2)+1))
 const pb2 = collect(linspace(inflex[2],fin[2],(N/2)+1))
 const pb = vcat(pb1,pb2[2:length(pb2)])
-const pw1 = collect(linspace(star[3],inflex[3],(N/2)+1))
-const pw2 = collect(linspace(inflex[3],fin[3],(N/2)+1))
-const pw = vcat(pw1,pw2[2:length(pw2)])
 const ps1 = collect(linspace(star[4],inflex[4],(N/2)+1))
 const ps2 = collect(linspace(inflex[4],fin[4],(N/2)+1))
 const ps = vcat(ps1,ps2[2:length(ps2)])
+# const pw1 = collect(linspace(star[3],inflex[3],(N/2)+1))
+# const pw2 = collect(linspace(inflex[3],fin[3],(N/2)+1))
+# const pw = vcat(pw1,pw2[2:length(pw2)])
+const pw = Ne*ones(N+1) - pa - pb - ps # Keep path on manifold
+
 
 # Symbolic matrices for each direction are set as global constants
 D = Dmin1()
@@ -703,6 +611,7 @@ function test()
 end
 
 function main()
+    tic()
     pathmin, S = optSt2(50,1)
     print("$(S)\n")
     plot(pathmin[:,1],pathmin[:,2])

@@ -9,7 +9,7 @@ using SymPy
 import GR # Need this to stop world age plotting error?
 
 # Parameters
-const Ω = 300 # system size
+const Ω = 30 # system size
 const ϕ = 0.1 # ratio ϕ = q/k
 const K = 10
 const k = K*Ω # steady state for A=k/K=1
@@ -70,7 +70,7 @@ function numerically()
 end
 
 # Now gonna try symbolically
-function symbolically1()
+function symbolically()
     # # Locally overwrites global constants to be variables
     r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
     A, B, W, S = symbols("A,B,W,S")
@@ -102,7 +102,7 @@ function symbolically1()
     eT = transpose(e)
     D = e*eT
     Dmin1 = inv(D)
-    Dmin1prim = diff(Dmin1, A)
+    Dmin1prim = diff(Dmin1, S)
     Dmin1prim = subs(Dmin1prim, K, K1)
     Dmin1prim = subs(Dmin1prim, k, k1)
     Dmin1prim = subs(Dmin1prim, Q, Q1)
@@ -114,74 +114,16 @@ function symbolically1()
     Dmin1prim = subs(Dmin1prim, f, f1)
     Dmin1prim = subs(Dmin1prim, r, r1)
     Dmin1prim = subs(Dmin1prim, F, F1)
-    Dmin1prim = subs(Dmin1prim, A, 10)
-    Dmin1prim = subs(Dmin1prim, B, 10)
-    Dmin1prim = subs(Dmin1prim, W, 10)
-    Dmin1prim = subs(Dmin1prim, S, 10) |> float
+    Dmin1prim = subs(Dmin1prim, A, 24.8894)
+    Dmin1prim = subs(Dmin1prim, B, 1.10608)
+    Dmin1prim = subs(Dmin1prim, W, 11971.7)
+    Dmin1prim = subs(Dmin1prim, S, 2.29056) |> float
     return(Dmin1prim)
 end
 
-# Now gonna try symbolically
-function symbolically2()
-    # # Locally overwrites global constants to be variables
-    r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
-    A, B, W, S = symbols("A,B,W,S")
-    #
-    # # Make a symbolic version of the matrix, needs no input in this case
-    e = Array{Sym}(4,4)
-    e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
-    e[1,1] = sqrt(k*S*r/(r + f*B^2) + K*A + kmin*A + Kmin*W) #gA
-    e[2,2] = sqrt(q*S*r/(r + f*A^2) + Q*B + qmin*B + Qmin*W) #gB
-    e[3,1] = -sqrt(K*A + Kmin*W) #-gWA
-    e[3,2] = -sqrt(Q*B + Qmin*W) #-gWB
-    e[3,3] = sqrt(F) #gW
-    e[4,1] = -sqrt(k*S*r/(r + f*B^2) + kmin*A) #-gSA
-    e[4,2] = -sqrt(q*S*r/(r + f*A^2) + qmin*B) #-gSB
-    e[4,4] = sqrt(F) #gS
-
-    # Now do the transformations required
-    K1 = 10
-    k1 = K1*Ω # steady state for A=k/K=1
-    Q1 = K1*ϕ
-    q1 = Q1*Ω
-    kmin1 = 10.0^-20 # set all too 10.0^-20 for now
-    Kmin1 = 10.0^-20
-    qmin1 = 10.0^-20
-    Qmin1 = 10.0^-20
-    f1 = 1000/(Ω^2) # Promoter switching
-    r1 = 10
-    F1 = 250 # removal rate
-    eT = transpose(e)
-    D = e*eT
-    Dmin1 = inv(D)
-    Dmin1prim = diff(Dmin1, A)
-    Dmin1prim = subs(Dmin1prim, S, 10)
-    Dmin1prim = subs(Dmin1prim, W, 10)
-    Dmin1prim = subs(Dmin1prim, B, 10)
-    Dmin1prim = subs(Dmin1prim, A, 10)
-    Dmin1prim = subs(Dmin1prim, F, F1)
-    Dmin1prim = subs(Dmin1prim, r, r1)
-    Dmin1prim = subs(Dmin1prim, f, f1)
-    Dmin1prim = subs(Dmin1prim, Qmin, Qmin1)
-    Dmin1prim = subs(Dmin1prim, qmin, qmin1)
-    Dmin1prim = subs(Dmin1prim, Kmin, Kmin1)
-    Dmin1prim = subs(Dmin1prim, kmin, kmin1)
-    Dmin1prim = subs(Dmin1prim, q, q1)
-    Dmin1prim = subs(Dmin1prim, Q, Q1)
-    Dmin1prim = subs(Dmin1prim, k, k1)
-    Dmin1prim = subs(Dmin1prim, K, K1) |> float
-    return(Dmin1prim)
-end
-
-@time D1 = numerically()
-@time D3 = symbolically1()
-@time D4 = symbolically2()
+# @time D1 = numerically()
+@time D3 = symbolically()
 #
-print(D1)
-print("\n")
+
 print(D3)
-print("\n")
-print(D1-D3)
-print("\n")
-print(D4-D3)
 print("\n")

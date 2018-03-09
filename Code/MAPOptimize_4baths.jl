@@ -30,7 +30,7 @@ const F = 250 # removal rate
 const Ne = 12000 # number of elements in the system
 
 # Then set parameters of the optimization
-const N = 150 # number of segments optimised over
+const N = 30#150 # number of segments optimised over
 const high2low = false # Set if starting from high state or low state
 
 # Inverse Diffusion matrix function in inverse form, this will become a global constant matrix
@@ -194,13 +194,28 @@ function fS!(FS, x)
     return FS
 end
 
-
 # Inverse Diffusion matrix containing the noise on each term (squared)
 function D!(D, x)
     A, B, W, S = symbols("A,B,W,S")
     K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
     vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
     vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
+    #Dminconst = Dmin1()
+    if x[1] <= 0 || x[2] <= 0 || x[3] <= 0 || x[4] <= 0
+        print("$(x[1]),$(x[2]),$(x[3]),$(x[4])\n")
+        if x[1] <=0
+            x[1] = 0
+        end
+        if x[2] <=0
+            x[2] = 0
+        end
+        if x[3] <=0
+            x[3] = 0
+        end
+        if x[4] <=0
+            x[4] = 0
+        end
+    end
     D = subs(Dminconst, A, x[1]) |> Sym
     for i = 1:length(vars)
         D = subs(D, vars[i], vals[i]) |> Sym
@@ -209,56 +224,120 @@ function D!(D, x)
     return D
 end
 
-function DA!(DA, x)
+function DA!(Da, x)
     A, B, W, S = symbols("A,B,W,S")
     K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
     vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
     vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
-    DA = subs(DAconst, A, x[1]) |> Sym
-    for i = 1:length(vars)
-        DA = subs(DA, vars[i], vals[i]) |> Sym
+    #DAconst = DA()
+    if x[1] <= 0 || x[2] <= 0 || x[3] <= 0 || x[4] <= 0
+        print("$(x[1]),$(x[2]),$(x[3]),$(x[4])\n")
+        if x[1] <=0
+            x[1] = 0
+        end
+        if x[2] <=0
+            x[2] = 0
+        end
+        if x[3] <=0
+            x[3] = 0
+        end
+        if x[4] <=0
+            x[4] = 0
+        end
     end
-    DA = subs(DA, S, x[4]) |> float
-    return DA
+    Da = subs(DAconst, A, x[1]) |> Sym
+    for i = 1:length(vars)
+        Da = subs(Da, vars[i], vals[i]) |> Sym
+    end
+    Da = subs(Da, S, x[4]) |> float
+    return Da
 end
 
-function DB!(DB, x)
+function DB!(Db, x)
     A, B, W, S = symbols("A,B,W,S")
     K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
     vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
     vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
-    DB = subs(DBconst, A, x[1]) |> Sym
-    for i = 1:length(vars)
-        DB = subs(DB, vars[i], vals[i]) |> Sym
+    #DBconst = DB()
+    if x[1] <= 0 || x[2] <= 0 || x[3] <= 0 || x[4] <= 0
+        print("$(x[1]),$(x[2]),$(x[3]),$(x[4])\n")
+        if x[1] <=0
+            x[1] = 0
+        end
+        if x[2] <=0
+            x[2] = 0
+        end
+        if x[3] <=0
+            x[3] = 0
+        end
+        if x[4] <=0
+            x[4] = 0
+        end
     end
-    DB = subs(DB, S, x[4]) |> float
-    return DB
+    Db = subs(DBconst, A, x[1]) |> Sym
+    for i = 1:length(vars)
+        Db = subs(Db, vars[i], vals[i]) |> Sym
+    end
+    Db = subs(Db, S, x[4]) |> float
+    return Db
 end
 
-function DW!(DW, x)
+function DW!(Dw, x)
     A, B, W, S = symbols("A,B,W,S")
     K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
     vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
     vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
-    DW = subs(DWconst, A, x[1]) |> Sym
-    for i = 1:length(vars)
-        DW = subs(DW, vars[i], vals[i]) |> Sym
+    #DWconst = DW()
+    if x[1] <= 0 || x[2] <= 0 || x[3] <= 0 || x[4] <= 0
+        print("$(x[1]),$(x[2]),$(x[3]),$(x[4])\n")
+        if x[1] <=0
+            x[1] = 0
+        end
+        if x[2] <=0
+            x[2] = 0
+        end
+        if x[3] <=0
+            x[3] = 0
+        end
+        if x[4] <=0
+            x[4] = 0
+        end
     end
-    DW = subs(DW, S, x[4]) |> float
-    return DW
+    Dw = subs(DWconst, A, x[1]) |> Sym
+    for i = 1:length(vars)
+        Dw = subs(Dw, vars[i], vals[i]) |> Sym
+    end
+    Dw = subs(Dw, S, x[4]) |> float
+    return Dw
 end
 
-function DS!(DS, x)
+function DS!(Ds, x)
     A, B, W, S = symbols("A,B,W,S")
     K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
     vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
     vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
-    DS = subs(DSconst, A, x[1]) |> Sym
-    for i = 1:length(vars)
-        DS = subs(DS, vars[i], vals[i]) |> Sym
+    #DSconst = DS()
+    if x[1] <= 0 || x[2] <= 0 || x[3] <= 0 || x[4] <= 0
+        print("$(x[1]),$(x[2]),$(x[3]),$(x[4])\n")
+        if x[1] <=0
+            x[1] = 0
+        end
+        if x[2] <=0
+            x[2] = 0
+        end
+        if x[3] <=0
+            x[3] = 0
+        end
+        if x[4] <=0
+            x[4] = 0
+        end
     end
-    DS = subs(DS, S, x[4]) |> float
-    return DS
+    Ds = subs(DSconst, A, x[1]) |> Sym
+    for i = 1:length(vars)
+        Ds = subs(Ds, vars[i], vals[i]) |> Sym
+    end
+    Ds = subs(Ds, S, x[4]) |> float
+    return Ds
 end
 
 # function to split paths into required form
@@ -345,6 +424,7 @@ function AP(thi, tau) # function to calculate action of a given path
     # make an initial d and f
     d = [ 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 ]
     h = [ 0.0; 0.0; 0.0; 0.0 ]
+    thiv = [ 0.0; 0.0; 0.0; 0.0 ]
     # need a step to massively disfavour paths that go negative
     negs = false
     for i = 1:N-1
@@ -355,7 +435,7 @@ function AP(thi, tau) # function to calculate action of a given path
         end
     end
     if negs == true
-        S = 1000000000000 # large number to disfavour paths that go negative
+        S = 10000000000000000000000000000000000000000000000000000 # large number to disfavour paths that go negative
     end
 
     for i = 1:N
@@ -364,28 +444,35 @@ function AP(thi, tau) # function to calculate action of a given path
             posB = (thi[N] + star[2])/2
             posW = (thi[(2*N - 1)] + star[3])/2
             posS = (thi[(3*N - 2)] + star[4])/2
+            thiv[1] = (thi[i] - star[1])/deltat
+            thiv[2] = (thi[N] - star[2])/deltat
+            thiv[3] = (thi[(2*N - 1)] - star[3])/deltat
+            thiv[4] = (thi[(3*N - 2)] - star[4])/deltat
         elseif i == N
             posA = (fin[1] + thi[N-1])/2
             posB = (fin[2] + thi[2*(N-1)])/2
             posW = (fin[3] + thi[3*(N-1)])/2
             posS = (fin[4] + thi[4*(N-1)])/2
+            thiv[1] = (fin[1] - thi[N-1])/deltat
+            thiv[2] = (fin[2] - thi[2*(N-1)])/deltat
+            thiv[3] = (fin[3] - thi[3*(N-1)])/deltat
+            thiv[4] = (fin[4] - thi[4*(N-1)])/deltat
         else
             posA = (thi[i] + thi[i-1])/2
             posB = (thi[i + (N-1)] + thi[i + (N-2)])/2
             posW = (thi[i + 2*(N-1)] + thi[i - 1 + 2*(N-1)])/2
             posS = (thi[i + 3*(N-1)] + thi[i - 1 + 3*(N-1)])/2
+            thiv[1] = (thi[i] - thi[i-1])/deltat
+            thiv[2] = (thi[i + (N-1)] - thi[i + (N-2)])/deltat
+            thiv[3] = (thi[i + 2*(N-1)] - thi[i - 1 + 2*(N-1)])/deltat
+            thiv[4] = (thi[i + 3*(N-1)] - thi[i - 1 + 3*(N-1)])/deltat
         end
         h = f!(h, [posA; posB; posW; posS])
         d = D!(d, [posA; posB; posW; posS])
         for j = 1:4
-            if i == 1
-                thiv = (thi[1 + (j-1)*(N-1)] - star[j])/deltat
-            elseif i == N
-                thiv = (fin[j] - thi[(N-1)*j])/deltat
-            else
-                thiv = (thi[i + (j-1)*(N-1)] - thi[i - 1 + (j-1)*(N-1)])/deltat
+            for l = 1:4
+                S += (deltat/2)*(thiv[j] - h[j])*d[j,l]*(thiv[l] - h[l])
             end
-            S += (0.5*deltat/d[j,j])*((thiv - h[j])^2)
         end
     end
     return(S)
@@ -467,9 +554,26 @@ end
 
 # function to actually perform the optimisation
 function optSt(nonfixed,tau)
-    results = optimize(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), nonfixed, LBFGS(),
-                        Optim.Options(g_tol = 0.0, f_tol = 0.0, x_tol = 0.0,
-                        iterations = 10000, allow_f_increases = true))
+    # lower = zeros((N-1)*4) # No species can drop below zero
+    # upper = Ne*ones((N-1)*4) # No species can have more than the total amount in the system
+    lower = zeros(4*(N-1))
+    upper = Ne*ones(4*(N-1))
+    initial_x = nonfixed
+    print(upper)
+    print("\n")
+    print("$(length(upper))\n")
+    print(nonfixed)
+    print("\n")
+    print("$(length(nonfixed))\n")
+    od = OnceDifferentiable(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), initial_x)
+    results = optimize(od, initial_x, lower, upper, Fminbox{LBFGS}())
+    # od = OnceDifferentiable(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), nonfixed) # Find the differentiatals
+    # results = optimize(od, nonfixed ,lower, upper, Fminbox{LBFGS}(),
+    #                     Optim.Options(g_tol = 0.0, f_tol = 0.0, x_tol = 0.0,
+    #                     iterations = 1000, allow_f_increases = true))
+    # results = optimize(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), nonfixed, LBFGS(),
+    #                     Optim.Options(g_tol = 0.0, f_tol = 0.0, x_tol = 0.0,
+    #                     iterations = 10000, allow_f_increases = true))
     # Get results out of optimiser
     result = Optim.minimizer(results)
     S = Optim.minimum(results)

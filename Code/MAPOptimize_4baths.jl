@@ -14,7 +14,7 @@ using SymPy
 import GR # Need this to stop world age plotting error?
 
 # Parameters
-const Ω = 300 # system size
+const Ω = 30#0 # system size
 const ϕ = 0.1 # ratio ϕ = q/k
 const K = 10
 const k = K*Ω # steady state for A=k/K=1
@@ -30,7 +30,7 @@ const F = 250 # removal rate
 const Ne = 12000 # number of elements in the system
 
 # Then set parameters of the optimization
-const N = 30#150 # number of segments optimised over
+const N = 30 #150 # number of segments optimised over
 const high2low = false # Set if starting from high state or low state
 
 # Global memory preallocation
@@ -476,7 +476,7 @@ function optSt(nonfixed,tau)
     initial_x = nonfixed
 
     od = OnceDifferentiable(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), initial_x)
-    results = optimize(od, initial_x, lower, upper, Fminbox{LBFGS}(), allow_f_increases = true)
+    results = optimize(od, initial_x, lower, upper, Fminbox{LBFGS}(), allow_f_increases = true, iterations = 10)
     # results = optimize(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), nonfixed, LBFGS(),
     #                     Optim.Options(g_tol = 0.0, f_tol = 0.0, x_tol = 0.0,
     #                     iterations = 10000, allow_f_increases = true))

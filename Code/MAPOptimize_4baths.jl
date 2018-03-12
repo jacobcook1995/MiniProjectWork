@@ -14,7 +14,7 @@ using SymPy
 import GR # Need this to stop world age plotting error?
 
 # Parameters
-const Ω = 30#0 # system size
+const Ω = 300 # system size
 const ϕ = 0.1 # ratio ϕ = q/k
 const K = 10
 const k = K*Ω # steady state for A=k/K=1
@@ -31,7 +31,7 @@ const Ne = 12000 # number of elements in the system
 
 # Then set parameters of the optimization
 const N = 30 #150 # number of segments optimised over
-const high2low = false # Set if starting from high state or low state
+const high2low = true # Set if starting from high state or low state
 
 # Global memory preallocation
 #const d = zeros(4,4) # function being a bit weird about this really
@@ -47,8 +47,6 @@ const thidot = zeros(4,N)
 
 # Inverse Diffusion matrix function in inverse form, this will become a global constant matrix
 function Dmin1()
-    # Locally overwrites global constants to be variables
-    r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
     A, B, W, S = symbols("A,B,W,S")
     # Make a symbolic version of the matrix, needs no input in this case
     e = Array{Sym}(4,4)
@@ -70,8 +68,6 @@ end
 
 # Inverse Diffusion matrix differentiated in A, this will become a global constant matix
 function DA()
-    # Locally overwrites global constants to be variables
-    r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
     A, B, W, S = symbols("A,B,W,S")
     # Make a symbolic version of the matrix, needs no input in this case
     e = Array{Sym}(4,4)
@@ -94,8 +90,6 @@ end
 
 # Inverse Diffusion matrix differentiated in B, this will become a global constant matix
 function DB()
-    # Locally overwrites global constants to be variables
-    r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
     A, B, W, S = symbols("A,B,W,S")
     # Make a symbolic version of the matrix, needs no input in this case
     e = Array{Sym}(4,4)
@@ -119,7 +113,6 @@ end
 # Inverse Diffusion matrix differentiated in W, this will become a global constant matix
 function DW()
     # Locally overwrites global constants to be variables
-    r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
     A, B, W, S = symbols("A,B,W,S")
     # Make a symbolic version of the matrix, needs no input in this case
     e = Array{Sym}(4,4)
@@ -143,7 +136,6 @@ end
 # Inverse Diffusion matrix differentiated in S, this will become a global constant matix
 function DS()
     # Locally overwrites global constants to be variables
-    r, f, q, qmin, Q, Qmin, k, kmin, K, Kmin, F = symbols("r,f,q,qmin,Q,Qmin,k,kmin,K,Kmin,F")
     A, B, W, S = symbols("A,B,W,S")
     # Make a symbolic version of the matrix, needs no input in this case
     e = Array{Sym}(4,4)
@@ -209,70 +201,46 @@ end
 # Inverse Diffusion matrix containing the noise on each term (squared)
 function D!(D, x)
     A, B, W, S = symbols("A,B,W,S")
-    K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
-    vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
-    vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
-    #Dminconst = Dmin1()
     D = subs(Dminconst, A, x[1]) |> Sym
-    for i = 1:length(vars)
-        D = subs(D, vars[i], vals[i]) |> Sym
-    end
+    D = subs(D, B, x[2]) |> Sym
+    D = subs(D, W, x[4]) |> Sym
     D = subs(D, S, x[4]) |> float
     return D
 end
 
+# Literally just sub in the 4 variables now
 function DA!(Da, x)
     A, B, W, S = symbols("A,B,W,S")
-    K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
-    vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
-    vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
-    #DAconst = DA()
     Da = subs(DAconst, A, x[1]) |> Sym
-    for i = 1:length(vars)
-        Da = subs(Da, vars[i], vals[i]) |> Sym
-    end
+    Da = subs(Da, B, x[2]) |> Sym
+    Da = subs(Da, W, x[3]) |> Sym
     Da = subs(Da, S, x[4]) |> float
     return Da
 end
 
 function DB!(Db, x)
     A, B, W, S = symbols("A,B,W,S")
-    K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
-    vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
-    vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
-    #DBconst = DB()
     Db = subs(DBconst, A, x[1]) |> Sym
-    for i = 1:length(vars)
-        Db = subs(Db, vars[i], vals[i]) |> Sym
-    end
+    Db = subs(Db, B, x[2]) |> Sym
+    Db = subs(Db, W, x[3]) |> Sym
     Db = subs(Db, S, x[4]) |> float
     return Db
 end
 
 function DW!(Dw, x)
     A, B, W, S = symbols("A,B,W,S")
-    K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
-    vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
-    vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
-    #DWconst = DW()
     Dw = subs(DWconst, A, x[1]) |> Sym
-    for i = 1:length(vars)
-        Dw = subs(Dw, vars[i], vals[i]) |> Sym
-    end
+    Dw = subs(Dw, B, x[2]) |> Sym
+    Dw = subs(Dw, W, x[3]) |> Sym
     Dw = subs(Dw, S, x[4]) |> float
     return Dw
 end
 
 function DS!(Ds, x)
     A, B, W, S = symbols("A,B,W,S")
-    K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1 = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
-    vars = [ K1, k1, Q1, q1, kmin1, Kmin1, qmin1, Qmin1, f1, r1, F1, B, W ]
-    vals = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, x[2], x[3] ]
-    #DSconst = DS()
     Ds = subs(DSconst, A, x[1]) |> Sym
-    for i = 1:length(vars)
-        Ds = subs(Ds, vars[i], vals[i]) |> Sym
-    end
+    Ds = subs(Ds, B, x[2]) |> Sym
+    Ds = subs(Ds, W, x[3]) |> Sym
     Ds = subs(Ds, S, x[4]) |> float
     return Ds
 end
@@ -474,9 +442,8 @@ function optSt(nonfixed,tau)
     lower = zeros(4*(N-1)) # No species can drop below zero
     upper = Ne*ones(4*(N-1)) # No species can have more than the total amount in the system
     initial_x = nonfixed
-
     od = OnceDifferentiable(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), initial_x)
-    results = optimize(od, initial_x, lower, upper, Fminbox{LBFGS}(), allow_f_increases = true, iterations = 10)
+    results = optimize(od, initial_x, lower, upper, Fminbox{LBFGS}(), allow_f_increases = true, iterations = 2)
     # results = optimize(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), nonfixed, LBFGS(),
     #                     Optim.Options(g_tol = 0.0, f_tol = 0.0, x_tol = 0.0,
     #                     iterations = 10000, allow_f_increases = true))
@@ -615,6 +582,7 @@ function main()
     pathmin, S = optSt2(50,1)
     print("$(S)\n")
     plot(pathmin[:,1],pathmin[:,2])
+    savefig("../Results/Entropy$(high2low).png")
 end
 
 @time main()

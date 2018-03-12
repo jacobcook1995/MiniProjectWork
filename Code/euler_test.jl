@@ -29,10 +29,10 @@ function g1(du, u, p, t)
 end
 
 function main()
-    u0 = [10.0; 10.0]
+    u₀ = [10.0; 10.0]
     dt = (1/2)^(10)
     tspan = (0.0,50.0)
-    prob = SDEProblem(f1, g1, u0, tspan) # SDEProblem
+    prob = SDEProblem(f1, g1, u₀, tspan) # SDEProblem
     sol = solve(prob, EM(), dt = dt)
     gr()
     plot(sol)

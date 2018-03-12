@@ -4,39 +4,113 @@
 # matlab script Robert wrote
 using DifferentialEquations
 using Plots
+using Roots
 import GR
 
-# numerically calculates toggle switch
-const Ω = 10 # volume
-const k = 100
-const K = k/Ω
-const q = 10 #  asymmetric switches - second switch slower but same steady states.
-const Q = q/Ω
+# Parameters
+const Ω = 300 # system size
+const ϕ = 0.1 # ratio ϕ = q/k
+const K = 10
+const k = K*Ω # steady state for A=k/K=1
+const Q = K*ϕ
+const q = Q*Ω
+const kmin = 10.0^-20 # set all too 10.0^-20 for now
+const Kmin = 10.0^-20
+const qmin = 10.0^-20
+const Qmin = 10.0^-20
+const f = 1000/(Ω^2) # Promoter switching
+const r = 10
+const F = 300 # removal rate
+const Ne = 12000 # number of elements in the system
+const high2low = true
 
-const f = 0.01 # binding/unbinding
-const r = 0.01
-const a = 2 # Hill coefficient
-const b = 2
+# funtion to find the zeros of the system should find 3 zeros ss1, ss2 and the saddle point
+function Zeros()
+    g(x) = F./(1 + ((r + f*x.^2)./(ϕ*r + (f/ϕ)*((F/K - x).^2)))) + K.*x - F
+    three = false
+    n = 0
+    As = []
+    while three == false
+        As = fzeros(g, 0, 2*F/K, order = 1)
+        n = length(As)
+        if n == 3
+            three = true
+        end
+    end
+    Bs = zeros(n)
+    Ss = zeros(n)
+    Ws = zeros(n)
+    for i = 1:n
+        Bs[i] = (1/ϕ)*((F/K) - As[i])
+        Ss[i] = F/(k*r*(1/(r + f*Bs[i]^2) + ϕ/(r + f*As[i]^2)))
+        Ws[i] = Ne - As[i] - Bs[i] - Ss[i]
+    end
+    sad = [ As[2]; Bs[2]; Ws[2]; Ss[2] ]
+    if high2low == true
+        ss1 = [ As[1]; Bs[1]; Ws[1]; Ss[1] ]
+        ss2 = [ As[3]; Bs[3]; Ws[3]; Ss[3] ]
+    else
+        ss1 = [ As[3]; Bs[3]; Ws[3]; Ss[3] ]
+        ss2 = [ As[1]; Bs[1]; Ws[1]; Ss[1] ]
+    end
+    print(ss1)
+    print("\n")
+    print(sad)
+    print("\n")
+    print(ss2)
+    print("\n")
+    return (ss1,sad,ss2)
+end
 
 function f1(du, u, p, t)
-    du[1] = k*r/(r + f*u[2]^a) - K*u[1]
-    du[2] = q*r/(r + f*u[1]^b) - Q*u[2]
+    du[1] = k*u[4]*r/(r + f*u[2]^2) - (K + kmin)*u[1] + Kmin*u[3]
+    du[2] = q*u[4]*r/(r + f*u[1]^2) - (Q + qmin)*u[2] + Qmin*u[3]
+    du[3] = K*(u[1] + ϕ*u[2]) - Kmin*(1 + ϕ)*u[3] - F
+    du[4] = -k*u[4]*r/(r + f*u[2]^2) + kmin*u[1] - q*u[4]*r/(r + f*u[1]^2) + qmin*u[2] + F
 end
 
 function g1(du, u, p, t)
-    du[1] = sqrt(abs((q*r/(r + f*u[1]^b) + Q*u[2]))/Ω)
-    du[2] = sqrt(abs((k*r/(r + f*u[2]^a) + K*u[1]))/Ω)
+    # Need to define a 4 by four matrix as I have 4 weiner processes and 4 dependant variables
+    du[1,2:4] = du[2,1] = du[2,3:4] = du[3,4] = du[4,3] = 0
+    du[1,1] = sqrt(abs(k*u[4]*r/(r + f*u[2]^2) + (K + kmin)*u[1] + Kmin*u[3])/Ω)
+    du[2,2] = sqrt(abs(q*u[4]*r/(r + f*u[1]^2) + (Q + qmin)*u[2] + Qmin*u[3])/Ω)
+    du[3,3] = sqrt(abs(F)/Ω)
+    du[4,4] = sqrt(abs(F)/Ω)
+    du[3,1] = -sqrt(abs(K*u[1] + Kmin*u[3])/Ω)
+    du[3,2] = -sqrt(abs(Q*u[2] + Qmin*u[3])/Ω)
+    du[4,1] = -sqrt(abs(k*u[4]*r/(r + f*u[2]^2) + kmin*u[1])/Ω)
+    du[4,2] = -sqrt(abs(q*u[4]*r/(r + f*u[1]^2) + qmin*u[2])/Ω)
 end
 
 function main()
-    u₀ = [10.0; 10.0]
-    dt = (1/2)^(10)
-    tspan = (0.0,50.0)
-    prob = SDEProblem(f1, g1, u₀, tspan) # SDEProblem
-    sol = solve(prob, EM(), dt = dt)
-    gr()
-    plot(sol)
-    savefig("../Results/Graph.png")
+    ss1, sad, ss2 = Zeros()
+    δ = [ 0.0]
+    for i = 1:length(δ)
+        l = m = n = 0
+        for j = 1:10000
+            A = ss1[1] + δ[i]
+            B = ss1[2] + δ[i]
+            W = ss1[3] + δ[i]
+            S = Ne - A - B - W
+            u₀ = [ A; B; W; S ]
+            dt = (1/2)^(10)
+            tspan = (0.0,50.0)
+            prob = SDEProblem(f1, g1, u₀, tspan, noise_rate_prototype = zeros(4,4)) # SDEProblem
+            sol = solve(prob, EM(), dt = dt)
+            if sol[1,end] > 26
+                l += 1
+            elseif sol[1,end] < 5
+                m += 1
+            else
+                print("$(sol[:,end])\n")
+                plot([sol[1,:], sol[2,:], sol[4,:]])
+                savefig("../Results/TransitoryGraph$n.png")
+                n += 1
+            end
+        end
+        print("$m high A's, $l high B's, $n transitory states\n")
+    end
+
 end
 
 # run the main function

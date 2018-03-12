@@ -38,7 +38,7 @@ const high2low = true # Set if starting from high state or low state
 #const h = zeros(4)
 const thiv = zeros(4) # like can get this one to work but not the other two?
 
-# probably best to pre-calculate the all the f vectors and D matrices
+# probably best to preallocate the all the f vectors and D matrices
 const fu = zeros(4,N)
 const fp = zeros(4,N,4)
 const dg = zeros(4,4,N)
@@ -283,6 +283,7 @@ function Pathmerge(nonfixed)
     path = hcat(apath,bpath,wpath,spath)
     return(path)
 end
+
 # funtion to find the zeros of the system should find 3 zeros ss1, ss2 and the saddle point
 function Zeros()
     g(x) = F./(1 + ((r + f*x.^2)./(ϕ*r + (f/ϕ)*((F/K - x).^2)))) + K.*x - F

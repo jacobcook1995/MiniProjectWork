@@ -5,6 +5,7 @@
 using DifferentialEquations
 using Plots
 using Roots
+using SymPy
 import GR
 
 # Parameters
@@ -23,6 +24,37 @@ const r = 10
 const F = 300 # removal rate
 const Ne = 12000 # number of elements in the system
 const high2low = true
+
+# Diffusion matrix function in inverse form, this will become a global constant matrix
+function Dmin1()
+    A, B, W, S = symbols("A,B,W,S")
+    # Make a symbolic version of the matrix, needs no input in this case
+    e = Array{Sym}(4,4)
+    e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
+    e[1,1] = sqrt(k*S*r/(r + f*B^2) + K*A + kmin*A + Kmin*W) #gA
+    e[2,2] = sqrt(q*S*r/(r + f*A^2) + Q*B + qmin*B + Qmin*W) #gB
+    e[3,1] = -sqrt(K*A + Kmin*W) #-gWA
+    e[3,2] = -sqrt(Q*B + Qmin*W) #-gWB
+    e[3,3] = sqrt(F) #gW
+    e[4,1] = -sqrt(k*S*r/(r + f*B^2) + kmin*A) #-gSA
+    e[4,2] = -sqrt(q*S*r/(r + f*A^2) + qmin*B) #-gSB
+    e[4,4] = sqrt(F) #gS
+    # Now do the transformations required
+    eT = transpose(e)
+    D = e*eT
+    Dmin = inv(D)
+    return(Dmin)
+end
+
+# Inverse Diffusion matrix containing the noise on each term (squared)
+function D!(D, x)
+    A, B, W, S = symbols("A,B,W,S")
+    D = subs(Dminconst, A, x[1]) |> Sym
+    D = subs(D, B, x[2]) |> Sym
+    D = subs(D, W, x[4]) |> Sym
+    D = subs(D, S, x[4]) |> float
+    return D
+end
 
 # funtion to find the zeros of the system should find 3 zeros ss1, ss2 and the saddle point
 function Zeros()
@@ -84,10 +116,11 @@ end
 
 function main()
     ss1, sad, ss2 = Zeros()
-    δ = [ 0.0]
+    δ = [ 0.0 ]
+    D = zeros(4,4)
     for i = 1:length(δ)
         l = m = n = 0
-        for j = 1:10000
+        for j = 1:5
             A = ss1[1] + δ[i]
             B = ss1[2] + δ[i]
             W = ss1[3] + δ[i]
@@ -96,15 +129,17 @@ function main()
             dt = (1/2)^(10)
             tspan = (0.0,50.0)
             prob = SDEProblem(f1, g1, u₀, tspan, noise_rate_prototype = zeros(4,4)) # SDEProblem
-            sol = solve(prob, EM(), dt = dt)
-            if sol[1,end] > 26
+            sol = DifferentialEquations.solve(prob, EM(), dt = dt) # To avoid namespace conflict with SymPy
+            D = D!(D, [sol[1,end], sol[2,end], sol[3,end], sol[4,end]])
+            print("$(D)\n")
+            if sol[2,end] > 250
                 l += 1
-            elseif sol[1,end] < 5
+            elseif sol[1,end] < 30
                 m += 1
             else
                 print("$(sol[:,end])\n")
                 plot([sol[1,:], sol[2,:], sol[4,:]])
-                savefig("../Results/TransitoryGraph$n.png")
+                savefig("../Results/TransitoryGraph$(n).png")
                 n += 1
             end
         end
@@ -112,6 +147,10 @@ function main()
     end
 
 end
+
+# Symbolic matrix set as global constant
+D = Dmin1()
+const Dminconst = D
 
 # run the main function
 @time main()

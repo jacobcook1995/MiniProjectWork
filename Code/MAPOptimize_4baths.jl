@@ -45,7 +45,7 @@ const dg = zeros(4,4,N)
 const dp = zeros(4,4,N,4)
 const thidot = zeros(4,N)
 
-# Inverse Diffusion matrix function in inverse form, this will become a global constant matrix
+# Diffusion matrix function in inverse form, this will become a global constant matrix
 function Dmin1()
     A, B, W, S = symbols("A,B,W,S")
     # Make a symbolic version of the matrix, needs no input in this case

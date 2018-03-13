@@ -56,6 +56,15 @@ function D!(D, x)
     return D
 end
 
+# x[1] = A, x[2] = B, x[3] = W, x[4] = S
+function f!(F1, x)
+    F1[1] = k*x[4]*r/(r + f*x[2]*x[2]) - (K + kmin)*x[1] + Kmin*x[3]
+    F1[2] = q*x[4]*r/(r + f*x[1]*x[1]) - (Q + qmin)*x[2] + Qmin*x[3]
+    F1[3] = K*(x[1] + ϕ*x[2]) - Kmin*(1 + ϕ)*x[3] - F
+    F1[4] = -k*x[4]*r/(r + f*x[2]*x[2]) + kmin*x[1] - q*x[4]*r/(r + f*x[1]*x[1]) + qmin*x[2] + F
+    return F1
+end
+
 # funtion to find the zeros of the system should find 3 zeros ss1, ss2 and the saddle point
 function Zeros()
     g(x) = F./(1 + ((r + f*x.^2)./(ϕ*r + (f/ϕ)*((F/K - x).^2)))) + K.*x - F
@@ -116,35 +125,55 @@ end
 
 function main()
     ss1, sad, ss2 = Zeros()
-    δ = [ 0.0 ]
+    Dt = zeros(4,4)
+    ht = zeros(4)
     D = zeros(4,4)
-    for i = 1:length(δ)
-        l = m = n = 0
-        for j = 1:5
-            A = ss1[1] + δ[i]
-            B = ss1[2] + δ[i]
-            W = ss1[3] + δ[i]
-            S = Ne - A - B - W
-            u₀ = [ A; B; W; S ]
-            dt = (1/2)^(10)
-            tspan = (0.0,50.0)
-            prob = SDEProblem(f1, g1, u₀, tspan, noise_rate_prototype = zeros(4,4)) # SDEProblem
-            sol = DifferentialEquations.solve(prob, EM(), dt = dt) # To avoid namespace conflict with SymPy
-            D = D!(D, [sol[1,end], sol[2,end], sol[3,end], sol[4,end]])
-            print("$(D)\n")
-            if sol[2,end] > 250
-                l += 1
-            elseif sol[1,end] < 30
-                m += 1
-            else
-                print("$(sol[:,end])\n")
-                plot([sol[1,:], sol[2,:], sol[4,:]])
-                savefig("../Results/TransitoryGraph$(n).png")
-                n += 1
+    h = zeros(4)
+    thiv = zeros(4)
+    states = [ ss1 ]
+
+    # first component gives states, third component gives i, fourth gives j,
+    A = zeros(2,4,4,4) # second gives component [KE, PE, EP1, EP2]
+    for i = 1:length(states)
+        u₀ = states[i]
+        dt = (1/2)^(10)
+        tspan = (0.0,50.0)
+        prob = SDEProblem(f1, g1, u₀, tspan, noise_rate_prototype = zeros(4,4)) # SDEProblem
+        sol = DifferentialEquations.solve(prob, EM(), dt = dt) # To avoid namespace conflict with SymPy
+        for j = 1:5000
+            Dt = D!(Dt, sol[:,end+1-j])
+            ht = f!(ht, sol[:,end+1-j])
+            thivt = (sol[:,end+1-j] - sol[:,end-j])/(dt)
+            D += Dt
+            h += ht
+            thiv += thivt
+        end
+        plot([sol[1,:],sol[2,:]])
+        savefig("../Results/Graph$(i).png")
+        for j = 1:4
+            for l = 1:4
+                for m = 1:4
+                    if j == 1
+                        A[i,j,l,m] = thiv[l]*D[l,m]*thiv[m]
+                    elseif j == 2
+                        A[i,j,l,m] = h[l]*D[l,m]*h[m]
+                    elseif j == 3
+                        A[i,j,l,m] = -h[l]*D[l,m]*thiv[m]
+                    else
+                        A[i,j,l,m] = -thiv[l]*D[l,m]*h[m]
+                    end
+                end
             end
         end
-        print("$m high A's, $l high B's, $n transitory states\n")
     end
+print(A[1,1,:,:])
+print("\n")
+print(A[1,2,:,:])
+print("\n")
+print(A[1,3,:,:])
+print("\n")
+print(A[1,4,:,:])
+print("\n")
 
 end
 

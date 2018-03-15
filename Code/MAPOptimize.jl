@@ -277,10 +277,8 @@ function optSt(nonfixed,tau)
     upper = 1000.0*ones(2*(N-1)) # No species can have more than the total amount in the system
     initial_x = nonfixed
     od = OnceDifferentiable(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), initial_x)
-    results = optimize(od, initial_x, lower, upper, Fminbox{LBFGS}(), allow_f_increases = true, iterations = 10000)
-    # results = optimize(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), nonfixed, LBFGS(),
-    #                    Optim.Options(g_tol = 0.0, f_tol = 0.0, x_tol = 0.0,
-    #                    iterations = 10000, allow_f_increases = true))
+    results = optimize(od, initial_x, lower, upper, Fminbox{LBFGS}(), allow_f_increases = true,
+                        iterations = 10000, g_tol = 0.0, f_tol = 0.0, x_tol = 0.0)
     # Get results out of optimiser
     result = Optim.minimizer(results)
     S = Optim.minimum(results)
@@ -305,7 +303,7 @@ function linesear(tau,noit)
     α = 4
     β = 0.1
     while true
-        h = 1/1000
+        h = 1/10000
         # first proper step of the algorithm is to calculate the direction vector
         _, f = optSt2(t,noit)
         _, fh = optSt2(t+h,noit)
@@ -334,7 +332,7 @@ function linesear(tau,noit)
                 t1 = t - α
             end
             _, fa = optSt2(t1,noit)
-            if fa <= f - α*β*d # commented out as it seems to be stopping the cycle from finishing
+            if fa <= f - α*β*d
                 t = t1
                 appstep = true
                 print("Still making progress. τ = $(t)\n")
@@ -492,6 +490,6 @@ function main()
    print("$S\n")
 end
 
-@time run(100,5)
+@time run(22.4625,5)
 #@time test()
 #@time main()

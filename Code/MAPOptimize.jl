@@ -21,7 +21,6 @@ const kmin = 10.0^-20 # set all too 10.0^-20 for now
 const Kmin = 10.0^-20
 const qmin = 10.0^-20
 const Qmin = 10.0^-20
-const higherterm = true # Bool to determine if higher terms should be included
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
 const high2low = true # Set if starting from high state or low state
@@ -175,9 +174,6 @@ function AP(thi, tau) # function to calculate action of a given path
             end
         end
     end
-    if negs == true
-        S = 1000000000000 # large number to disfavour path
-    end
 
     for i = 1:N
         if i == 1
@@ -201,18 +197,6 @@ function AP(thi, tau) # function to calculate action of a given path
                 thiv = (thi[i+(j-1)*(N-1)] - thi[i-1+(j-1)*(N-1)])/deltat
             end
             S += (0.5*deltat/d[j,j])*((thiv-h[j])^2)
-            if higherterm == true
-                if j == 1
-                    S -= (0.5*deltat*K/Ω)
-                    S += 0.25*deltat*K*(thiv + K*posA - k*r/(r + f*posB^2))/(Ω*K*posA + k*r/(r + f*posB^2))
-                    S += (K^2)*deltat/(32*(Ω^2)*(k*r/(r + f*posB^2) + K*posA))
-                else
-                    S -= (0.5*deltat*Q/Ω)
-                    S += 0.25*deltat*Q*(thiv + Q*posB - q*r/(r + f*posA^2))/(Ω*Q*posB + q*r/(r + f*posA^2))
-                    S += (Q^2)*deltat/(32*(Ω^2)*(q*r/(r + f*posA^2) + Q*posB))
-                end
-            end
-
         end
     end
     return(S)
@@ -289,9 +273,14 @@ end
 
 # function to actually perform the optimisation
 function optSt(nonfixed,tau)
-    results = optimize(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), nonfixed, LBFGS(),
-                       Optim.Options(g_tol = 0.0, f_tol = 0.0, x_tol = 0.0,
-                       iterations = 10000, allow_f_increases = true))
+    lower = zeros(2*(N-1)) # No species can drop below zero
+    upper = 1000.0*ones(2*(N-1)) # No species can have more than the total amount in the system
+    initial_x = nonfixed
+    od = OnceDifferentiable(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), initial_x)
+    results = optimize(od, initial_x, lower, upper, Fminbox{LBFGS}(), allow_f_increases = true, iterations = 10000)
+    # results = optimize(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), nonfixed, LBFGS(),
+    #                    Optim.Options(g_tol = 0.0, f_tol = 0.0, x_tol = 0.0,
+    #                    iterations = 10000, allow_f_increases = true))
     # Get results out of optimiser
     result = Optim.minimizer(results)
     S = Optim.minimum(results)
@@ -455,7 +444,7 @@ function run(tau,noit)
     ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red, leg = false)
     annotate!(inflex[1]+3, minimum(ents)+0.01, text("Action = $(act)\n", :left, font(5, "Courier")))
     plot(pone, ptwo, layout = (1,2))
-    savefig("../Results/Entropy$(high2low)$(higherterm).png")
+    savefig("../Results/Entropy$(high2low).png")
 
 end
 

@@ -6,6 +6,7 @@
 # Putting the relevant imports in
 using Plots
 using Roots
+using NLsolve
 import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
@@ -25,6 +26,8 @@ const high2low = true # Set if starting from high state or low state
 # Then set parameters of the optimization
 const NM = 150 # number of segments to discretise MAP onto
 const NG = 150 # number of segments to optimize gMAP over
+const Δτ = 0.01 # I've made this choice arbitarily, not sure if this is a sensible choice
+const Δα = 1/NG
 
 # A function to find the crossing points of the nullclines so they can be used
 # as start, end and saddle points
@@ -54,7 +57,7 @@ end
 
 # Function for the first differential of the hamiltonian in θ
 # x[1,1] = A, x[1,2] = B, x[2,1] = θ₁, x[2,2] = θ₂
-function Hθ!(Hθ, x)
+function Hθ!(Hθ::AbstractArray, x::AbstractArray)
     Hθ[1] = k*r/(r + f*x[1,2]^2) - K*x[1,1] + x[2,1]*(k*r/(r + f*x[1,2]^2) + K*x[1,1])
     Hθ[2] = q*r/(r + f*x[1,1]^2) - Q*x[1,2] + x[2,2]*(q*r/(r + f*x[1,1]^2) + Q*x[1,2])
     return(Hθ)
@@ -62,7 +65,7 @@ end
 
 # Function for the second differential of the hamiltonian in θ
 # x[1,1] = A, x[1,2] = B, x[2,1] = θ₁, x[2,2] = θ₂
-function Hθθ!(Hθθ, x)
+function Hθθ!(Hθθ::AbstractArray, x::AbstractArray)
     Hθθ[1,1] = k*r/(r + f*x[1,2]^2) + K*x[1,1]
     Hθθ[2,2] = q*r/(r + f*x[1,1]^2) + Q*x[1,2]
     Hθθ[1,2] = Hθθ[2,1] = 0
@@ -71,7 +74,7 @@ end
 
 # Function for the first differential of the hamiltonian in x
 # x[1,1] = A, x[1,2] = B, x[2,1] = θ₁, x[2,2] = θ₂
-function Hx!(Hx, x)
+function Hx!(Hx::AbstractArray, x::AbstractArray)
     Hx[1] = K*x[2,1]*((x[2,1]/2) - 1) - q*r*f*x[1,1]*x[2,2]*(2 + x[2,2])/((r + f*x[1,1]^2)^2)
     Hx[2] = Q*x[2,2]*((x[2,2]/2) - 1) - k*r*f*x[1,2]*x[2,1]*(2 + x[2,1])/((r + f*x[1,2]^2)^2)
     return(Hx)
@@ -79,7 +82,7 @@ end
 
 # Function for the second differential of the hamiltonian in θ then x
 # x[1,1] = A, x[1,2] = B, x[2,1] = θ₁, x[2,2] = θ₂
-function Hθx!(Hθx, x)
+function Hθx!(Hθx::AbstractArray, x::AbstractArray)
     Hθx[1,1] = K*(x[2,1] - 1)
     Hθx[1,2] = -2*f*x[1,2]*k*r*(1+x[2,1])/((r + f*x[1,2]^2)^2)
     Hθx[2,1] = -2*f*x[1,1]*q*r*(1+x[2,2])/((r + f*x[1,1]^2)^2)
@@ -89,17 +92,93 @@ end
 
 # function to find λ for a particular vector x and y
 # x[1] = A, x[2] = B
-function λ(x,y)
-    λ = sqrt((K*x[1] - k*r/(r + f*x[2]^2))*(K*x[1] + k*r/(r + f*x[2]^2)) + (Q*x[2] - q*r/(r + f*x[1]^2))*(Q*x[2] + q*r/(r + f*x[1]^2))
+function λ(x::AbstractVector,y::AbstractVector)
+    λ = sqrt((K*x[1] - k*r/(r + f*x[2]^2))*(K*x[1] + k*r/(r + f*x[2]^2)) + (Q*x[2] - q*r/(r + f*x[1]^2))*(Q*x[2] + q*r/(r + f*x[1]^2)))
     λ /= sqrt((y[1]^2)*(K*x[1] + k*r/(r + f*x[2]^2)) + (y[2]^2)*(Q*x[2] + q*r/(r + f*x[1]^2)))
     return(λ)
 end
 
 # function to find ϑ for a particular vector x, y
 # x[1] = A, x[2] = B
-function ϑ(ϑ,x,y)
-    λ = λ(x,y)
+function ϑ!(ϑ::AbstractArray,x::AbstractVector,y::AbstractVector,λ=nothing)
+    # if a lamda isn't provided by the user calculate one, otherwise skip this step to save computations
+    if λ == nothing
+        λ = λ(x,y)
+    end
     ϑ[1] = (λ*y[1] - k*r/(r + f*x[2]^2) + K*x[1])/(k*r/(r + f*x[2]^2) + K*x[1])
     ϑ[2] = (λ*y[2] - q*r/(r + f*x[1]^2) + Q*x[2])/(q*r/(r + f*x[1]^2) + Q*x[2])
     return(ϑ)
 end
+
+# function to generate the variables need to solve the system of linear equations
+# x[:,1] = A[:], x[:,2] = B
+function genvars(x::AbstractArray)
+    # calculate velocities
+    xprim = fill(NaN, NG+1, 2)
+    for i = 2:NG
+        for j = 1:2
+            xprim[i,j] = (x[i+1,j] - x[i-1,j])/(2/NG)
+        end
+    end
+    # now find λs
+    λs = fill(NaN, NG+1, 2)
+    for i = 2:NG
+        λs[i] = λ(x[i,:],xprim[i,:])
+    end
+    # extra steps to get λs for the fixed start and end points
+    λs[1] = 3*λs[2] - 3*λs[3] + λs[4]
+    λs[NG+1] = 3*λs[NG] - 3*λs[NG-1] + λs[NG-2]
+    # now find ϑs
+    ϑs = fill(NaN, NG+1, 2)
+    for i = 2:NG
+        ϑs[i,:] = ϑ!(ϑs[i,:],x[i,:],xprim[i,:],λs[i])
+    end
+    # Now find λprim
+    λprim = fill(NaN, NG+1)
+    for i = 2:NG
+        λprim[i] = (λs[i+1] - λs[i-1])/(2/NG)
+    end
+
+    return(x,xprim,λs,ϑs,λprim)
+end
+
+# function to be solved by NLsolve
+function f!(F::AbstractArray, x::AbstractArray, C::AbstractArray, K::AbstractVector, xi::AbstractArray)
+    F[1,1] = x[1,1] - xi[1,1]
+    F[1,2] = x[1,2] - xi[1,2]
+    for i = 2:NG
+        for j = 1:2
+            F[i,j] = x[i,j] - C[i,j]*(x[i+1,j] - 2*x[i,j] + x[i-1,j]) - K[i,j]
+        end
+    end
+    F[NG+1,1] = x[NG+1,1] - xi[2,1]
+    F[NG+1,2] = x[NG+1,2] - xi[2,2]
+    return(F)
+end
+
+# function to solve the system of linear equations
+function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector)
+    # Make array to store fixed points
+    xi = zeros(2,2)
+    xi[1,:] = x[1,:]
+    xi[2,:] = x[NG+1,:]
+    
+    return(newx)
+end
+
+# A lot of work to do on this function
+function main()
+    # this needs to be replaced by a sensible dicretised initial path
+    # Should be done using a reusable function
+    ############################################################################
+    a = collect(linspace(100,10000,NG+1))
+    b = collect(linspace(100,10000,NG+1))
+    x = hcat(a,b)
+    ############################################################################
+    # eventually should have a loop here to do this iterativly
+    x, xprim, λs, ϑs, λprim = genvars(x)
+    newx = linsys(x,xprim,λs,ϑs,λprim)
+
+end
+
+@time main()

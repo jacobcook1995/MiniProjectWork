@@ -7,6 +7,7 @@
 using Plots
 using Roots
 using NLsolve
+using Interpolations
 import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
@@ -121,7 +122,7 @@ function genvars(x::AbstractArray)
         end
     end
     # now find λs
-    λs = fill(NaN, NG+1, 2)
+    λs = fill(NaN, NG+1)
     for i = 2:NG
         λs[i] = λ(x[i,:],xprim[i,:])
     end
@@ -143,12 +144,12 @@ function genvars(x::AbstractArray)
 end
 
 # function to be solved by NLsolve
-function g!(F::AbstractArray, x::AbstractArray, C::AbstractArray, K::AbstractVector, xi::AbstractArray)
+function g!(F::AbstractArray, x::AbstractArray, C::AbstractVector, K::AbstractArray, xi::AbstractArray)
     F[1,1] = x[1,1] - xi[1,1]
     F[1,2] = x[1,2] - xi[1,2]
     for i = 2:NG
         for j = 1:2
-            F[i,j] = x[i,j] - C[i,j]*(x[i+1,j] - 2*x[i,j] + x[i-1,j]) - K[i,j]
+            F[i,j] = x[i,j] - C[i]*(x[i+1,j] - 2*x[i,j] + x[i-1,j]) - K[i,j]
         end
     end
     F[NG+1,1] = x[NG+1,1] - xi[2,1]
@@ -162,6 +163,7 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     Hx = zeros(2)
     Hθθ = zeros(2,2)
     Hθx = zeros(2,2)
+    point = zeros(2,2)
     # Make array to store fixed points
     xi = fill(NaN, 2, 2)
     xi[1,:] = x[1,:]
@@ -169,13 +171,14 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     # Make vector to store constant terms C
     C = fill(NaN, NG+1)
     for i = 2:NG
-        C[i] = Δτ*(λs[i]^2)/(1/(N^2))
+        C[i] = Δτ*(λs[i]^2)/(1/(NG^2))
     end
     # Make array to store constant vector K's
     K = fill(NaN, NG+1, 2)
     for i = 2:NG
         # Find differential Hamiltonians at specific point
-        point = [ x[i,:]; xprim[i,:] ]
+        point[1,:] = x[i,:]
+        point[2,:] = xprim[i,:]
         Hx = Hx!(Hx,point)
         Hθθ = Hθθ!(Hθθ,point)
         Hθx = Hθx!(Hθx,point)
@@ -185,7 +188,7 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
             K[i,j] -= Δτ*λs[i]*(Hθx[j,1]*xprim[i,1] + Hθx[j,2]*xprim[i,2])
             # Need to be cleverer when I write in 4 dimensions
             K[i,j] -= Δτ*(Hθθ[j,1]*Hx[1] + Hθθ[j,2]*Hx[2])
-            K[i,j] -= Δτ*λs[i]*λprim[i,j]*xprim[i,j]
+            K[i,j] -= Δτ*λs[i]*λprim[i]*xprim[i,j]
         end
     end
 
@@ -198,19 +201,40 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     return(newx)
 end
 
+# function to discretise a path in a way that makes it compatable with the algorithm
+function discretise(x)
+    # need to interpolate the data from x onto disx, preserving |x'| = const,
+    # i.e equal distance between points
+    itp = interpolate(x, options...) # But what options?
+    # Then can use this iterpolation object to obtain the disx I require
+
+    return(disx)
+end
+
 # A lot of work to do on this function
 function main()
-    # this needs to be replaced by a sensible dicretised initial path
-    # Should be done using a reusable function
-    ############################################################################
-    a = collect(linspace(100,10000,NG+1))
-    b = collect(linspace(100,10000,NG+1))
+    # First find the steady states and saddle point
+    ss1, sad, ss2 = nullcline()
+    # Use to generate the path
+    a = collect(linspace(ss1[1],ss2[1],NG+1))
+    b = collect(linspace(ss1[2],ss2[2],NG+1))
+    #a1 = collect(linspace(ss1[1],sad[1],(NG/2)+1))
+    #a2 = collect(linspace(sad[1],ss2[1],(NG/2)+1))
+    #a = vcat(a1,a2[2:length(a2)])
+    #b1 = collect(linspace(ss1[2],sad[2],(NG/2)+1))
+    #b2 = collect(linspace(sad[2],ss2[2],(NG/2)+1))
+    #b = vcat(b1,b2[2:length(b2)])
     x = hcat(a,b)
+    # Then appropriatly discretise the path such that it works with this algorithm
+    #x = discretise(x)
     ############################################################################
     # eventually should have a loop here to do this iterativly
+    ############################################################################
     x, xprim, λs, ϑs, λprim = genvars(x)
+    print("$(xprim)\n")
     newx = linsys(x,xprim,λs,ϑs,λprim)
-
+    print(newx)
+    print("\n")
 end
 
 @time main()

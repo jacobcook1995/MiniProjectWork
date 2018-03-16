@@ -26,7 +26,7 @@ const high2low = true # Set if starting from high state or low state
 # Then set parameters of the optimization
 const NM = 150 # number of segments to discretise MAP onto
 const NG = 150 # number of segments to optimize gMAP over
-const Δτ = 0.01 # I've made this choice arbitarily, not sure if this is a sensible choice
+const Δτ = 0.1 # I've made this choice arbitarily, not sure if this is a sensible choice
 const Δα = 1/NG
 
 # A function to find the crossing points of the nullclines so they can be used
@@ -143,7 +143,7 @@ function genvars(x::AbstractArray)
 end
 
 # function to be solved by NLsolve
-function f!(F::AbstractArray, x::AbstractArray, C::AbstractArray, K::AbstractVector, xi::AbstractArray)
+function g!(F::AbstractArray, x::AbstractArray, C::AbstractArray, K::AbstractVector, xi::AbstractArray)
     F[1,1] = x[1,1] - xi[1,1]
     F[1,2] = x[1,2] - xi[1,2]
     for i = 2:NG
@@ -158,11 +158,43 @@ end
 
 # function to solve the system of linear equations
 function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector)
+    # Make empty arrays/vectors to store differential Hamiltonians
+    Hx = zeros(2)
+    Hθθ = zeros(2,2)
+    Hθx = zeros(2,2)
     # Make array to store fixed points
-    xi = zeros(2,2)
+    xi = fill(NaN, 2, 2)
     xi[1,:] = x[1,:]
     xi[2,:] = x[NG+1,:]
-    
+    # Make vector to store constant terms C
+    C = fill(NaN, NG+1)
+    for i = 2:NG
+        C[i] = Δτ*(λs[i]^2)/(1/(N^2))
+    end
+    # Make array to store constant vector K's
+    K = fill(NaN, NG+1, 2)
+    for i = 2:NG
+        # Find differential Hamiltonians at specific point
+        point = [ x[i,:]; xprim[i,:] ]
+        Hx = Hx!(Hx,point)
+        Hθθ = Hθθ!(Hθθ,point)
+        Hθx = Hθx!(Hθx,point)
+        for j = 1:2
+            K[i,j] = x[i,j]
+            # think definition of Hθx here is correct, but could be a source of error in future
+            K[i,j] -= Δτ*λs[i]*(Hθx[j,1]*xprim[i,1] + Hθx[j,2]*xprim[i,2])
+            # Need to be cleverer when I write in 4 dimensions
+            K[i,j] -= Δτ*(Hθθ[j,1]*Hx[1] + Hθθ[j,2]*Hx[2])
+            K[i,j] -= Δτ*λs[i]*λprim[i,j]*xprim[i,j]
+        end
+    end
+
+    # Make an initial guess of the path, as prior path
+    newxi = x
+    # make f! a closure of g! for specific xi, C, K
+    f!(F,x) = g!(F,x,C,K,xi)
+    # Then put all this into the solver
+    newx = nlsolve(f!, newxi)
     return(newx)
 end
 

@@ -21,12 +21,12 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = true # Set if starting from high state or low state
+const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const NM = 150 # number of segments to discretise MAP onto
 const NG = 150 # number of segments to optimize gMAP over
-const Δτ = 0.1 # I've made this choice arbitarily, not sure if this is a sensible choice
+const Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
 const Δα = 1/NG
 
 # A function to find the crossing points of the nullclines so they can be used
@@ -93,8 +93,10 @@ end
 # function to find λ for a particular vector x and y
 # x[1] = A, x[2] = B
 function λ(x::AbstractVector,y::AbstractVector)
-    λ = sqrt(((K*x[1] - k*r/(r + f*x[2]^2))^2)*(K*x[1] + k*r/(r + f*x[2]^2)) + ((Q*x[2] - q*r/(r + f*x[1]^2))^2)*(Q*x[2] + q*r/(r + f*x[1]^2)))
-    λ /= sqrt((y[1]^2)*(K*x[1] + k*r/(r + f*x[2]^2)) + (y[2]^2)*(Q*x[2] + q*r/(r + f*x[1]^2)))
+    # tmps to keep the code somewhat readable
+    tmp1 = ((K*x[1] - k*r/(r + f*x[2]^2))^2)*(K*x[1] + k*r/(r + f*x[2]^2)) + ((Q*x[2] - q*r/(r + f*x[1]^2))^2)*(Q*x[2] + q*r/(r + f*x[1]^2))
+    tmp2 = (y[1]^2)*(K*x[1] + k*r/(r + f*x[2]^2)) + (y[2]^2)*(Q*x[2] + q*r/(r + f*x[1]^2))
+    λ = sqrt(tmp1/tmp2)
     return(λ)
 end
 
@@ -177,7 +179,7 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     for i = 2:NG
         # Find differential Hamiltonians at specific point
         point[1,:] = x[i,:]
-        point[2,:] = xprim[i,:]
+        point[2,:] = ϑs[i,:]
         Hx = Hx!(Hx,point)
         Hθθ = Hθθ!(Hθθ,point)
         Hθx = Hθx!(Hθx,point)
@@ -186,8 +188,8 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
             # think definition of Hθx here is correct, but could be a source of error in future
             K[i,j] -= Δτ*λs[i]*(Hθx[j,1]*xprim[i,1] + Hθx[j,2]*xprim[i,2])
             # Need to be cleverer when I write in 4 dimensions
-            K[i,j] -= Δτ*(Hθθ[j,1]*Hx[1] + Hθθ[j,2]*Hx[2])
-            K[i,j] -= Δτ*λs[i]*λprim[i]*xprim[i,j]
+            K[i,j] += Δτ*(Hθθ[j,1]*Hx[1] + Hθθ[j,2]*Hx[2])
+            K[i,j] += Δτ*λs[i]*λprim[i]*xprim[i,j]
         end
     end
 
@@ -196,12 +198,12 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     # make f! a closure of g! for specific xi, C, K
     f!(F,x) = g!(F,x,C,K,xi)
     # Then put all this into the solver
-    newx = nlsolve(f!, newxi, iterations = 100000)
+    newx = nlsolve(f!, newxi)
     return(newx)
 end
 
 # function to discretise a path in a way that makes it compatable with the algorithm
-function discretise(x)
+function discretise(x::AbstractArray)
     # need to interpolate the data from x onto disx, preserving |x'| = const,
     # i.e equal distance between points
     ne = NG+1 # number of elements
@@ -218,7 +220,6 @@ function discretise(x)
         ls[i] = (i-1)*s[end]/(ne-1)
     end
     # Find first index greater than a ls[i] for each i
-    # Now should match this vector with the iterpolated s to find posistion of segment points
     inds = fill(0,ne)
     j = 1
     for i = 1:ne
@@ -236,11 +237,11 @@ function discretise(x)
     disx = zeros(ne,2)
     disx[1,:] = x[1,:]
     disx[ne,:] = x[ne,:]
-    # This is done to linear order
+    # This is done to linear order, which is probably good enough
     for i = 2:ne-1
         one = inds[i] - 1
         two = inds[i]
-        s₀ = s[one]# should be ls????????
+        s₀ = s[one]
         s₁ = s[two]
         for j = 1:2
             x₀ = x[one,j]
@@ -251,13 +252,11 @@ function discretise(x)
     return(disx)
 end
 
-# A lot of work to do on this function
-function main()
+# Function to generate an initial path then run the alorithm until a MAP is obtained
+# This path is then returned for other functions
+function gMAP()
     # First find the steady states and saddle point
     ss1, sad, ss2 = nullcline()
-    # Use to generate the path
-    # a = collect(linspace(ss1[1],ss2[1],NG+1))
-    # b = collect(linspace(ss1[2],ss2[2],NG+1))
     a1 = collect(linspace(ss1[1],sad[1],(NG/2)+1))
     a2 = collect(linspace(sad[1],ss2[1],(NG/2)+1))
     a = vcat(a1,a2[2:length(a2)])
@@ -267,12 +266,66 @@ function main()
     x = hcat(a,b)
     # Then appropriatly discretise the path such that it works with this algorithm
     x = discretise(x)
-    ############################################################################
-    # eventually should have a loop here to do this iterativly
-    ############################################################################
-    x, xprim, λs, ϑs, λprim = genvars(x)
-    newx = linsys(x,xprim,λs,ϑs,λprim)
-    print("$(newx)\n")
+    # Set up method to tell if is converged
+    convrg = false
+    l = 0
+    while convrg == false
+        x, xprim, λs, ϑs, λprim = genvars(x)
+        newx = linsys(x,xprim,λs,ϑs,λprim)
+        xn = discretise(newx.zero)
+        # delta is the sum of the differences of all the points in the path
+        δ = 0
+        for i = 1:NG+1
+            for j = 1:2
+                δ += abs(x[i,j] - xn[i,j])
+            end
+        end
+        l += 1
+        # Now overwrite old x
+        x = xn
+        if δ <= 0.000001 # Doesn't work as osciallting between two paths
+            # Must be a minimum resolution based on Δτ???
+            convrg = true
+            print("$(l) steps to converge\n")
+        end
+    end
+    return(x)
+end
+
+# Function to calculate the action of a given path
+function Ŝ(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector)
+    S = 0
+    S += (3/(2*NG))*(xprim[2,1]*ϑs[2,1] + xprim[2,2]*ϑs[2,2])
+    for i = 3:NG-2
+        S += (1/NG)*(xprim[i,1]*ϑs[i,1] + xprim[i,2]*ϑs[i,2])
+    end
+    S += (3/(2*NG))*(xprim[NG-1,1]*ϑs[NG-1,1] + xprim[NG-1,2]*ϑs[NG-1,2])
+    return(S)
+end
+
+# function to find the times of each point
+function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector)
+    ts = zeros(NG+1,1)
+    ts[1] = 0
+    for i = 2:NG+1
+        ts[i] = ts[i-1] + 1/(2*λs[i-1]) + 1/(2*λs[i])
+    end
+    return(ts)
+end
+
+function main()
+    path = gMAP()
+    plot(path[:,1],path[:,2])
+    savefig("../Results/Graph.png")
+    x, xprim, λs, ϑs, λprim = genvars(path)
+    # use function Ŝ to find the action associated with this path
+    S = Ŝ(x,xprim,λs,ϑs,λprim)
+    print("Associated Action = $(S)\n")
+    # Now find the times tᵢ
+    ts = times(x,xprim,λs,ϑs,λprim)
+    print("$(λs)\n")
+    print("Time for full path length = $(ts[end])\n")
+    print("$ts\n")
 end
 
 @time main()

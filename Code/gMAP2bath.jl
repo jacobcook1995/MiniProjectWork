@@ -7,7 +7,6 @@
 using Plots
 using Roots
 using NLsolve
-using Interpolations
 import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
@@ -94,7 +93,7 @@ end
 # function to find λ for a particular vector x and y
 # x[1] = A, x[2] = B
 function λ(x::AbstractVector,y::AbstractVector)
-    λ = sqrt((K*x[1] - k*r/(r + f*x[2]^2))*(K*x[1] + k*r/(r + f*x[2]^2)) + (Q*x[2] - q*r/(r + f*x[1]^2))*(Q*x[2] + q*r/(r + f*x[1]^2)))
+    λ = sqrt(((K*x[1] - k*r/(r + f*x[2]^2))^2)*(K*x[1] + k*r/(r + f*x[2]^2)) + ((Q*x[2] - q*r/(r + f*x[1]^2))^2)*(Q*x[2] + q*r/(r + f*x[1]^2)))
     λ /= sqrt((y[1]^2)*(K*x[1] + k*r/(r + f*x[2]^2)) + (y[2]^2)*(Q*x[2] + q*r/(r + f*x[1]^2)))
     return(λ)
 end
@@ -197,7 +196,7 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     # make f! a closure of g! for specific xi, C, K
     f!(F,x) = g!(F,x,C,K,xi)
     # Then put all this into the solver
-    newx = nlsolve(f!, newxi)
+    newx = nlsolve(f!, newxi, iterations = 100000)
     return(newx)
 end
 
@@ -205,9 +204,50 @@ end
 function discretise(x)
     # need to interpolate the data from x onto disx, preserving |x'| = const,
     # i.e equal distance between points
-    itp = interpolate(x, options...) # But what options?
-    # Then can use this iterpolation object to obtain the disx I require
-
+    ne = NG+1 # number of elements
+    s = zeros(ne)
+    s[1] = 0
+    for i = 2:ne
+        dA = x[i,1] - x[i-1,1]
+        dB = x[i,2] - x[i-1,2]
+        s[i] = s[i-1] + sqrt(dA^2 + dB^2) # Could probably drop the sqrts to speed up the code
+    end
+    # Divide total arc length into equal segments
+    ls = zeros(ne)
+    for i = 1:ne
+        ls[i] = (i-1)*s[end]/(ne-1)
+    end
+    # Find first index greater than a ls[i] for each i
+    # Now should match this vector with the iterpolated s to find posistion of segment points
+    inds = fill(0,ne)
+    j = 1
+    for i = 1:ne
+        higher = false
+        while higher == false
+            if s[j] >= ls[i] || j == ne
+                inds[i] = j
+                higher = true
+            else
+                j += 1
+            end
+        end
+    end
+    # First do end points as they should be fixed
+    disx = zeros(ne,2)
+    disx[1,:] = x[1,:]
+    disx[ne,:] = x[ne,:]
+    # This is done to linear order
+    for i = 2:ne-1
+        one = inds[i] - 1
+        two = inds[i]
+        s₀ = s[one]# should be ls????????
+        s₁ = s[two]
+        for j = 1:2
+            x₀ = x[one,j]
+            x₁ = x[two,j]
+            disx[i,j] = x₀ + (ls[i] - s₀)*(x₁ - x₀)/(s₁ - s₀)
+        end
+    end
     return(disx)
 end
 
@@ -216,25 +256,23 @@ function main()
     # First find the steady states and saddle point
     ss1, sad, ss2 = nullcline()
     # Use to generate the path
-    a = collect(linspace(ss1[1],ss2[1],NG+1))
-    b = collect(linspace(ss1[2],ss2[2],NG+1))
-    #a1 = collect(linspace(ss1[1],sad[1],(NG/2)+1))
-    #a2 = collect(linspace(sad[1],ss2[1],(NG/2)+1))
-    #a = vcat(a1,a2[2:length(a2)])
-    #b1 = collect(linspace(ss1[2],sad[2],(NG/2)+1))
-    #b2 = collect(linspace(sad[2],ss2[2],(NG/2)+1))
-    #b = vcat(b1,b2[2:length(b2)])
+    # a = collect(linspace(ss1[1],ss2[1],NG+1))
+    # b = collect(linspace(ss1[2],ss2[2],NG+1))
+    a1 = collect(linspace(ss1[1],sad[1],(NG/2)+1))
+    a2 = collect(linspace(sad[1],ss2[1],(NG/2)+1))
+    a = vcat(a1,a2[2:length(a2)])
+    b1 = collect(linspace(ss1[2],sad[2],(NG/2)+1))
+    b2 = collect(linspace(sad[2],ss2[2],(NG/2)+1))
+    b = vcat(b1,b2[2:length(b2)])
     x = hcat(a,b)
     # Then appropriatly discretise the path such that it works with this algorithm
-    #x = discretise(x)
+    x = discretise(x)
     ############################################################################
     # eventually should have a loop here to do this iterativly
     ############################################################################
     x, xprim, λs, ϑs, λprim = genvars(x)
-    print("$(xprim)\n")
     newx = linsys(x,xprim,λs,ϑs,λprim)
-    print(newx)
-    print("\n")
+    print("$(newx)\n")
 end
 
 @time main()

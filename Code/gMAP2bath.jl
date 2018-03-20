@@ -24,7 +24,7 @@ const r = 10
 const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
-const NM = 150 # number of segments to discretise MAP onto
+const NM = 1000 # number of segments to discretise MAP onto
 const NG = 150 # number of segments to optimize gMAP over
 const Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
 const Δα = 1/NG
@@ -127,9 +127,8 @@ function genvars(x::AbstractArray)
     for i = 2:NG
         λs[i] = λ(x[i,:],xprim[i,:])
     end
-    # extra steps to get λs for the fixed start and end points
-    λs[1] = 3*λs[2] - 3*λs[3] + λs[4]
-    λs[NG+1] = 3*λs[NG] - 3*λs[NG-1] + λs[NG-2]
+    # Start and end points are assumed through out code to be critical points
+    λs[1] = λs[NG+1] = 0
     # now find ϑs
     ϑs = fill(NaN, NG+1, 2)
     for i = 2:NG
@@ -162,13 +161,20 @@ end
 function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector)
     # Make empty arrays/vectors to store differential Hamiltonians
     Hx = zeros(2)
+    Hθ = zeros(2)
     Hθθ = zeros(2,2)
     Hθx = zeros(2,2)
     point = zeros(2,2)
     # Make array to store fixed points
     xi = fill(NaN, 2, 2)
-    xi[1,:] = x[1,:]
-    xi[2,:] = x[NG+1,:]
+    # the fixed points are allowed to vary, this operates as a sanity check on the nucline function
+    point[2,:] = [ 0.0; 0.0 ] # zeros for both cases, as at ends of arc
+    # Start point
+    point[1,:] = x[1,:]
+    xi[1,:] = Δτ*(Hθ!(Hθ,point)) + x[1,:]
+    # End point
+    point[1,:] = x[NG+1,:]
+    xi[2,:] = Δτ*(Hθ!(Hθ,point)) + x[NG+1,:]
     # Make vector to store constant terms C
     C = fill(NaN, NG+1)
     for i = 2:NG
@@ -206,26 +212,25 @@ end
 function discretise(x::AbstractArray)
     # need to interpolate the data from x onto disx, preserving |x'| = const,
     # i.e equal distance between points
-    ne = NG+1 # number of elements
-    s = zeros(ne)
+    s = zeros(NG+1)
     s[1] = 0
-    for i = 2:ne
+    for i = 2:NG+1
         dA = x[i,1] - x[i-1,1]
         dB = x[i,2] - x[i-1,2]
         s[i] = s[i-1] + sqrt(dA^2 + dB^2) # Could probably drop the sqrts to speed up the code
     end
     # Divide total arc length into equal segments
-    ls = zeros(ne)
-    for i = 1:ne
-        ls[i] = (i-1)*s[end]/(ne-1)
+    ls = zeros(NG+1)
+    for i = 1:NG+1
+        ls[i] = (i-1)*s[end]/(NG)
     end
     # Find first index greater than a ls[i] for each i
-    inds = fill(0,ne)
+    inds = fill(0,NG+1)
     j = 1
-    for i = 1:ne
+    for i = 1:NG+1
         higher = false
         while higher == false
-            if s[j] >= ls[i] || j == ne
+            if s[j] >= ls[i] || j == NG+1
                 inds[i] = j
                 higher = true
             else
@@ -234,11 +239,11 @@ function discretise(x::AbstractArray)
         end
     end
     # First do end points as they should be fixed
-    disx = zeros(ne,2)
+    disx = zeros(NG+1,2)
     disx[1,:] = x[1,:]
-    disx[ne,:] = x[ne,:]
+    disx[NG+1,:] = x[NG+1,:]
     # This is done to linear order, which is probably good enough
-    for i = 2:ne-1
+    for i = 2:NG
         one = inds[i] - 1
         two = inds[i]
         s₀ = s[one]
@@ -304,28 +309,91 @@ function Ŝ(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::Abst
 end
 
 # function to find the times of each point
-function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector)
-    ts = zeros(NG+1,1)
+function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector,η)
+    # make a trimmed vector of lambdas, i.e times smaller than η are replaced by η
+    λt = zeros(NG+1)
+    #η = 10.0^-8#10.0^-4
+    for i = 1:length(λt)
+        if λs[i] >= η
+            λt[i] = λs[i]
+        else
+            λt[i] = η
+        end
+    end
+    ts = zeros(NG+1)
     ts[1] = 0
     for i = 2:NG+1
-        ts[i] = ts[i-1] + 1/(2*λs[i-1]) + 1/(2*λs[i])
+        ts[i] = ts[i-1] + 1/(2*λt[i-1]) + 1/(2*λt[i])
     end
     return(ts)
 end
 
+# function to rediscretise a path from arc discretisation to time discretisation
+function timdis(ts::AbstractVector,x::AbstractArray)
+    # Make discrete vector of time points
+    t = zeros(NM+1)
+    for i = 1:NM+1
+        t[i] = (i-1)*ts[end]/NM
+    end
+    # Find index of first element greater than t[i] in ts
+    inds = fill(0,NM+1)
+    j = 1
+    for i = 1:NM+1
+        higher = false
+        while higher == false
+            if ts[j] >= t[i] || j == NG+1
+                inds[i] = j
+                higher = true
+            else
+                j += 1
+            end
+        end
+    end
+    # First do end points as they are fixed
+    path = zeros(NM+1,2)
+    path[1,:] = x[1,:]
+    path[NM+1,:] = x[NG+1,:]
+    # This is done to linear order, which is probably good enough
+    for i = 2:NM
+        one = inds[i] - 1
+        two = inds[i]
+        t₀ = ts[one]
+        t₁ = ts[two]
+        for j = 1:2
+            x₀ = x[one,j]
+            x₁ = x[two,j]
+            path[i,j] = x₀ + (t[i] - t₀)*(x₁ - x₀)/(t₁ - t₀)
+        end
+    end
+    return(path)
+end
+
 function main()
     path = gMAP()
-    plot(path[:,1],path[:,2])
-    savefig("../Results/Graph.png")
     x, xprim, λs, ϑs, λprim = genvars(path)
     # use function Ŝ to find the action associated with this path
     S = Ŝ(x,xprim,λs,ϑs,λprim)
     print("Associated Action = $(S)\n")
     # Now find the times tᵢ
-    ts = times(x,xprim,λs,ϑs,λprim)
-    print("$(λs)\n")
-    print("Time for full path length = $(ts[end])\n")
-    print("$ts\n")
+    for i = 2:5
+        η = 10.0^-i
+        ts = times(x,xprim,λs,ϑs,λprim,η)
+        print("Time for full path length = $(ts[end])\n")
+        plot(ts)
+        savefig("../Results/Graph$(high2low)$(i).png")
+        path = timdis(ts,x)
+        # Block of code to write all this data to a file so I can go through it
+        if length(ARGS) >= 1
+            output_file = "../Results/$(ARGS[1])$(i)$(high2low).csv"
+            out_file = open(output_file, "w")
+            # open file for writing
+            for i = 1:size(path,1)
+                line = "$(path[i,1]),$(path[i,2])\n"
+                write(out_file, line)
+            end
+            close(out_file)
+        end
+    end
 end
 
 @time main()

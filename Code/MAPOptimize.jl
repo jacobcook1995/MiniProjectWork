@@ -465,31 +465,59 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
 
-#@time run(18.940673828125,5) # 22.059814453125
-function test()
-    ts = collect(10:10:1000) # collected so that 1st element can be changed
-    S = zeros(length(ts),1)
-    logP = zeros(length(ts),1)
-    for i = 1:length(ts)
-        pathmin, S[i] = optSt2(ts[i],5)
-        norm = norml(ts[i], pathmin)
-        logP[i] = norm + Ω*S[i]
-        print("$(ts[i]),$(S[i]),$(logP[i])\n")
-    end
-    plot(ts,S)
-    savefig("../Results/GraphSunbinding$(Ω).png")
-    plot(ts,logP)
-    savefig("../Results/GraphlogP$(Ω).png")
-end
 
 function main()
-   t = 200
-   pathmin, S = optSt2(t,50)
-   plot(pathmin[:,1],pathmin[:,2])
-   savefig("../Results/GRAPHHHH$(Ω).png")
-   print("$S\n")
+    path = zeros(1001,2) # fudge for the moment
+    tau = zeros(4,2)
+    tau[1,1] = 4983.982747219399
+    tau[2,1] = 7138.614127494501
+    tau[3,1] = 25138.61412749449
+    tau[4,1] = 142958.42071756223
+    tau[1,2] = 2263.0070808489936
+    tau[2,2] = 3626.990264846181
+    tau[3,2] = 12626.990264846185
+    tau[4,2] = 102626.99026484614
+    for i = 2:5
+        for j = 1:2
+            if j == 1
+                filename = "../Results/File$(i)true.csv"
+            else
+                filename = "../Results/File$(i)false.csv"
+            end
+            m = 0
+            open(filename, "r") do in_file
+                # Use a for loop to process the rows in the input file one-by-one
+                points = Array{Float64}(0,2) # empty array for the points to be input to
+                n = Array{Int64}(0) # empty vector to store numbers
+                for line in eachline(in_file)
+                    # parse line by finding commas
+                    comma = 0
+                    l = 1
+                    L = length(line)
+                    com = false
+                    while com == false
+                        if line[l] == ','
+                            comma = l
+                            com = true
+                        else
+                            l += 1
+                        end
+                    end
+                    A = parse(Float64, line[1:(comma - 1)])
+                    B = parse(Float64, line[(comma + 1):L])
+                    m += 1
+                    path[m,1] = A
+                    path[m,2] = B
+                end
+            end
+            # find action of path and plot
+            ents, KE, PE, acts, nois1, nois2, nois3 = EntProd(path,tau[i-1,j])
+            print("$(sum(acts))\n")
+            plot(path[:,1],path[:,2])
+            savefig("../Results/Graph$(i)$(j).png")
+        end
+    end
 end
 
-@time run(22.07724609375,5)
-#@time test()
-#@time main()
+# @time run(22.077490234375,5)
+@time main()

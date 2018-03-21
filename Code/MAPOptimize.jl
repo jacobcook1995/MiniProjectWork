@@ -23,7 +23,7 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = false # Set if starting from high state or low state
+const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over

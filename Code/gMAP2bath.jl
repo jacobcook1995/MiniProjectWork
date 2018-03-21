@@ -26,6 +26,7 @@ const high2low = true # Set if starting from high state or low state
 # Then set parameters of the optimization
 const NM = 150 # number of segments to discretise MAP onto
 const NG = 150 # number of segments to optimize gMAP over
+const Nmid = convert(Int64, ceil((NG+1)/2))
 const Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
 const Δα = 1/NG
 
@@ -70,7 +71,16 @@ function D!(D, x)
     D[2,2] = q*r/(r+f*x[1]*x[1]) + Q*x[2]
     return D
 end
-
+# function to compute the Hamiltonian at a point x
+# x[1,1] = A, x[1,2] = B, x[2,1] = θ₁, x[2,2] = θ₂
+function H(x::AbstractArray)
+    H = 0
+    H += x[2,1]*(k*r/(r + f*x[1,2]^2) - K*x[1,1])
+    H += x[2,2]*(q*r/(r + f*x[1,1]^2) - Q*x[1,2])
+    H += 0.5*(x[2,1]^2)*(k*r/(r + f*x[1,2]^2) + K*x[1,1])
+    H += 0.5*(x[2,2]^2)*(q*r/(r + f*x[1,1]^2) + Q*x[1,2])
+    return(H)
+end
 # Function for the first differential of the hamiltonian in θ
 # x[1,1] = A, x[1,2] = B, x[2,1] = θ₁, x[2,2] = θ₂
 function Hθ!(Hθ::AbstractArray, x::AbstractArray)
@@ -161,15 +171,27 @@ end
 
 # function to be solved by NLsolve
 function g!(F::AbstractArray, x::AbstractArray, C::AbstractVector, K::AbstractArray, xi::AbstractArray)
+    # Start point
     F[1,1] = x[1,1] - xi[1,1]
     F[1,2] = x[1,2] - xi[1,2]
-    for i = 2:NG
+    # first path
+    for i = 2:Nmid-1
         for j = 1:2
             F[i,j] = x[i,j] - C[i]*(x[i+1,j] - 2*x[i,j] + x[i-1,j]) - K[i,j]
         end
     end
-    F[NG+1,1] = x[NG+1,1] - xi[2,1]
-    F[NG+1,2] = x[NG+1,2] - xi[2,2]
+    # midpoint
+    F[Nmid,1] = x[Nmid,1] - xi[2,1]
+    F[Nmid,2] = x[Nmid,2] - xi[2,2]
+    # second path
+    for i = Nmid+1:NG
+        for j = 1:2
+            F[i,j] = x[i,j] - C[i]*(x[i+1,j] - 2*x[i,j] + x[i-1,j]) - K[i,j]
+        end
+    end
+    # end point
+    F[NG+1,1] = x[NG+1,1] - xi[3,1]
+    F[NG+1,2] = x[NG+1,2] - xi[3,2]
     return(F)
 end
 
@@ -182,15 +204,24 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     Hθx = zeros(2,2)
     point = zeros(2,2)
     # Make array to store fixed points
-    xi = fill(NaN, 2, 2)
+    xi = fill(NaN, 3, 2)
     # the fixed points are allowed to vary, this operates as a sanity check on the nucline function
     point[2,:] = [ 0.0; 0.0 ] # zeros for both cases, as at ends of arc
     # Start point
     point[1,:] = x[1,:]
     xi[1,:] = Δτ*(Hθ!(Hθ,point)) + x[1,:]
+    # Midpoint
+    point[1,:] = x[Nmid,:]
+    Hθx = Hθx!(Hθx,point)
+    Hxθ = transpose(Hθx)
+    Hθ = Hθ!(Hθ,point)
+    h = H(point)
+    Hx = Hx!(Hx,point)
+    xi[2,1] = -Δτ*(Hxθ[1,1]*Hθ[1] + Hxθ[1,2]*Hθ[2] + h*Hx[1]) + x[Nmid,1]
+    xi[2,2] = -Δτ*(Hxθ[2,1]*Hθ[1] + Hxθ[2,2]*Hθ[2] + h*Hx[2]) + x[Nmid,2]
     # End point
     point[1,:] = x[NG+1,:]
-    xi[2,:] = Δτ*(Hθ!(Hθ,point)) + x[NG+1,:]
+    xi[3,:] = Δτ*(Hθ!(Hθ,point)) + x[NG+1,:]
     # Make vector to store constant terms C
     C = fill(NaN, NG+1)
     for i = 2:NG
@@ -228,46 +259,83 @@ end
 function discretise(x::AbstractArray)
     # need to interpolate the data from x onto disx, preserving |x'| = const,
     # i.e equal distance between points
-    s = zeros(NG+1)
-    s[1] = 0
-    for i = 2:NG+1
+    s1 = zeros(Nmid)
+    s2 = zeros(NG+2-Nmid)
+    s1[1] = 0
+    s2[1] = 0
+    for i = 2:Nmid
         dA = x[i,1] - x[i-1,1]
         dB = x[i,2] - x[i-1,2]
-        s[i] = s[i-1] + sqrt(dA^2 + dB^2) # Could probably drop the sqrts to speed up the code
+        s1[i] = s1[i-1] + sqrt(dA^2 + dB^2) # Could probably drop the sqrts to speed up the code
+    end
+    for i = 2:(NG+2-Nmid)
+        dA = x[i+Nmid-1,1] - x[i+Nmid-2,1]
+        dB = x[i+Nmid-1,2] - x[i+Nmid-2,2]
+        s2[i] = s2[i-1] + sqrt(dA^2 + dB^2) # Could probably drop the sqrts to speed up the code
     end
     # Divide total arc length into equal segments
-    ls = zeros(NG+1)
-    for i = 1:NG+1
-        ls[i] = (i-1)*s[end]/(NG)
+    ls1 = zeros(Nmid)
+    ls2 = zeros(NG+2-Nmid)
+    for i = 1:Nmid
+        ls1[i] = (i-1)*s1[end]/(Nmid-1)
+    end
+    for i = 1:(NG+2-Nmid)
+        ls2[i] = (i-1)*s2[end]/(NG+1-Nmid)
     end
     # Find first index greater than a ls[i] for each i
-    inds = fill(0,NG+1)
+    inds1 = fill(0,Nmid)
     j = 1
-    for i = 1:NG+1
+    for i = 1:Nmid
         higher = false
         while higher == false
-            if s[j] >= ls[i] || j == NG+1
-                inds[i] = j
+            if s1[j] >= ls1[i] || j == Nmid
+                inds1[i] = j
                 higher = true
             else
                 j += 1
             end
         end
     end
-    # First do end points as they should be fixed
+    inds2 = fill(0,NG+2-Nmid)
+    j = 1
+    for i = 1:(NG+2-Nmid)
+        higher = false
+        while higher == false
+            if s2[j] >= ls2[i] || j == NG + 2 - Nmid
+                inds2[i] = j + Nmid - 1
+                higher = true
+            else
+                j += 1
+            end
+        end
+    end
+    # First do mid points and end points as they should be fixed
     disx = zeros(NG+1,2)
     disx[1,:] = x[1,:]
+    disx[Nmid,:] = x[Nmid,:]
     disx[NG+1,:] = x[NG+1,:]
     # This is done to linear order, which is probably good enough
-    for i = 2:NG
-        one = inds[i] - 1
-        two = inds[i]
-        s₀ = s[one]
-        s₁ = s[two]
+    for i = 2:Nmid-1
+        one = inds1[i] - 1
+        two = inds1[i]
+        s₀ = s1[one]
+        s₁ = s1[two]
         for j = 1:2
             x₀ = x[one,j]
             x₁ = x[two,j]
-            disx[i,j] = x₀ + (ls[i] - s₀)*(x₁ - x₀)/(s₁ - s₀)
+            disx[i,j] = x₀ + (ls1[i] - s₀)*(x₁ - x₀)/(s₁ - s₀)
+        end
+    end
+
+    for i = Nmid+1:NG
+        one = inds2[i+1-Nmid] - 1
+        two = inds2[i+1-Nmid]
+        s₀ = s2[one+1-Nmid]
+        s₁ = s2[two+1-Nmid]
+        for j = 1:2
+            x₀ = x[one,j]
+            x₁ = x[two,j]
+            disx[i,j] = x₀ + (ls2[i+1-Nmid] - s₀)*(x₁ - x₀)/(s₁ - s₀)
         end
     end
     return(disx)
@@ -317,6 +385,8 @@ end
 function Ŝ(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector)
     S = zeros(NG-1)
     S[1] = (3/(2*NG))*(xprim[2,1]*ϑs[2,1] + xprim[2,2]*ϑs[2,2])
+    # Not excluding the midpoint as the contribution is vanishing
+    # Might have to rethink this for the 4 species case
     for i = 3:NG-1
         S[i-1] += (1/NG)*(xprim[i,1]*ϑs[i,1] + xprim[i,2]*ϑs[i,2])
     end
@@ -326,9 +396,7 @@ end
 
 # function to find the times of each point
 function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector,η)
-    # make a trimmed vector of lambdas, i.e times smaller than η are replaced by η
     λt = zeros(NG+1)
-    #η = 10.0^-8#10.0^-4
     for i = 1:length(λt)
         if λs[i] >= η
             λt[i] = λs[i]
@@ -337,7 +405,6 @@ function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::Ab
         end
     end
     ts = zeros(NG+1)
-    ts[1] = 0
     for i = 2:NG+1
         ts[i] = ts[i-1] + 1/(2*λt[i-1]) + 1/(2*λt[i])
     end
@@ -432,21 +499,21 @@ function main()
     # use function Ŝ to find the action associated with this path
     S = Ŝ(x,xprim,λs,ϑs,λprim)
     print("Associated Action = $(sum(S))\n")
-    # Now find the times tᵢ
-    for i = 1:size(x,1)
-        print("$(i),$(x[i,:])\n")
+    t = [ 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19; 20 ]
+    A = zeros(length(t))
+    for j = 1:8
+        η = 10.0^-j
+        # Now find the times tᵢ
+        tims = times(x,xprim,λs,ϑs,λprim,η)
+        path = timdis(tims,x)
+        print("Time of path = $(tims[end])\n")
+        for i = 1:length(A)
+            ents, KE, PE, acts = EntProd(path,t[i])
+            A[i] = sum(acts)
+        end
+        plot(t,A)
+        savefig("../Results/Graph$(j).png")
     end
-    # for i = 2:9
-    #     η = 10.0^-i
-    #     ts = times(x,xprim,λs,ϑs,λprim,η)
-    #     print("Time for full path length = $(ts[end])\n")
-    #     path = timdis(ts,x)
-    #     ents, KE, PE, acts = EntProd(path,ts[end])
-    #     print("Action = $(sum(acts))\n")
-    #     print("KE = $(sum(KE))\n")
-    #     print("PE = $(sum(PE))\n")
-    #     print("ents = $(sum(ents))\n")
-    # end
 end
 
 @time main()

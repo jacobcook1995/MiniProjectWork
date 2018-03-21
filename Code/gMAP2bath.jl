@@ -21,10 +21,10 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = false # Set if starting from high state or low state
+const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
-const NM = 1000 # number of segments to discretise MAP onto
+const NM = 150 # number of segments to discretise MAP onto
 const NG = 150 # number of segments to optimize gMAP over
 const Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
 const Δα = 1/NG
@@ -53,6 +53,22 @@ function nullcline()
     print(ss2)
     print("\n")
     return (ss1,sad,ss2)
+end
+
+# Vector of functions from MAP case
+function f!(F, x)
+    F[1] = k*r/(r+f*x[2]*x[2]) - K*x[1]
+    F[2] = q*r/(r+f*x[1]*x[1]) - Q*x[2]
+    return F
+end
+
+# Diffusion matrix from MAP case
+function D!(D, x)
+    D[1,1] = k*r/(r+f*x[2]*x[2]) + K*x[1]
+    D[1,2] = 0
+    D[2,1] = 0
+    D[2,2] = q*r/(r+f*x[1]*x[1]) + Q*x[2]
+    return D
 end
 
 # Function for the first differential of the hamiltonian in θ
@@ -299,12 +315,12 @@ end
 
 # Function to calculate the action of a given path
 function Ŝ(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector)
-    S = 0
-    S += (3/(2*NG))*(xprim[2,1]*ϑs[2,1] + xprim[2,2]*ϑs[2,2])
-    for i = 3:NG-2
-        S += (1/NG)*(xprim[i,1]*ϑs[i,1] + xprim[i,2]*ϑs[i,2])
+    S = zeros(NG-1)
+    S[1] = (3/(2*NG))*(xprim[2,1]*ϑs[2,1] + xprim[2,2]*ϑs[2,2])
+    for i = 3:NG-1
+        S[i-1] += (1/NG)*(xprim[i,1]*ϑs[i,1] + xprim[i,2]*ϑs[i,2])
     end
-    S += (3/(2*NG))*(xprim[NG-1,1]*ϑs[NG-1,1] + xprim[NG-1,2]*ϑs[NG-1,2])
+    S[NG-1] += (3/(2*NG))*(xprim[NG,1]*ϑs[NG,1] + xprim[NG,2]*ϑs[NG,2])
     return(S)
 end
 
@@ -368,32 +384,69 @@ function timdis(ts::AbstractVector,x::AbstractArray)
     return(path)
 end
 
+# Function to calculate the action of the discretised path in the MAP formulation
+function EntProd(pathmin,tau)
+    # probably easiest to calculate the entropy production at each point in the path
+    ents = zeros(NM, 2)
+    KE = zeros(NM, 2)
+    PE = zeros(NM, 2)
+    acts = zeros(NM, 2)
+    h = [0.0; 0.0]
+    d = [0.0 0.0; 0.0 0.0]
+    deltat = tau/NM
+    # Remove fixed points from path
+    path = pathmin[2:NM,:]
+    for i = 1:NM # This gives an extra contribution compared to the optimisation!
+        if i == 1
+            posA = (pathmin[1,1] + path[i,1])/2
+            posB = (pathmin[1,2] + path[i,2])/2
+        elseif i == NM
+            posA = (path[i-1,1] + pathmin[NM+1,1])/2
+            posB = (path[i-1,2] + pathmin[NM+1,2])/2
+        else
+            posA = (path[i-1,1] + path[i,1])/2
+            posB = (path[i-1,2] + path[i,2])/2
+        end
+        h = f!(h, [posA posB])
+        d = D!(d, [posA posB])
+        for j = 1:2
+            if i == 1
+                thiv = (path[i,j] - pathmin[1,j])/deltat
+            elseif i == NM
+                thiv = (pathmin[NM+1,j] - path[i-1,j])/deltat
+            else
+                thiv = (path[i,j] - path[i-1,j])/(deltat)
+            end
+            ents[i,j] = h[j]*thiv*deltat/d[j,j]
+            KE[i,j] = thiv*thiv*deltat/(2*d[j,j])
+            PE[i,j] = h[j]*h[j]*deltat/(2*d[j,j])
+        end
+    end
+    acts = KE + PE - ents
+    return(ents, KE, PE, acts)
+end
+
 function main()
     path = gMAP()
     x, xprim, λs, ϑs, λprim = genvars(path)
     # use function Ŝ to find the action associated with this path
     S = Ŝ(x,xprim,λs,ϑs,λprim)
-    print("Associated Action = $(S)\n")
+    print("Associated Action = $(sum(S))\n")
     # Now find the times tᵢ
-    for i = 2:5
-        η = 10.0^-i
-        ts = times(x,xprim,λs,ϑs,λprim,η)
-        print("Time for full path length = $(ts[end])\n")
-        plot(ts)
-        savefig("../Results/Graph$(high2low)$(i).png")
-        path = timdis(ts,x)
-        # Block of code to write all this data to a file so I can go through it
-        if length(ARGS) >= 1
-            output_file = "../Results/$(ARGS[1])$(i)$(high2low).csv"
-            out_file = open(output_file, "w")
-            # open file for writing
-            for i = 1:size(path,1)
-                line = "$(path[i,1]),$(path[i,2])\n"
-                write(out_file, line)
-            end
-            close(out_file)
-        end
+    for i = 1:size(x,1)
+        print("$(i),$(x[i,:])\n")
     end
+    # for i = 2:9
+    #     η = 10.0^-i
+    #     ts = times(x,xprim,λs,ϑs,λprim,η)
+    #     print("Time for full path length = $(ts[end])\n")
+    #     path = timdis(ts,x)
+    #     ents, KE, PE, acts = EntProd(path,ts[end])
+    #     print("Action = $(sum(acts))\n")
+    #     print("KE = $(sum(KE))\n")
+    #     print("PE = $(sum(PE))\n")
+    #     print("ents = $(sum(ents))\n")
+    # end
 end
 
 @time main()

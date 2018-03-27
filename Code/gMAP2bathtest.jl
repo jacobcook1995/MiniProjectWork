@@ -1,7 +1,8 @@
 #!/usr/bin/env julia
-# gMAP2bath.jl
+# gMAP2bathtest.jl
 # A script to compute the geometric minimum action path (gMAP) then want it to
 # render the path in the usual (and analysable) form
+# This is a test version to check if my methods are the same between two non-steady states
 
 # Putting the relevant imports in
 using Plots

@@ -371,8 +371,7 @@ function gMAP()
         l += 1
         # Now overwrite old x
         x = xn
-        if δ <= 0.000001 # Doesn't work as osciallting between two paths
-            # Must be a minimum resolution based on Δτ???
+        if δ <=  0.0000001 #0.00000000005
             convrg = true
             print("$(l) steps to converge\n")
         end
@@ -451,47 +450,6 @@ function timdis(ts::AbstractVector,x::AbstractArray)
     return(path)
 end
 
-# Function to calculate the action of the discretised path in the MAP formulation
-function EntProd(pathmin,tau)
-    # probably easiest to calculate the entropy production at each point in the path
-    ents = zeros(NM, 2)
-    KE = zeros(NM, 2)
-    PE = zeros(NM, 2)
-    acts = zeros(NM, 2)
-    h = [0.0; 0.0]
-    d = [0.0 0.0; 0.0 0.0]
-    deltat = tau/NM
-    # Remove fixed points from path
-    path = pathmin[2:NM,:]
-    for i = 1:NM # This gives an extra contribution compared to the optimisation!
-        if i == 1
-            posA = (pathmin[1,1] + path[i,1])/2
-            posB = (pathmin[1,2] + path[i,2])/2
-        elseif i == NM
-            posA = (path[i-1,1] + pathmin[NM+1,1])/2
-            posB = (path[i-1,2] + pathmin[NM+1,2])/2
-        else
-            posA = (path[i-1,1] + path[i,1])/2
-            posB = (path[i-1,2] + path[i,2])/2
-        end
-        h = f!(h, [posA posB])
-        d = D!(d, [posA posB])
-        for j = 1:2
-            if i == 1
-                thiv = (path[i,j] - pathmin[1,j])/deltat
-            elseif i == NM
-                thiv = (pathmin[NM+1,j] - path[i-1,j])/deltat
-            else
-                thiv = (path[i,j] - path[i-1,j])/(deltat)
-            end
-            ents[i,j] = h[j]*thiv*deltat/d[j,j]
-            KE[i,j] = thiv*thiv*deltat/(2*d[j,j])
-            PE[i,j] = h[j]*h[j]*deltat/(2*d[j,j])
-        end
-    end
-    acts = KE + PE - ents
-    return(ents, KE, PE, acts)
-end
 
 function main()
     path = gMAP()
@@ -501,9 +459,12 @@ function main()
     print("Associated Action = $(sum(S))\n")
     η = 10.0^-(1.09)
     tims = times(x,xprim,λs,ϑs,λprim,η)
+    print("Time of path = $(tims[end])\n")
     path = timdis(tims,x)
     plot(S)
     savefig("../Results/Graph1.png")
+    plot(λs)
+    savefig("../Results/DetSpeed.png")
     # Block of code to write all this data to a file so I can go through it
     if length(ARGS) >= 1
         output_file = "../Results/$(ARGS[1]).csv"

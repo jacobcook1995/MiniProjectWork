@@ -25,7 +25,7 @@ const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const NM = 150 # number of segments to discretise MAP onto
-const NG = 150 # number of segments to optimize gMAP over
+const NG = 600#150 # number of segments to optimize gMAP over
 const Nmid = convert(Int64, ceil((NG+1)/2))
 const Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
 const Δα = 1/NG
@@ -165,7 +165,6 @@ function genvars(x::AbstractArray)
     for i = 2:NG
         λprim[i] = (λs[i+1] - λs[i-1])/(2/NG)
     end
-
     return(x,xprim,λs,ϑs,λprim)
 end
 
@@ -396,6 +395,7 @@ end
 
 # function to find the times of each point
 function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector,η)
+    #η = 10.0^-3
     λt = zeros(NG+1)
     for i = 1:length(λt)
         if λs[i] >= η
@@ -406,7 +406,7 @@ function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::Ab
     end
     ts = zeros(NG+1)
     for i = 2:NG+1
-        ts[i] = ts[i-1] + 1/(2*λt[i-1]) + 1/(2*λt[i])
+        ts[i] = ts[i-1] + (1/(2*λt[i-1]) + 1/(2*λt[i]))/NG
     end
     return(ts)
 end
@@ -499,20 +499,21 @@ function main()
     # use function Ŝ to find the action associated with this path
     S = Ŝ(x,xprim,λs,ϑs,λprim)
     print("Associated Action = $(sum(S))\n")
-    t = [ 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19; 20 ]
-    A = zeros(length(t))
-    for j = 1:8
-        η = 10.0^-j
-        # Now find the times tᵢ
-        tims = times(x,xprim,λs,ϑs,λprim,η)
-        path = timdis(tims,x)
-        print("Time of path = $(tims[end])\n")
-        for i = 1:length(A)
-            ents, KE, PE, acts = EntProd(path,t[i])
-            A[i] = sum(acts)
+    η = 10.0^-(1.09)
+    tims = times(x,xprim,λs,ϑs,λprim,η)
+    path = timdis(tims,x)
+    plot(S)
+    savefig("../Results/Graph1.png")
+    # Block of code to write all this data to a file so I can go through it
+    if length(ARGS) >= 1
+        output_file = "../Results/$(ARGS[1]).csv"
+        out_file = open(output_file, "w")
+        # open file for writing
+        for i = 1:size(path,1)
+            line = "$(path[i,1]),$(path[i,2])\n"
+            write(out_file, line)
         end
-        plot(t,A)
-        savefig("../Results/Graph$(j).png")
+        close(out_file)
     end
 end
 

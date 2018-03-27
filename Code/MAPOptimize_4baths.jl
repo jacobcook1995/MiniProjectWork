@@ -586,5 +586,22 @@ function main()
     savefig("../Results/Entropy$(high2low).png")
 end
 
-@time main()
+function trial()
+    D = [ 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 ]
+    # D = D!(D,inflex)
+    # print("$(D)\n")
+    # D = D!(D,star)
+    # print("$(D)\n")
+    # D = D!(D,fin)
+    # print("$(D)\n")
+    # A = 24.35
+    # B = 65.78
+    # S = 34.9
+    # W = Ne - A - B - S
+    D = D!(D,[22.7273, 22.7273, 11954.4, 0.119236])
+    print("$(D)\n")
+end
+
+# @time main()
 # @time test()
+@time trial()

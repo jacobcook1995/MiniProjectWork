@@ -165,15 +165,6 @@ function AP(thi, tau) # function to calculate action of a given path
     # make an initial d and f
     d = [0.0 0.0; 0.0 0.0]
     h = [0.0; 0.0]
-    # need a step to massively disfavour paths that go negative
-    negs = false
-    for i = 1:N-1
-        for j = 1:2
-            if thi[i+(N-1)*(j-1)] < 0
-                negs = true
-            end
-        end
-    end
 
     for i = 1:N
         if i == 1
@@ -416,14 +407,11 @@ function run(tau,noit)
 
     # Block of code to write all this data to a file so I can go through it
     if length(ARGS) >= 1
-        output_file = ARGS[1]
+        output_file = "../Results/$(ARGS[1]).csv"
         out_file = open(output_file, "w")
         # open file for writing
-        for i = 1:size(ents,1)
-            linep1 = "$(ents[i,1]),$(ents[i,2]),$(kins[i,1]),$(kins[i,2]),$(pots[i,1]),$(pots[i,2]),"
-            linep2 = "$(acts[i,1]),$(acts[i,2]),$(nois1[i,1]),$(nois1[i,2]),$(nois2[i,1]),$(nois2[i,2]),"
-            linep3 = "$(nois3[i,1]),$(nois3[i,2])\n"
-            line = linep1 * linep2 * linep3
+        for i = 1:size(pathmin,1)
+            line = "$(pathmin[i,1]),$(pathmin[i,2])\n"
             write(out_file, line)
         end
         close(out_file)
@@ -470,5 +458,5 @@ function main()
 
 end
 
-@time run(18.952490234375,5)
+@time run(22.062015533447266,5)#18.952490234375
 #@time main()

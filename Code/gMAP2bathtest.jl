@@ -6,7 +6,6 @@
 
 # Putting the relevant imports in
 using Plots
-using Roots
 using NLsolve
 import GR # Need this to stop world age plotting error?
 
@@ -22,39 +21,28 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = true # Set if starting from high state or low state
+const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const NM = 150 # number of segments to discretise MAP onto
-const NG = 600#150 # number of segments to optimize gMAP over
-const Nmid = convert(Int64, ceil((NG+1)/2))
+const NG = 300 # number of segments to optimize gMAP over
 const Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
-const Δα = 1/NG
 
 # A function to find the crossing points of the nullclines so they can be used
 # as start, end and saddle points
 function nullcline()
-    a = 2
-    b = 2
-    A1(x) = k*r/(K*(r+f*x^a))
-    A2(x) = (r/f*(q/(Q*x)-1))^(1/b)
-    g(x) = k*r/(K*(r+f*x^a)) - (r/f*(q/(Q*x)-1))^(1/b) #A1(x) - A2(x)
-    xs = fzeros(g, 0, q/Q)
-    sad = [A1(xs[2]); xs[2]]
     if high2low == true
-        ss1 = [A1(xs[1]); xs[1]]
-        ss2 = [A1(xs[3]); xs[3]]
+        ss1 = [243.0; 243.0]
+        ss2 = [244.0; 244.0]
     else
-        ss1 = [A1(xs[3]); xs[3]]
-        ss2 = [A1(xs[1]); xs[1]]
+        ss1 = [244.0; 244.0]
+        ss2 = [243.0; 243.0]
     end
     print(ss1)
     print("\n")
-    print(sad)
-    print("\n")
     print(ss2)
     print("\n")
-    return (ss1,sad,ss2)
+    return (ss1,ss2)
 end
 
 # Vector of functions from MAP case
@@ -154,8 +142,9 @@ function genvars(x::AbstractArray)
     for i = 2:NG
         λs[i] = λ(x[i,:],xprim[i,:])
     end
-    # Start and end points are assumed through out code to be critical points
-    λs[1] = λs[NG+1] = 0
+    # No longer critical points so should use old formula
+    λs[1] = 3*λs[2] - 3*λs[3] + λs[4]
+    λs[NG+1] = 3*λs[NG] - 3*λs[NG-1] + λs[NG-2]
     # now find ϑs
     ϑs = fill(NaN, NG+1, 2)
     for i = 2:NG
@@ -175,23 +164,14 @@ function g!(F::AbstractArray, x::AbstractArray, C::AbstractVector, K::AbstractAr
     F[1,1] = x[1,1] - xi[1,1]
     F[1,2] = x[1,2] - xi[1,2]
     # first path
-    for i = 2:Nmid-1
-        for j = 1:2
-            F[i,j] = x[i,j] - C[i]*(x[i+1,j] - 2*x[i,j] + x[i-1,j]) - K[i,j]
-        end
-    end
-    # midpoint
-    F[Nmid,1] = x[Nmid,1] - xi[2,1]
-    F[Nmid,2] = x[Nmid,2] - xi[2,2]
-    # second path
-    for i = Nmid+1:NG
+    for i = 2:NG
         for j = 1:2
             F[i,j] = x[i,j] - C[i]*(x[i+1,j] - 2*x[i,j] + x[i-1,j]) - K[i,j]
         end
     end
     # end point
-    F[NG+1,1] = x[NG+1,1] - xi[3,1]
-    F[NG+1,2] = x[NG+1,2] - xi[3,2]
+    F[NG+1,1] = x[NG+1,1] - xi[2,1]
+    F[NG+1,2] = x[NG+1,2] - xi[2,2]
     return(F)
 end
 
@@ -204,24 +184,12 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     Hθx = zeros(2,2)
     point = zeros(2,2)
     # Make array to store fixed points
-    xi = fill(NaN, 3, 2)
-    # the fixed points are allowed to vary, this operates as a sanity check on the nucline function
-    point[2,:] = [ 0.0; 0.0 ] # zeros for both cases, as at ends of arc
+    xi = fill(NaN, 2, 2)
+    # the fixed points are not allowed to vary here
     # Start point
-    point[1,:] = x[1,:]
-    xi[1,:] = Δτ*(Hθ!(Hθ,point)) + x[1,:]
-    # Midpoint
-    point[1,:] = x[Nmid,:]
-    Hθx = Hθx!(Hθx,point)
-    Hxθ = transpose(Hθx)
-    Hθ = Hθ!(Hθ,point)
-    h = H(point)
-    Hx = Hx!(Hx,point)
-    xi[2,1] = -Δτ*(Hxθ[1,1]*Hθ[1] + Hxθ[1,2]*Hθ[2] + h*Hx[1]) + x[Nmid,1]
-    xi[2,2] = -Δτ*(Hxθ[2,1]*Hθ[1] + Hxθ[2,2]*Hθ[2] + h*Hx[2]) + x[Nmid,2]
+    xi[1,:] = x[1,:]
     # End point
-    point[1,:] = x[NG+1,:]
-    xi[3,:] = Δτ*(Hθ!(Hθ,point)) + x[NG+1,:]
+    xi[2,:] = x[NG+1,:]
     # Make vector to store constant terms C
     C = fill(NaN, NG+1)
     for i = 2:NG
@@ -259,83 +227,46 @@ end
 function discretise(x::AbstractArray)
     # need to interpolate the data from x onto disx, preserving |x'| = const,
     # i.e equal distance between points
-    s1 = zeros(Nmid)
-    s2 = zeros(NG+2-Nmid)
-    s1[1] = 0
-    s2[1] = 0
-    for i = 2:Nmid
+    s = zeros(NG+1)
+    s[1] = 0
+    for i = 2:NG+1
         dA = x[i,1] - x[i-1,1]
         dB = x[i,2] - x[i-1,2]
-        s1[i] = s1[i-1] + sqrt(dA^2 + dB^2) # Could probably drop the sqrts to speed up the code
-    end
-    for i = 2:(NG+2-Nmid)
-        dA = x[i+Nmid-1,1] - x[i+Nmid-2,1]
-        dB = x[i+Nmid-1,2] - x[i+Nmid-2,2]
-        s2[i] = s2[i-1] + sqrt(dA^2 + dB^2) # Could probably drop the sqrts to speed up the code
+        s[i] = s[i-1] + sqrt(dA^2 + dB^2) # Could probably drop the sqrts to speed up the code
     end
     # Divide total arc length into equal segments
-    ls1 = zeros(Nmid)
-    ls2 = zeros(NG+2-Nmid)
-    for i = 1:Nmid
-        ls1[i] = (i-1)*s1[end]/(Nmid-1)
-    end
-    for i = 1:(NG+2-Nmid)
-        ls2[i] = (i-1)*s2[end]/(NG+1-Nmid)
+    ls = zeros(NG+1)
+    for i = 1:NG+1
+        ls[i] = (i-1)*s[end]/(NG)
     end
     # Find first index greater than a ls[i] for each i
-    inds1 = fill(0,Nmid)
+    inds = fill(0,NG+1)
     j = 1
-    for i = 1:Nmid
+    for i = 1:NG+1
         higher = false
         while higher == false
-            if s1[j] >= ls1[i] || j == Nmid
-                inds1[i] = j
+            if s[j] >= ls[i] || j == NG+1
+                inds[i] = j
                 higher = true
             else
                 j += 1
             end
         end
     end
-    inds2 = fill(0,NG+2-Nmid)
-    j = 1
-    for i = 1:(NG+2-Nmid)
-        higher = false
-        while higher == false
-            if s2[j] >= ls2[i] || j == NG + 2 - Nmid
-                inds2[i] = j + Nmid - 1
-                higher = true
-            else
-                j += 1
-            end
-        end
-    end
-    # First do mid points and end points as they should be fixed
+    # First do end points as they should be fixed
     disx = zeros(NG+1,2)
     disx[1,:] = x[1,:]
-    disx[Nmid,:] = x[Nmid,:]
     disx[NG+1,:] = x[NG+1,:]
     # This is done to linear order, which is probably good enough
-    for i = 2:Nmid-1
-        one = inds1[i] - 1
-        two = inds1[i]
-        s₀ = s1[one]
-        s₁ = s1[two]
+    for i = 2:NG
+        one = inds[i] - 1
+        two = inds[i]
+        s₀ = s[one]
+        s₁ = s[two]
         for j = 1:2
             x₀ = x[one,j]
             x₁ = x[two,j]
-            disx[i,j] = x₀ + (ls1[i] - s₀)*(x₁ - x₀)/(s₁ - s₀)
-        end
-    end
-
-    for i = Nmid+1:NG
-        one = inds2[i+1-Nmid] - 1
-        two = inds2[i+1-Nmid]
-        s₀ = s2[one+1-Nmid]
-        s₁ = s2[two+1-Nmid]
-        for j = 1:2
-            x₀ = x[one,j]
-            x₁ = x[two,j]
-            disx[i,j] = x₀ + (ls2[i+1-Nmid] - s₀)*(x₁ - x₀)/(s₁ - s₀)
+            disx[i,j] = x₀ + (ls[i] - s₀)*(x₁ - x₀)/(s₁ - s₀)
         end
     end
     return(disx)
@@ -345,13 +276,9 @@ end
 # This path is then returned for other functions
 function gMAP()
     # First find the steady states and saddle point
-    ss1, sad, ss2 = nullcline()
-    a1 = collect(linspace(ss1[1],sad[1],(NG/2)+1))
-    a2 = collect(linspace(sad[1],ss2[1],(NG/2)+1))
-    a = vcat(a1,a2[2:length(a2)])
-    b1 = collect(linspace(ss1[2],sad[2],(NG/2)+1))
-    b2 = collect(linspace(sad[2],ss2[2],(NG/2)+1))
-    b = vcat(b1,b2[2:length(b2)])
+    ss1, ss2 = nullcline()
+    a = collect(linspace(ss1[1],ss2[1],NG+1))
+    b = collect(linspace(ss1[2],ss2[2],NG+1))
     x = hcat(a,b)
     # Then appropriatly discretise the path such that it works with this algorithm
     x = discretise(x)
@@ -372,7 +299,9 @@ function gMAP()
         l += 1
         # Now overwrite old x
         x = xn
-        if δ <=  0.0000001 #0.00000000005
+        S = Ŝ(x,xprim,λs,ϑs,λprim)
+        print("$(δ),$(sum(S))\n")
+        if δ <=  0.000000005
             convrg = true
             print("$(l) steps to converge\n")
         end
@@ -394,19 +323,10 @@ function Ŝ(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::Abst
 end
 
 # function to find the times of each point
-function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector,η)
-    #η = 10.0^-3
-    λt = zeros(NG+1)
-    for i = 1:length(λt)
-        if λs[i] >= η
-            λt[i] = λs[i]
-        else
-            λt[i] = η
-        end
-    end
+function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector)
     ts = zeros(NG+1)
     for i = 2:NG+1
-        ts[i] = ts[i-1] + (1/(2*λt[i-1]) + 1/(2*λt[i]))/NG
+        ts[i] = ts[i-1] + (1/(2*λs[i-1]) + 1/(2*λs[i]))/NG
     end
     return(ts)
 end
@@ -458,11 +378,10 @@ function main()
     # use function Ŝ to find the action associated with this path
     S = Ŝ(x,xprim,λs,ϑs,λprim)
     print("Associated Action = $(sum(S))\n")
-    η = 10.0^-(1.09)
-    tims = times(x,xprim,λs,ϑs,λprim,η)
+    tims = times(x,xprim,λs,ϑs,λprim)
     print("Time of path = $(tims[end])\n")
     path = timdis(tims,x)
-    plot(S)
+    plot(path[:,1],path[:,2])
     savefig("../Results/Graph1.png")
     plot(λs)
     savefig("../Results/DetSpeed.png")
@@ -475,6 +394,9 @@ function main()
             line = "$(path[i,1]),$(path[i,2])\n"
             write(out_file, line)
         end
+        # final line written as time and action of gMAP
+        line = "$(tims[end]),$(sum(S))\n"
+        write(out_file, line)
         close(out_file)
     end
 end

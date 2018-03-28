@@ -9,7 +9,6 @@
 # Putting the relevant imports in
 using Optim
 using Plots
-using Roots
 import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
@@ -24,7 +23,7 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = true # Set if starting from high state or low state
+const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
@@ -120,43 +119,18 @@ end
 # A function to find the crossing points of the nullclines so they can be used
 # as start, end and saddle points
 function nullcline()
-    a = 2
-    b = 2
-    A1(x) = k*r/(K*(r+f*x^a))
-    A2(x) = (r/f*(q/(Q*x)-1))^(1/b)
-    g(x) = k*r/(K*(r+f*x^a)) - (r/f*(q/(Q*x)-1))^(1/b) #A1(x) - A2(x)
-    xs = fzeros(g, 0, q/Q)
-    sad = [A1(xs[2]); xs[2]]
     if high2low == true
-        ss1 = [A1(xs[1]); xs[1]]
-        ss2 = [A1(xs[3]); xs[3]]
+        ss1 = [243.0; 243.0]
+        ss2 = [244.0; 244.0]
     else
-        ss1 = [A1(xs[3]); xs[3]]
-        ss2 = [A1(xs[1]); xs[1]]
+        ss1 = [244.0; 244.0]
+        ss2 = [243.0; 243.0]
     end
     print(ss1)
     print("\n")
-    print(sad)
-    print("\n")
     print(ss2)
     print("\n")
-    return (ss1,sad,ss2)
-end
-
-# Function to compute the normalisation constant for the multiplicative noise case
-# Should input whole path inclusive of start and end points
-function norml(τ,path)
-    norm = 0#log(1)
-    Δt = τ/N
-    E = [ 0.0 0.0; 0.0 0.0 ]
-    for i = 1:N
-        posA = (path[i+1,1] + path[i,1])/2
-        posB = (path[i+1,2] + path[i,2])/2
-        # Find noise matrix then compute determinent of it
-        E = e!(E, [posA; posB])
-        norm += logdet(E) # include new determinent in the product
-    end
-    return(norm)
+    return (ss1,ss2)
 end
 
 function AP(thi, tau) # function to calculate action of a given path
@@ -292,7 +266,7 @@ end
 function linesear(tau,noit)
     k = 0 # initialise counter
     t = tau
-    α = 4
+    α = 2.0^(-10)
     β = 0.1
     while true
         h = 1/10000
@@ -402,7 +376,6 @@ function run(tau,noit)
     gr()
     pone = plot(pathmin[:,1],pathmin[:,2], lab = "MAP", xaxis = "A", yaxis = "B")
     pone = scatter!(pone, [star[1]], [star[2]], lab = "Start", seriescolor = :green) # put start point in
-    pone = scatter!(pone, [inflex[1]], [inflex[2]], lab = "Saddle Point", seriescolor = :orange)
     pone = scatter!(pone, [fin[1]], [fin[2]], lab = "Finish", seriescolor = :red) # put end point in
     ents, kins, pots, acts, nois1, nois2, nois3 =  EntProd(pathmin,t)
 
@@ -415,6 +388,9 @@ function run(tau,noit)
             line = "$(pathmin[i,1]),$(pathmin[i,2])\n"
             write(out_file, line)
         end
+        # final line written as time and action of MAP
+        line = "$(t),$(S)\n"
+        write(out_file, line)
         close(out_file)
     end
 
@@ -427,37 +403,21 @@ function run(tau,noit)
     end
     ptwo = plot(segcent, points, xaxis = "A", yaxis = "Entropy Production", marker = :auto)
     ptwo = scatter!(ptwo, [star[1]], [0.0], seriescolor = :green)
-    ptwo = scatter!(ptwo, [inflex[1]], [0.0], seriescolor = :orange)
     ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red, leg = false)
-    annotate!(inflex[1]+3, minimum(ents)+0.01, text("Action = $(act)\n", :left, font(5, "Courier")))
+    annotate!((star[1]+fin[1])/2 + 3, minimum(ents)+0.01, text("Action = $(act)\n", :left, font(5, "Courier")))
     plot(pone, ptwo, layout = (1,2))
     savefig("../Results/Entropy$(high2low).png")
 
 end
 
 # Now define the paths
-start, saddle, finish = nullcline()
+start, finish = nullcline()
 const star = start # These are then set constant to allow better optimisation
-const inflex = saddle
 const fin = finish
 
 # find saddle points
-const pa1 = collect(linspace(star[1],inflex[1],(N/2)+1))
-const pa2 = collect(linspace(inflex[1],fin[1],(N/2)+1))
-const pa = vcat(pa1,pa2[2:length(pa2)])
-const pb1 = collect(linspace(star[2],inflex[2],(N/2)+1))
-const pb2 = collect(linspace(inflex[2],fin[2],(N/2)+1))
-const pb = vcat(pb1,pb2[2:length(pb2)])
-
-# First make a reasonable first guess of the path vector
-# const pa = collect(star[1]:((fin[1]-star[1])/N):fin[1])
-# const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
+const pa = collect(linspace(star[1],fin[1],N+1))
+const pb = collect(linspace(star[2],fin[2],N+1))
 const thi1 = hcat(pa,pb)
 
-
-function main()
-
-end
-
-@time run(22.062015533447266,5)#18.952490234375
-#@time main()
+@time run(0.0078125,5)

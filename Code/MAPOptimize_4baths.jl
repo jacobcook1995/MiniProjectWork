@@ -594,11 +594,11 @@ function trial()
     # print("$(D)\n")
     # D = D!(D,fin)
     # print("$(D)\n")
-    # A = 24.35
-    # B = 65.78
-    # S = 34.9
-    # W = Ne - A - B - S
-    D = D!(D,[22.7273, 22.7273, 11954.4, 0.119236])
+    A = 24.35
+    B = 65.78
+    S = 34.9
+    W = Ne - A - B - S
+    D = D!(D,[A, B, W, S])
     print("$(D)\n")
 end
 

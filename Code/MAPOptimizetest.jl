@@ -23,7 +23,7 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = false # Set if starting from high state or low state
+const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
@@ -121,9 +121,9 @@ end
 function nullcline()
     if high2low == true
         ss1 = [243.0; 243.0]
-        ss2 = [244.0; 244.0]
+        ss2 = [300.0; 300.0]
     else
-        ss1 = [244.0; 244.0]
+        ss1 = [300.0; 300.0]
         ss2 = [243.0; 243.0]
     end
     print(ss1)
@@ -266,7 +266,7 @@ end
 function linesear(tau,noit)
     k = 0 # initialise counter
     t = tau
-    α = 2.0^(-10)
+    α = 2.0^(-4)
     β = 0.1
     while true
         h = 1/10000
@@ -420,4 +420,4 @@ const pa = collect(linspace(star[1],fin[1],N+1))
 const pb = collect(linspace(star[2],fin[2],N+1))
 const thi1 = hcat(pa,pb)
 
-@time run(0.0078125,5)
+@time run(0.022406384679004212,5)

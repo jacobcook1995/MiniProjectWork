@@ -177,7 +177,7 @@ function main()
     end
     plot(ts1,A1)
     savefig("../Results/Graph1.png")
-    ts2 = collect(linspace(2*t2,4*t2,100))
+    ts2 = collect(linspace(2*t2,0.5*t2,100))
     A2 = zeros(length(ts2))
     for i = 1:length(ts2)
         _, _, _, act = EntProd(points2,ts2[i],N2)
@@ -185,6 +185,8 @@ function main()
     end
     plot(ts2,A2)
     savefig("../Results/Graph2.png")
+    print("MAP min = $(minimum(A1))\n")
+    print("gMAP min = $(minimum(A2))\n")
 end
 
 @time main()

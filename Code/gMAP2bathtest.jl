@@ -25,7 +25,7 @@ const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const NM = 150 # number of segments to discretise MAP onto
-const NG = 300 # number of segments to optimize gMAP over
+const NG = 150 # number of segments to optimize gMAP over
 const Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
 
 # A function to find the crossing points of the nullclines so they can be used
@@ -33,9 +33,9 @@ const Δτ = 0.001 # I've made this choice arbitarily, too large and the algorit
 function nullcline()
     if high2low == true
         ss1 = [243.0; 243.0]
-        ss2 = [244.0; 244.0]
+        ss2 = [300.0; 300.0]
     else
-        ss1 = [244.0; 244.0]
+        ss1 = [300.0; 300.0]
         ss2 = [243.0; 243.0]
     end
     print(ss1)
@@ -109,8 +109,8 @@ end
 # x[1] = A, x[2] = B
 function λ(x::AbstractVector,y::AbstractVector)
     # tmps to keep the code somewhat readable
-    tmp1 = ((K*x[1] - k*r/(r + f*x[2]^2))^2)*(K*x[1] + k*r/(r + f*x[2]^2)) + ((Q*x[2] - q*r/(r + f*x[1]^2))^2)*(Q*x[2] + q*r/(r + f*x[1]^2))
-    tmp2 = (y[1]^2)*(K*x[1] + k*r/(r + f*x[2]^2)) + (y[2]^2)*(Q*x[2] + q*r/(r + f*x[1]^2))
+    tmp1 = ((K*x[1] - k*r/(r + f*x[2]^2))^2)/(K*x[1] + k*r/(r + f*x[2]^2)) + ((Q*x[2] - q*r/(r + f*x[1]^2))^2)/(Q*x[2] + q*r/(r + f*x[1]^2))
+    tmp2 = (y[1]^2)/(K*x[1] + k*r/(r + f*x[2]^2)) + (y[2]^2)/(Q*x[2] + q*r/(r + f*x[1]^2))
     λ = sqrt(tmp1/tmp2)
     return(λ)
 end
@@ -232,7 +232,7 @@ function discretise(x::AbstractArray)
     for i = 2:NG+1
         dA = x[i,1] - x[i-1,1]
         dB = x[i,2] - x[i-1,2]
-        s[i] = s[i-1] + sqrt(dA^2 + dB^2) # Could probably drop the sqrts to speed up the code
+        s[i] = s[i-1] + sqrt(dA^2 + dB^2)
     end
     # Divide total arc length into equal segments
     ls = zeros(NG+1)

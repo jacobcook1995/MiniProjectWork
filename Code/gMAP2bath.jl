@@ -21,14 +21,13 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = true # Set if starting from high state or low state
+const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
-const NM = 150 # number of segments to discretise MAP onto
+const NM = 600 # number of segments to discretise MAP onto
 const NG = 600#150 # number of segments to optimize gMAP over
 const Nmid = convert(Int64, ceil((NG+1)/2))
 const Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
-const Δα = 1/NG
 
 # A function to find the crossing points of the nullclines so they can be used
 # as start, end and saddle points
@@ -120,8 +119,8 @@ end
 # x[1] = A, x[2] = B
 function λ(x::AbstractVector,y::AbstractVector)
     # tmps to keep the code somewhat readable
-    tmp1 = ((K*x[1] - k*r/(r + f*x[2]^2))^2)*(K*x[1] + k*r/(r + f*x[2]^2)) + ((Q*x[2] - q*r/(r + f*x[1]^2))^2)*(Q*x[2] + q*r/(r + f*x[1]^2))
-    tmp2 = (y[1]^2)*(K*x[1] + k*r/(r + f*x[2]^2)) + (y[2]^2)*(Q*x[2] + q*r/(r + f*x[1]^2))
+    tmp1 = ((K*x[1] - k*r/(r + f*x[2]^2))^2)/(K*x[1] + k*r/(r + f*x[2]^2)) + ((Q*x[2] - q*r/(r + f*x[1]^2))^2)/(Q*x[2] + q*r/(r + f*x[1]^2))
+    tmp2 = (y[1]^2)/(K*x[1] + k*r/(r + f*x[2]^2)) + (y[2]^2)/(Q*x[2] + q*r/(r + f*x[1]^2))
     λ = sqrt(tmp1/tmp2)
     return(λ)
 end
@@ -154,7 +153,7 @@ function genvars(x::AbstractArray)
         λs[i] = λ(x[i,:],xprim[i,:])
     end
     # Start and end points are assumed through out code to be critical points
-    λs[1] = λs[NG+1] = 0
+    λs[1] = λs[NG+1] = λs[Nmid] = 0
     # now find ϑs
     ϑs = fill(NaN, NG+1, 2)
     for i = 2:NG
@@ -393,19 +392,10 @@ function Ŝ(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::Abst
 end
 
 # function to find the times of each point
-function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector,η)
-    #η = 10.0^-3
-    λt = zeros(NG+1)
-    for i = 1:length(λt)
-        if λs[i] >= η
-            λt[i] = λs[i]
-        else
-            λt[i] = η
-        end
-    end
+function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector)
     ts = zeros(NG+1)
     for i = 2:NG+1
-        ts[i] = ts[i-1] + (1/(2*λt[i-1]) + 1/(2*λt[i]))/NG
+        ts[i] = ts[i-1] + (1/(2*λs[i-1]) + 1/(2*λs[i]))/NG
     end
     return(ts)
 end
@@ -455,10 +445,12 @@ function main()
     path = gMAP()
     x, xprim, λs, ϑs, λprim = genvars(path)
     # use function Ŝ to find the action associated with this path
+    λs[1] = λs[2]
+    λs[Nmid] = (λs[Nmid+1] + λs[Nmid-1])/2
+    λs[end] = λs[end-1]
     S = Ŝ(x,xprim,λs,ϑs,λprim)
     print("Associated Action = $(sum(S))\n")
-    η = 10.0^-(1.09)
-    tims = times(x,xprim,λs,ϑs,λprim,η)
+    tims = times(x,xprim,λs,ϑs,λprim)
     print("Time of path = $(tims[end])\n")
     path = timdis(tims,x)
     plot(S)
@@ -474,6 +466,9 @@ function main()
             line = "$(path[i,1]),$(path[i,2])\n"
             write(out_file, line)
         end
+        # final line written as time and action of gMAP
+        line = "$(tims[end]),$(sum(S))\n"
+        write(out_file, line)
         close(out_file)
     end
 end

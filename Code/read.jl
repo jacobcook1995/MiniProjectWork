@@ -140,8 +140,8 @@ function main()
     end
     print("$(t1),$(S1)\n")
     print("$(t2),$(S2)\n")
-    N1 = 150
-    N2 = 150
+    N1 = 600
+    N2 = 300
     segcent1 = zeros(N1)
     segcent2 = zeros(N2)
     act1 = zeros(N1)
@@ -169,24 +169,6 @@ function main()
     plot(pone, ptwo, layout = (1,2))
     savefig("../Results/CombinedGraph2.png")
     print("MAP Action = $(sum(act1))\ngMAP Action = $(sum(act2))\n")
-    ts1 = collect(linspace(2*t1,0.5*t1,100))
-    A1 = zeros(length(ts1))
-    for i = 1:length(ts1)
-        _, _, _, act = EntProd(points1,ts1[i],N1)
-        A1[i] = sum(act)
-    end
-    plot(ts1,A1)
-    savefig("../Results/Graph1.png")
-    ts2 = collect(linspace(2*t2,0.5*t2,100))
-    A2 = zeros(length(ts2))
-    for i = 1:length(ts2)
-        _, _, _, act = EntProd(points2,ts2[i],N2)
-        A2[i] = sum(act)
-    end
-    plot(ts2,A2)
-    savefig("../Results/Graph2.png")
-    print("MAP min = $(minimum(A1))\n")
-    print("gMAP min = $(minimum(A2))\n")
 end
 
 @time main()

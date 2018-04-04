@@ -7,6 +7,7 @@
 # Putting the relevant imports in
 using Plots
 using NLsolve
+using Roots
 import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
@@ -21,7 +22,7 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = false # Set if starting from high state or low state
+const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const NM = 150 # number of segments to discretise MAP onto
@@ -31,18 +32,27 @@ const Δτ = 0.001 # I've made this choice arbitarily, too large and the algorit
 # A function to find the crossing points of the nullclines so they can be used
 # as start, end and saddle points
 function nullcline()
+    a = 2
+    b = 2
+    A1(x) = k*r/(K*(r+f*x^a))
+    A2(x) = (r/f*(q/(Q*x)-1))^(1/b)
+    g(x) = k*r/(K*(r+f*x^a)) - (r/f*(q/(Q*x)-1))^(1/b) #A1(x) - A2(x)
+    xs = fzeros(g, 0, q/Q)
+    sad = [A1(xs[2]); xs[2]]
     if high2low == true
-        ss1 = [243.0; 243.0]
-        ss2 = [300.0; 300.0]
+        ss1 = [A1(xs[1]); xs[1]]
+        ss2 = [A1(xs[3]); xs[3]]
     else
-        ss1 = [300.0; 300.0]
-        ss2 = [243.0; 243.0]
+        ss1 = [A1(xs[3]); xs[3]]
+        ss2 = [A1(xs[1]); xs[1]]
     end
     print(ss1)
     print("\n")
+    print(sad)
+    print("\n")
     print(ss2)
     print("\n")
-    return (ss1,ss2)
+    return (ss1,sad,ss2)
 end
 
 # Vector of functions from MAP case
@@ -142,9 +152,9 @@ function genvars(x::AbstractArray)
     for i = 2:NG
         λs[i] = λ(x[i,:],xprim[i,:])
     end
-    # No longer critical points so should use old formula
-    λs[1] = 3*λs[2] - 3*λs[3] + λs[4]
-    λs[NG+1] = 3*λs[NG] - 3*λs[NG-1] + λs[NG-2]
+    # Critical points so expect both to be zero
+    λs[1] = 0
+    λs[NG+1] = 0
     # now find ϑs
     ϑs = fill(NaN, NG+1, 2)
     for i = 2:NG
@@ -185,11 +195,14 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     point = zeros(2,2)
     # Make array to store fixed points
     xi = fill(NaN, 2, 2)
-    # the fixed points are not allowed to vary here
+    # the fixed points are allowed to vary as both are at zeros
     # Start point
-    xi[1,:] = x[1,:]
+    point[2,:] = [ 0.0; 0.0 ] # zeros for both cases, as at ends of arc
+    point[1,:] = x[1,:]
+    xi[1,:] = Δτ*(Hθ!(Hθ,point)) + x[1,:]
     # End point
-    xi[2,:] = x[NG+1,:]
+    point[1,:] = x[NG+1,:]
+    xi[2,:] = Δτ*(Hθ!(Hθ,point)) + x[NG+1,:]
     # Make vector to store constant terms C
     C = fill(NaN, NG+1)
     for i = 2:NG
@@ -299,8 +312,6 @@ function gMAP()
         l += 1
         # Now overwrite old x
         x = xn
-        S = Ŝ(x,xprim,λs,ϑs,λprim)
-        print("$(δ),$(sum(S))\n")
         if δ <=  0.000000005
             convrg = true
             print("$(l) steps to converge\n")
@@ -371,20 +382,81 @@ function timdis(ts::AbstractVector,x::AbstractArray)
     return(path)
 end
 
+# function to change λ to replace any elemnts smaller than η with η
+function λtrim(λs,η)
+    λt = zeros(length(λs))
+    for i = 1:length(λs)
+        if λs[i] <= η
+            λt[i] = η
+        else
+            λt[i] = λs[i]
+        end
+    end
+    return(λt)
+end
+
+# Function to calculate the action of the discretised path in the MAP formulation
+function EntProd(pathmin,tau)
+    # probably easiest to calculate the entropy production at each point in the path
+    ents = zeros(NM, 2)
+    KE = zeros(NM, 2)
+    PE = zeros(NM, 2)
+    acts = zeros(NM, 2)
+    h = [0.0; 0.0]
+    d = [0.0 0.0; 0.0 0.0]
+    deltat = tau/NM
+    # Remove fixed points from path
+    path = pathmin[2:NM,:]
+    for i = 1:NM # This gives an extra contribution compared to the optimisation!
+        if i == 1
+            posA = (pathmin[1,1] + path[i,1])/2
+            posB = (pathmin[1,2] + path[i,2])/2
+        elseif i == NM
+            posA = (path[i-1,1] + pathmin[NM+1,1])/2
+            posB = (path[i-1,2] + pathmin[NM+1,2])/2
+        else
+            posA = (path[i-1,1] + path[i,1])/2
+            posB = (path[i-1,2] + path[i,2])/2
+        end
+        h = f!(h, [posA posB])
+        d = D!(d, [posA posB])
+        for j = 1:2
+            if i == 1
+                thiv = (path[i,j] - pathmin[1,j])/deltat
+            elseif i == NM
+                thiv = (pathmin[NM+1,j] - path[i-1,j])/deltat
+            else
+                thiv = (path[i,j] - path[i-1,j])/(deltat)
+            end
+            ents[i,j] = h[j]*thiv*deltat/d[j,j]
+            KE[i,j] = thiv*thiv*deltat/(2*d[j,j])
+            PE[i,j] = h[j]*h[j]*deltat/(2*d[j,j])
+        end
+    end
+    acts = KE + PE - ents
+    return(ents, KE, PE, acts)
+end
 
 function main()
     path = gMAP()
     x, xprim, λs, ϑs, λprim = genvars(path)
+    λs[1] = λs[2]
+    λs[end] = λs[end-1]
+    λs[75] = (λs[74] + λs[76])/2
+    tims = times(x,xprim,λs,ϑs,λprim)
+    plot(tims)
+    savefig("../Results/Times.png")
+    print("Time of path = $(tims[end])\n")
     # use function Ŝ to find the action associated with this path
     S = Ŝ(x,xprim,λs,ϑs,λprim)
     print("Associated Action = $(sum(S))\n")
-    tims = times(x,xprim,λs,ϑs,λprim)
-    print("Time of path = $(tims[end])\n")
     path = timdis(tims,x)
     plot(path[:,1],path[:,2])
     savefig("../Results/Graph1.png")
     plot(λs)
     savefig("../Results/DetSpeed.png")
+    _, _, _, acts = EntProd(path,tims[end])
+    print("Discretised Action = $(sum(acts))\n")
     # Block of code to write all this data to a file so I can go through it
     if length(ARGS) >= 1
         output_file = "../Results/$(ARGS[1]).csv"

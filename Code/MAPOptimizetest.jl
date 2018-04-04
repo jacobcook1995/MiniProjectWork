@@ -9,6 +9,7 @@
 # Putting the relevant imports in
 using Optim
 using Plots
+using Roots
 import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
@@ -119,12 +120,18 @@ end
 # A function to find the crossing points of the nullclines so they can be used
 # as start, end and saddle points
 function nullcline()
+    a = 2
+    b = 2
+    A1(x) = k*r/(K*(r+f*x^a))
+    A2(x) = (r/f*(q/(Q*x)-1))^(1/b)
+    g(x) = k*r/(K*(r+f*x^a)) - (r/f*(q/(Q*x)-1))^(1/b) #A1(x) - A2(x)
+    xs = fzeros(g, 0, q/Q)
     if high2low == true
-        ss1 = [243.0; 243.0]
-        ss2 = [300.0; 300.0]
+        ss1 = [A1(xs[1]); xs[1]]
+        ss2 = [A1(xs[3]); xs[3]]
     else
-        ss1 = [300.0; 300.0]
-        ss2 = [243.0; 243.0]
+        ss1 = [A1(xs[3]); xs[3]]
+        ss2 = [A1(xs[1]); xs[1]]
     end
     print(ss1)
     print("\n")
@@ -266,7 +273,7 @@ end
 function linesear(tau,noit)
     k = 0 # initialise counter
     t = tau
-    α = 2.0^(-4)
+    α = 4.0
     β = 0.1
     while true
         h = 1/10000
@@ -283,7 +290,7 @@ function linesear(tau,noit)
             plus = false
         end
         # Check that the rate of descent is still significant if not end linesearch
-        if d <= 10.0^-10
+        if d <= 10.0^-10 || α < 10.0^-10
             print("Line Search Done")
             print("\n")
             return(t)
@@ -420,4 +427,4 @@ const pa = collect(linspace(star[1],fin[1],N+1))
 const pb = collect(linspace(star[2],fin[2],N+1))
 const thi1 = hcat(pa,pb)
 
-@time run(0.022406384679004212,5)
+@time run(17.67734404714091,5)

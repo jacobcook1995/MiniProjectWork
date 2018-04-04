@@ -23,10 +23,10 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = true # Set if starting from high state or low state
+const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
-const N = 150 # number of segments optimised over
+const N = 300 # number of segments optimised over
 
 # Multiplicative Guassian noise matrix
 function e!(E, x)
@@ -140,22 +140,6 @@ function nullcline()
     print(ss2)
     print("\n")
     return (ss1,sad,ss2)
-end
-
-# Function to compute the normalisation constant for the multiplicative noise case
-# Should input whole path inclusive of start and end points
-function norml(τ,path)
-    norm = 0#log(1)
-    Δt = τ/N
-    E = [ 0.0 0.0; 0.0 0.0 ]
-    for i = 1:N
-        posA = (path[i+1,1] + path[i,1])/2
-        posB = (path[i+1,2] + path[i,2])/2
-        # Find noise matrix then compute determinent of it
-        E = e!(E, [posA; posB])
-        norm += logdet(E) # include new determinent in the product
-    end
-    return(norm)
 end
 
 function AP(thi, tau) # function to calculate action of a given path
@@ -404,7 +388,6 @@ function run(tau,noit)
     pone = scatter!(pone, [inflex[1]], [inflex[2]], lab = "Saddle Point", seriescolor = :orange)
     pone = scatter!(pone, [fin[1]], [fin[2]], lab = "Finish", seriescolor = :red) # put end point in
     ents, kins, pots, acts, nois1, nois2, nois3 =  EntProd(pathmin,t)
-
     # Block of code to write all this data to a file so I can go through it
     if length(ARGS) >= 1
         output_file = "../Results/$(ARGS[1]).csv"
@@ -414,6 +397,9 @@ function run(tau,noit)
             line = "$(pathmin[i,1]),$(pathmin[i,2])\n"
             write(out_file, line)
         end
+        # final line written as time and action of gMAP
+        line = "$(t),$(S)\n"
+        write(out_file, line)
         close(out_file)
     end
 

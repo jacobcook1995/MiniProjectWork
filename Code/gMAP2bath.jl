@@ -24,8 +24,8 @@ const r = 10
 const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
-const NM = 600 # number of segments to discretise MAP onto
-const NG = 600#150 # number of segments to optimize gMAP over
+const NM = 450 # number of segments to discretise MAP onto
+const NG = 450 # number of segments to optimize gMAP over
 const Nmid = convert(Int64, ceil((NG+1)/2))
 const Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
 

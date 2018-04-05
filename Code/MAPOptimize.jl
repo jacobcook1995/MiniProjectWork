@@ -26,7 +26,7 @@ const r = 10
 const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
-const N = 300 # number of segments optimised over
+const N = 450 # number of segments optimised over
 
 # Multiplicative Guassian noise matrix
 function e!(E, x)
@@ -444,5 +444,5 @@ function main()
 
 end
 
-@time run(22.062015533447266,5)#18.952490234375
+@time run(21.105258823966956,5)#18.952490234375
 #@time main()

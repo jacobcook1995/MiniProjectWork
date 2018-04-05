@@ -24,8 +24,8 @@ const r = 10
 const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
-const NM = 450 # number of segments to discretise MAP onto
-const NG = 450 # number of segments to optimize gMAP over
+const NM = 150 # number of segments to discretise MAP onto
+const NG = 150 # number of segments to optimize gMAP over
 const Nmid = convert(Int64, ceil((NG+1)/2))
 const Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
 
@@ -70,6 +70,7 @@ function D!(D, x)
     D[2,2] = q*r/(r+f*x[1]*x[1]) + Q*x[2]
     return D
 end
+
 # function to compute the Hamiltonian at a point x
 # x[1,1] = A, x[1,2] = B, x[2,1] = θ₁, x[2,2] = θ₂
 function H(x::AbstractArray)
@@ -80,6 +81,7 @@ function H(x::AbstractArray)
     H += 0.5*(x[2,2]^2)*(q*r/(r + f*x[1,1]^2) + Q*x[1,2])
     return(H)
 end
+
 # Function for the first differential of the hamiltonian in θ
 # x[1,1] = A, x[1,2] = B, x[2,1] = θ₁, x[2,2] = θ₂
 function Hθ!(Hθ::AbstractArray, x::AbstractArray)

@@ -140,7 +140,7 @@ function main()
     end
     print("$(t1),$(S1)\n")
     print("$(t2),$(S2)\n")
-    N1 = 150
+    N1 = 1500
     N2 = 150
     segcent1 = zeros(N1)
     segcent2 = zeros(N2)

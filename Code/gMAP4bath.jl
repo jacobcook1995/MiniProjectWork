@@ -319,7 +319,8 @@ function genvars(x::AbstractArray, λ::SymPy.Sym, ϑ::SymPy.Sym, NG::Int)
     for i = 2:NG
         λt = λ # temporary λ to avoid changing the master one
         λt = subs(λt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4]) |> Sym
-        λs[i] = subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
+        λt = subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> Sym
+        λs[i] = N(λt)
     end
     # Critical points so expect both to be zero
     λs[1] = 0
@@ -442,13 +443,17 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
     convrg = false
     l = 0
     while convrg == false
+        plot(x[:,1],x[:,2])
+        savefig("../Results/AvsB$(l).png")
+        plot(x[:,3],x[:,4])
+        savefig("../Results/SvsW$(l).png")
         x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG)
         newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG)
         xn = discretise(newx.zero,NG)
         # delta is the sum of the differences of all the points in the path
         δ = 0
         for i = 1:NG+1
-            for j = 1:2
+            for j = 1:4
                 δ += abs(x[i,j] - xn[i,j])
             end
         end
@@ -462,6 +467,70 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
         end
     end
     return(x)
+end
+
+# Function to calculate the action of a given path
+function Ŝ(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector,NG::Int)
+    S = zeros(NG-1)
+    for j = 1:4
+        S[1] += (3/(2*NG))*(xprim[2,j]*ϑs[2,j])
+        # Not excluding the midpoint as the contribution is vanishing
+        # Might have to rethink this for the 4 species case
+        for i = 3:NG-1
+            S[i-1] += (1/NG)*(xprim[i,j]*ϑs[i,j])
+        end
+        S[NG-1] += (3/(2*NG))*(xprim[NG,j]*ϑs[NG,j])
+    end
+    return(S)
+end
+
+# function to find the times of each point
+function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector,NG::Int)
+    ts = zeros(NG+1)
+    for i = 2:NG+1
+        ts[i] = ts[i-1] + (1/(2*λs[i-1]) + 1/(2*λs[i]))/NG
+    end
+    return(ts)
+end
+
+# function to rediscretise a path from arc discretisation to time discretisation
+function timdis(ts::AbstractVector,x::AbstractArray,NM::Int)
+    # Make discrete vector of time points
+    t = zeros(NM+1)
+    for i = 1:NM+1
+        t[i] = (i-1)*ts[end]/NM
+    end
+    # Find index of first element greater than t[i] in ts
+    inds = fill(0,NM+1)
+    j = 1
+    for i = 1:NM+1
+        higher = false
+        while higher == false
+            if ts[j] >= t[i] || j == NG+1
+                inds[i] = j
+                higher = true
+            else
+                j += 1
+            end
+        end
+    end
+    # First do end points as they are fixed
+    path = zeros(NM+1,4)
+    path[1,:] = x[1,:]
+    path[NM+1,:] = x[NG+1,:]
+    # This is done to linear order, which is probably good enough
+    for i = 2:NM
+        one = inds[i] - 1
+        two = inds[i]
+        t₀ = ts[one]
+        t₁ = ts[two]
+        for j = 1:4
+            x₀ = x[one,j]
+            x₁ = x[two,j]
+            path[i,j] = x₀ + (t[i] - t₀)*(x₁ - x₀)/(t₁ - t₀)
+        end
+    end
+    return(path)
 end
 
 function main()
@@ -487,9 +556,10 @@ function main()
     Nmid = convert(Int64, ceil((NG+1)/2))
     Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
     high2low = false # Set if starting from high state or low state
-    # Now call simulation function with these parmeters
-    gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2low)
 
+    # Now call simulation function with these parameters
+    path = gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2low)
+    x, xprim, λs, ϑs, λprim = genvars(path)
 end
 
 

@@ -438,7 +438,7 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
 
     # Then appropriatly discretise the path such that it works with this algorithm
     x = discretise(x,NG)
-
+    test = zeros(size(x,1))
     # Set up method to tell if is converged
     convrg = false
     l = 0
@@ -447,7 +447,15 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
         savefig("../Results/AvsB$(l).png")
         plot(x[:,3],x[:,4])
         savefig("../Results/SvsW$(l).png")
+        for i = 1:size(x,1)
+            test[i] = x[i,1] + x[i,2] + x[i,3] + x[i,4]
+        end
+        print("$(test)\n")
         x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG)
+        plot(λs)
+        savefig("../Results/velos$(l).png")
+        plot(ϑs)
+        savefig("../Results/theta$(l).png")
         newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG)
         xn = discretise(newx.zero,NG)
         # delta is the sum of the differences of all the points in the path
@@ -554,7 +562,7 @@ function main()
     NM = 150 # number of segments to discretise MAP onto
     NG = 150 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
+    Δτ = 0.0001 # I've made this choice arbitarily, too large and the algorithm breaks
     high2low = false # Set if starting from high state or low state
 
     # Now call simulation function with these parameters

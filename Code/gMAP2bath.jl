@@ -21,7 +21,7 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = false # Set if starting from high state or low state
+const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const NM = 150 # number of segments to discretise MAP onto
@@ -455,7 +455,7 @@ function main()
     tims = times(x,xprim,λs,ϑs,λprim)
     print("Time of path = $(tims[end])\n")
     path = timdis(tims,x)
-    plot(S)
+    plot(ϑs)
     savefig("../Results/Graph1.png")
     plot(λs)
     savefig("../Results/DetSpeed.png")

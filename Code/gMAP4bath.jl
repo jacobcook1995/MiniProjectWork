@@ -159,7 +159,7 @@ function λs()
     den += y2*Dmin[2,1]*y1 + y2*Dmin[2,2]*y2 + y2*Dmin[2,3]*y3 + y2*Dmin[2,4]*y4
     den += y3*Dmin[3,1]*y1 + y3*Dmin[3,2]*y2 + y3*Dmin[3,3]*y3 + y3*Dmin[3,4]*y4
     den += y4*Dmin[4,1]*y1 + y4*Dmin[4,2]*y2 + y4*Dmin[4,3]*y3 + y4*Dmin[4,4]*y4
-    λ = sqrt(num/den)
+    λ = sqrt(num)/sqrt(den)
     return(λ)
 end
 
@@ -209,7 +209,6 @@ function gensyms(ps::AbstractVector)
     Hθθ = subs(Hθθ, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11]) |> Sym
     Hx = subs(Hx, K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6]) |> Sym
     Hx = subs(Hx, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11]) |> Sym
-    A, B, S, W, y1, y2, y3, y4 = symbols("A,B,S,W,y1,y2,y3,y4")
     return(ϑ,λ,Hθ,Hθx,Hθθ,Hx)
 end
 
@@ -418,22 +417,22 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
 
     # Now generate an initial path to optimize over
     ss1, sad, ss2 = nullcline(F,r,f,ϕ,K,k,Ne,high2low)
-    a = collect(linspace(ss1[1],ss2[1],NG+1))
-    b = collect(linspace(ss1[2],ss2[2],NG+1))
-    s = collect(linspace(ss1[3],ss2[3],NG+1))
-    w = collect(linspace(ss1[4],ss2[4],NG+1))
-    # a1 = collect(linspace(ss1[1],sad[1],(NG/2)+1))
-    # a2 = collect(linspace(sad[1],ss2[1],(NG/2)+1))
-    # a = vcat(a1,a2[2:length(a2)])
-    # b1 = collect(linspace(ss1[2],sad[2],(NG/2)+1))
-    # b2 = collect(linspace(sad[2],ss2[2],(NG/2)+1))
-    # b = vcat(b1,b2[2:length(b2)])
-    # s1 = collect(linspace(ss1[3],sad[3],(NG/2)+1))
-    # s2 = collect(linspace(sad[3],ss2[3],(NG/2)+1))
-    # s = vcat(s1,s2[2:length(s2)])
-    # w1 = collect(linspace(ss1[4],sad[4],(NG/2)+1))
-    # w2 = collect(linspace(sad[4],ss2[4],(NG/2)+1))
-    # w = vcat(w1,w2[2:length(w2)])
+    # a = collect(linspace(ss1[1],ss2[1],NG+1))
+    # b = collect(linspace(ss1[2],ss2[2],NG+1))
+    # s = collect(linspace(ss1[3],ss2[3],NG+1))
+    # w = collect(linspace(ss1[4],ss2[4],NG+1))
+    a1 = collect(linspace(ss1[1],sad[1],(NG/2)+1))
+    a2 = collect(linspace(sad[1],ss2[1],(NG/2)+1))
+    a = vcat(a1,a2[2:length(a2)])
+    b1 = collect(linspace(ss1[2],sad[2],(NG/2)+1))
+    b2 = collect(linspace(sad[2],ss2[2],(NG/2)+1))
+    b = vcat(b1,b2[2:length(b2)])
+    s1 = collect(linspace(ss1[3],sad[3],(NG/2)+1))
+    s2 = collect(linspace(sad[3],ss2[3],(NG/2)+1))
+    s = vcat(s1,s2[2:length(s2)])
+    w1 = collect(linspace(ss1[4],sad[4],(NG/2)+1))
+    w2 = collect(linspace(sad[4],ss2[4],(NG/2)+1))
+    w = vcat(w1,w2[2:length(w2)])
     x = hcat(a,b,s,w)
 
     # Then appropriatly discretise the path such that it works with this algorithm
@@ -450,7 +449,6 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
         for i = 1:size(x,1)
             test[i] = x[i,1] + x[i,2] + x[i,3] + x[i,4]
         end
-        print("$(test)\n")
         x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG)
         plot(λs)
         savefig("../Results/velos$(l).png")
@@ -560,7 +558,7 @@ function main()
 
     # Optimisation parameters
     NM = 150 # number of segments to discretise MAP onto
-    NG = 150 # number of segments to optimize gMAP over
+    NG = 300 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
     Δτ = 0.0001 # I've made this choice arbitarily, too large and the algorithm breaks
     high2low = false # Set if starting from high state or low state

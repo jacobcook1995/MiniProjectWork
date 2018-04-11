@@ -7,7 +7,8 @@
 using Plots
 using Roots
 using NLsolve
-using SymPy
+#using SymPy
+using SymEngine # Trying alternative substitution method to see if this is faster
 import GR # Need this to stop world age plotting error?
 
 # first should make generic functions that take in a full set of parameters, that
@@ -16,7 +17,8 @@ import GR # Need this to stop world age plotting error?
 
 # make a symbolic diffusion matrix
 function Ds()
-    A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A,B,S,W,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
+    #A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A,B,S,W,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
+    A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
     # Make a symbolic version of the matrix, needs no input in this case
     e = Array{Sym}(4,4)
     e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
@@ -43,7 +45,8 @@ end
 
 # function to make a symbolic equation vector
 function bs()
-    A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A,B,S,W,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
+    #A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A,B,S,W,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
+    A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
     # Make a symbolic version of the matrix, needs no input in this case
     b = Array{Sym}(4)
     b[1] = k*S*r/(r + f*B^2) - kmin*A - K*A + Kmin*W
@@ -55,7 +58,8 @@ end
 
 # function to generate a symbolic equation for the Hamiltonian at point (X, θ)
 function Hs()
-    the1, the2, the3, the4 = symbols("the1,the2,the3,the4")
+    #the1, the2, the3, the4 = symbols("the1,the2,the3,the4")
+    the1, the2, the3, the4 = symbols("the1 the2 the3 the4")
     # generate symbolic arrays for b and D
     b = bs()
     D = Ds()
@@ -70,7 +74,8 @@ end
 
 # function to generate first differential of the symbolic hamiltonian in x
 function Hxs()
-    A, B, S, W = symbols("A,B,S,W")
+    #A, B, S, W = symbols("A,B,S,W")
+    A, B, S, W = symbols("A B S W")
     # generate Hamiltonian
     H = Hs()
     Hx = Array{Sym}(4)
@@ -83,7 +88,8 @@ end
 
 # function to generate first differential of the symbolic hamiltonian in θ
 function Hθs()
-    the1, the2, the3, the4 = symbols("the1,the2,the3,the4")
+    #the1, the2, the3, the4 = symbols("the1,the2,the3,the4")
+    the1, the2, the3, the4 = symbols("the1 the2 the3 the4")
     # generate Hamiltonian
     H = Hs()
     Hθ = Array{Sym}(4)
@@ -96,7 +102,8 @@ end
 
 # function to generate the second differential of the symbolic hamiltonian in θ
 function Hθθs()
-    the1, the2, the3, the4 = symbols("the1,the2,the3,the4")
+    #the1, the2, the3, the4 = symbols("the1,the2,the3,the4")
+    the1, the2, the3, the4 = symbols("the1 the2 the3 the4")
     # generate Hamiltonian
     Hθ = Hθs()
     Hθθ = Array{Sym}(4,4)
@@ -121,7 +128,8 @@ end
 
 # function to generate the second differential of the symbolic hamiltonian in θ follwed by X
 function Hθxs()
-    A, B, S, W = symbols("A,B,S,W")
+    # A, B, S, W = symbols("A,B,S,W")
+    A, B, S, W = symbols("A B S W")
     # generate Hamiltonian
     Hθ = Hθs()
     Hθx = Array{Sym}(4,4)
@@ -146,7 +154,8 @@ end
 
 # function to find a symbolic equation for λ the determenistic speed
 function λs()
-    y1, y2, y3, y4 = symbols("y1,y2,y3,y4")
+    #y1, y2, y3, y4 = symbols("y1,y2,y3,y4")
+    y1, y2, y3, y4 = symbols("y1 y2 y3 y4")
     b = bs()
     Dmin = Dmins()
     num = 0
@@ -167,7 +176,8 @@ end
 # hamiltonian value of zero for a given point x
 function ϑs()
     # create necessary symbols and and symbolic expressions
-    y1, y2, y3, y4 = symbols("y1,y2,y3,y4")
+    #y1, y2, y3, y4 = symbols("y1,y2,y3,y4")
+    y1, y2, y3, y4 = symbols("y1 y2 y3 y4")
     λ = λs()
     Dmin = Dmins()
     b = bs()
@@ -195,7 +205,8 @@ function gensyms(ps::AbstractVector)
     Hθθ = Hθθs()
     Hx = Hxs()
     # specify symbols that will be substituted for
-    K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
+    #K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
+    K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("K k Q q kmin Kmin qmin Qmin f r F")
     # now perform substitutions
     ϑ = subs(ϑ, K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6]) |> Sym
     ϑ = subs(ϑ, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11]) |> Sym
@@ -305,7 +316,8 @@ end
 # function to generate the variables needed for a given algoritm iteration
 function genvars(x::AbstractArray, λ::SymPy.Sym, ϑ::SymPy.Sym, NG::Int)
     # define neccesary symbols
-    A, B, S, W, y1, y2, y3, y4 = symbols("A,B,S,W,y1,y2,y3,y4")
+    #A, B, S, W, y1, y2, y3, y4 = symbols("A,B,S,W,y1,y2,y3,y4")
+    A, B, S, W, y1, y2, y3, y4 = symbols("A B S W y1 y2 y3 y4")
     # calculate velocities
     xprim = fill(NaN, NG+1, 4)
     for i = 2:NG
@@ -358,7 +370,8 @@ end
 function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector,
                 Hx::SymPy.Sym,Hθ::SymPy.Sym,Hθθ::SymPy.Sym,Hθx::SymPy.Sym,Δτ::Number,NG::Int)
     # define relevant symbols
-    A, B, S, W, the1, the2, the3, the4 = symbols("A,B,S,W,the1,the2,the3,the4")
+    #A, B, S, W, the1, the2, the3, the4 = symbols("A,B,S,W,the1,the2,the3,the4")
+    A, B, S, W, the1, the2, the3, the4 = symbols("A B S W the1 the2 the3 the4")
     # Make array to store fixed points
     xi = fill(NaN, 2, 4)
     # the fixed points are allowed to vary as both are at zeros
@@ -441,20 +454,10 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
     # Set up method to tell if is converged
     convrg = false
     l = 0
+    gr()
     while convrg == false
-        plot(x[:,1],x[:,2])
-        savefig("../Results/AvsB$(l).png")
-        plot(x[:,3],x[:,4])
-        savefig("../Results/SvsW$(l).png")
-        for i = 1:size(x,1)
-            test[i] = x[i,1] + x[i,2] + x[i,3] + x[i,4]
-        end
-        x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG)
-        plot(λs)
-        savefig("../Results/velos$(l).png")
-        plot(ϑs)
-        savefig("../Results/theta$(l).png")
-        newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG)
+        @time x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG)
+        @time newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG)
         xn = discretise(newx.zero,NG)
         # delta is the sum of the differences of all the points in the path
         δ = 0
@@ -463,7 +466,12 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
                 δ += abs(x[i,j] - xn[i,j])
             end
         end
-        print("$(δ)\n")
+        S = Ŝ(x,xprim,λs,ϑs,λprim,NG)
+        print("$(δ),$(sum(S))\n")
+        plot(S)
+        savefig("../Results/S$(l).png")
+        plot(x[:,3],x[:,4])
+        savefig("../Results/SvsW$(l).png")
         l += 1
         # Now overwrite old x
         x = xn
@@ -558,14 +566,18 @@ function main()
 
     # Optimisation parameters
     NM = 150 # number of segments to discretise MAP onto
-    NG = 300 # number of segments to optimize gMAP over
+    NG = 150 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.0001 # I've made this choice arbitarily, too large and the algorithm breaks
-    high2low = false # Set if starting from high state or low state
+    Δτ = 0.0000002#0.0000001 # I've made this choice arbitarily, too large and the algorithm breaks
+    high2low = true # Set if starting from high state or low state
 
     # Now call simulation function with these parameters
     path = gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2low)
     x, xprim, λs, ϑs, λprim = genvars(path)
+    plot(path[:,1],path[:,2])
+    savefig("../Results/Graph1.png")
+    plot(path[:,3],path[:,4])
+    savefig("../Results/Graph2.png")
 end
 
 

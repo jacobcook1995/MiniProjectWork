@@ -7,7 +7,6 @@
 using Plots
 using Roots
 using NLsolve
-#using SymPy
 using SymEngine # Trying alternative substitution method to see if this is faster
 import GR # Need this to stop world age plotting error?
 
@@ -17,10 +16,9 @@ import GR # Need this to stop world age plotting error?
 
 # make a symbolic diffusion matrix
 function Ds()
-    #A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A,B,S,W,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
     A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
     # Make a symbolic version of the matrix, needs no input in this case
-    e = Array{Sym}(4,4)
+    e = Array{SymEngine.Basic,2}(4,4)
     e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
     e[1,1] = sqrt(k*S*r/(r + f*B^2) + kmin*A + K*A + Kmin*W)
     e[2,2] = sqrt(q*S*r/(r + f*A^2) + qmin*B + Q*B + Qmin*W)
@@ -45,10 +43,9 @@ end
 
 # function to make a symbolic equation vector
 function bs()
-    #A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A,B,S,W,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
     A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
     # Make a symbolic version of the matrix, needs no input in this case
-    b = Array{Sym}(4)
+    b = Array{SymEngine.Basic,1}(4)
     b[1] = k*S*r/(r + f*B^2) - kmin*A - K*A + Kmin*W
     b[2] = q*S*r/(r + f*A^2) - qmin*B - Q*B + Qmin*W
     b[3] = -k*S*r/(r + f*B^2) - q*S*r/(r + f*A^2) + kmin*A + qmin*B + F
@@ -58,7 +55,6 @@ end
 
 # function to generate a symbolic equation for the Hamiltonian at point (X, θ)
 function Hs()
-    #the1, the2, the3, the4 = symbols("the1,the2,the3,the4")
     the1, the2, the3, the4 = symbols("the1 the2 the3 the4")
     # generate symbolic arrays for b and D
     b = bs()
@@ -74,11 +70,10 @@ end
 
 # function to generate first differential of the symbolic hamiltonian in x
 function Hxs()
-    #A, B, S, W = symbols("A,B,S,W")
     A, B, S, W = symbols("A B S W")
     # generate Hamiltonian
     H = Hs()
-    Hx = Array{Sym}(4)
+    Hx = Array{SymEngine.Basic,1}(4)
     Hx[1] = diff(H, A)
     Hx[2] = diff(H, B)
     Hx[3] = diff(H, S)
@@ -88,11 +83,10 @@ end
 
 # function to generate first differential of the symbolic hamiltonian in θ
 function Hθs()
-    #the1, the2, the3, the4 = symbols("the1,the2,the3,the4")
     the1, the2, the3, the4 = symbols("the1 the2 the3 the4")
     # generate Hamiltonian
     H = Hs()
-    Hθ = Array{Sym}(4)
+    Hθ = Array{SymEngine.Basic,1}(4)
     Hθ[1] = diff(H, the1)
     Hθ[2] = diff(H, the2)
     Hθ[3] = diff(H, the3)
@@ -102,11 +96,10 @@ end
 
 # function to generate the second differential of the symbolic hamiltonian in θ
 function Hθθs()
-    #the1, the2, the3, the4 = symbols("the1,the2,the3,the4")
     the1, the2, the3, the4 = symbols("the1 the2 the3 the4")
     # generate Hamiltonian
     Hθ = Hθs()
-    Hθθ = Array{Sym}(4,4)
+    Hθθ = Array{SymEngine.Basic,2}(4,4)
     Hθθ[1,1] = diff(Hθ[1],the1)
     Hθθ[1,2] = diff(Hθ[1],the2)
     Hθθ[1,3] = diff(Hθ[1],the3)
@@ -128,11 +121,10 @@ end
 
 # function to generate the second differential of the symbolic hamiltonian in θ follwed by X
 function Hθxs()
-    # A, B, S, W = symbols("A,B,S,W")
     A, B, S, W = symbols("A B S W")
     # generate Hamiltonian
     Hθ = Hθs()
-    Hθx = Array{Sym}(4,4)
+    Hθx = Array{SymEngine.Basic,2}(4,4)
     Hθx[1,1] = diff(Hθ[1],A)
     Hθx[1,2] = diff(Hθ[1],B)
     Hθx[1,3] = diff(Hθ[1],S)
@@ -154,7 +146,6 @@ end
 
 # function to find a symbolic equation for λ the determenistic speed
 function λs()
-    #y1, y2, y3, y4 = symbols("y1,y2,y3,y4")
     y1, y2, y3, y4 = symbols("y1 y2 y3 y4")
     b = bs()
     Dmin = Dmins()
@@ -176,17 +167,16 @@ end
 # hamiltonian value of zero for a given point x
 function ϑs()
     # create necessary symbols and and symbolic expressions
-    #y1, y2, y3, y4 = symbols("y1,y2,y3,y4")
     y1, y2, y3, y4 = symbols("y1 y2 y3 y4")
     λ = λs()
     Dmin = Dmins()
     b = bs()
-    c = Array{Sym}(4)
+    c = Array{SymEngine.Basic,1}(4)
     c[1] = λ*y1 - b[1]
     c[2] = λ*y2 - b[2]
     c[3] = λ*y3 - b[3]
     c[4] = λ*y4 - b[4]
-    ϑ = Array{Sym}(4)
+    ϑ = Array{SymEngine.Basic,1}(4)
     ϑ[1] = Dmin[1,1]*c[1] + Dmin[1,2]*c[2] + Dmin[1,3]*c[3] + Dmin[1,4]*c[4]
     ϑ[2] = Dmin[2,1]*c[1] + Dmin[2,2]*c[2] + Dmin[2,3]*c[3] + Dmin[2,4]*c[4]
     ϑ[3] = Dmin[3,1]*c[1] + Dmin[3,2]*c[2] + Dmin[3,3]*c[3] + Dmin[3,4]*c[4]
@@ -205,21 +195,26 @@ function gensyms(ps::AbstractVector)
     Hθθ = Hθθs()
     Hx = Hxs()
     # specify symbols that will be substituted for
-    #K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F")
     K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("K k Q q kmin Kmin qmin Qmin f r F")
     # now perform substitutions
-    ϑ = subs(ϑ, K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6]) |> Sym
-    ϑ = subs(ϑ, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11]) |> Sym
-    λ = subs(λ, K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6]) |> Sym
-    λ = subs(λ, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11]) |> Sym
-    Hθ = subs(Hθ, K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6]) |> Sym
-    Hθ = subs(Hθ, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11]) |> Sym
-    Hθx = subs(Hθx, K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6]) |> Sym
-    Hθx = subs(Hθx, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11]) |> Sym
-    Hθθ = subs(Hθθ, K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6]) |> Sym
-    Hθθ = subs(Hθθ, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11]) |> Sym
-    Hx = subs(Hx, K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6]) |> Sym
-    Hx = subs(Hx, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11]) |> Sym
+    λ = subs(λ, K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
+    λ = subs(λ, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
+    for i = 1:4
+        ϑ[i] = subs(ϑ[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
+        ϑ[i] = subs(ϑ[i], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
+        Hθ[i] = subs(Hθ[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
+        Hθ[i] = subs(Hθ[i], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
+        Hx[i] = subs(Hx[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
+        Hx[i] = subs(Hx[i], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
+    end
+    for j = 1:4
+        for i = 1:4
+            Hθx[i,j] = subs(Hθx[i,j], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
+            Hθx[i,j] = subs(Hθx[i,j], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
+            Hθθ[i,j] = subs(Hθθ[i,j], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
+            Hθθ[i,j] = subs(Hθθ[i,j], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
+        end
+    end
     return(ϑ,λ,Hθ,Hθx,Hθθ,Hx)
 end
 
@@ -314,9 +309,8 @@ function discretise(x::AbstractArray,NG::Int)
 end
 
 # function to generate the variables needed for a given algoritm iteration
-function genvars(x::AbstractArray, λ::SymPy.Sym, ϑ::SymPy.Sym, NG::Int)
+function genvars(x::AbstractArray, λ::SymEngine.Basic, ϑ::Array{SymEngine.Basic,1}, NG::Int)
     # define neccesary symbols
-    #A, B, S, W, y1, y2, y3, y4 = symbols("A,B,S,W,y1,y2,y3,y4")
     A, B, S, W, y1, y2, y3, y4 = symbols("A B S W y1 y2 y3 y4")
     # calculate velocities
     xprim = fill(NaN, NG+1, 4)
@@ -329,19 +323,20 @@ function genvars(x::AbstractArray, λ::SymPy.Sym, ϑ::SymPy.Sym, NG::Int)
     λs = fill(NaN, NG+1)
     for i = 2:NG
         λt = λ # temporary λ to avoid changing the master one
-        λt = subs(λt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4]) |> Sym
-        λt = subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> Sym
-        λs[i] = N(λt)
+        λt = subs(λt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
+        λs[i] = subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
     end
     # Critical points so expect both to be zero
     λs[1] = 0
     λs[NG+1] = 0
     # now find ϑs
     ϑs = fill(NaN, NG+1, 4)
-    for i = 2:NG
-        ϑt = ϑ # temporary ϑ to avoid altering master one
-        ϑt = subs(ϑt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4]) |> Sym
-        ϑs[i,:] = subs(ϑt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
+    ϑt = Array{SymEngine.Basic,1}(4)
+    for j = 1:4
+        for i = 2:NG
+            ϑt[j] = subs(ϑ[j], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
+            ϑs[i,j] = subs(ϑt[j], y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
+        end
     end
     # Now find λprim
     λprim = fill(NaN, NG+1)
@@ -368,21 +363,25 @@ end
 
 # function to solve the system of linear equations
 function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector,
-                Hx::SymPy.Sym,Hθ::SymPy.Sym,Hθθ::SymPy.Sym,Hθx::SymPy.Sym,Δτ::Number,NG::Int)
+                Hx::Array{SymEngine.Basic,1},Hθ::Array{SymEngine.Basic,1},Hθθ::Array{SymEngine.Basic,2},
+                Hθx::Array{SymEngine.Basic,2},Δτ::Number,NG::Int)
     # define relevant symbols
-    #A, B, S, W, the1, the2, the3, the4 = symbols("A,B,S,W,the1,the2,the3,the4")
     A, B, S, W, the1, the2, the3, the4 = symbols("A B S W the1 the2 the3 the4")
     # Make array to store fixed points
     xi = fill(NaN, 2, 4)
     # the fixed points are allowed to vary as both are at zeros
     # Start point
     Hθt = Hθ # temporary hamiltonian so master isn't changed
-    Hθt = subs(Hθt, the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0) |> Sym
+    for i = 1:4
+        Hθt[i] = subs(Hθt[i], the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
+    end
     Hθtt = Hθt
-    Hθtt = subs(Hθtt, A=>x[1,1], B=>x[1,2], S=>x[1,3], W=>x[1,4]) |> float
+    for i = 1:4
+        Hθtt[i] = subs(Hθtt[i], A=>x[1,1], B=>x[1,2], S=>x[1,3], W=>x[1,4]) |> float
+        Hθt[i] = subs(Hθt[i], A=>x[end,1], B=>x[end,2], S=>x[end,3], W=>x[end,4]) |> float
+    end
     xi[1,:] = Δτ*(Hθtt) + x[1,:]
     # End point
-    Hθt = subs(Hθt, A=>x[end,1], B=>x[end,2], S=>x[end,3], W=>x[end,4]) |> float
     xi[2,:] = Δτ*(Hθt) + x[end,:]
     # Make vector to store constant terms C
     C = fill(NaN, NG+1)
@@ -391,27 +390,32 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     end
     # Make array to store constant vector K's
     K = fill(NaN, NG+1, 4)
-    for i = 2:NG
-        # Save temporary Hamiltonians so that the substitution doesn't overwrite orginal
-        Hxt = Hx
-        Hθθt = Hθθ
-        Hθxt = Hθx
-        Hxt = subs(Hxt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4]) |> Sym
-        Hxt = subs(Hxt, the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
-        Hθθt = subs(Hθθt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4]) |> Sym
-        Hθθt = subs(Hθθt, the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
-        Hθxt = subs(Hθxt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4]) |> Sym
-        Hθxt = subs(Hθxt, the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
-        for j = 1:4
+    Hxt = Array{SymEngine.Basic,1}(4)
+    Hθθt = Array{SymEngine.Basic,2}(4,4)
+    Hθxt = Array{SymEngine.Basic,2}(4,4)
+    # Put initial values for K in
+    for j = 1:4
+        for i = 2:NG
             K[i,j] = x[i,j]
-            for k = 1:4
-                K[i,j] -= Δτ*λs[i]*(Hθxt[j,k]*xprim[i,k])
-                K[i,j] += Δτ*(Hθθt[j,k]*Hxt[k])
-            end
             K[i,j] += Δτ*λs[i]*λprim[i]*xprim[i,j]
         end
     end
-
+    for l = 1:4
+        for i = 2:NG
+            # Save temporary Hamiltonians so that the substitution doesn't overwrite orginal
+            Hxt[l] = subs(Hx[l], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
+            Hxt[l] = subs(Hxt[l], the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
+            for m = 1:4
+                Hθθt[m,l] = subs(Hθθ[m,l], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
+                Hθθt[m,l] = subs(Hθθt[m,l], the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
+                Hθxt[m,l] = subs(Hθx[m,l], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
+                Hθxt[m,l] = subs(Hθxt[m,l], the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
+                # Update K's with new contributions from Hamiltonians
+                K[i,m] -= Δτ*λs[i]*(Hθxt[m,l]*xprim[i,l])
+                K[i,m] += Δτ*(Hθθt[m,l]*Hxt[l])
+            end
+        end
+    end
     # Make an initial guess of the path, as prior path
     newxi = x
     # make f! a closure of g! for specific xi, C, K
@@ -456,8 +460,8 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
     l = 0
     gr()
     while convrg == false
-        @time x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG)
-        @time newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG)
+        x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG)
+        newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG)
         xn = discretise(newx.zero,NG)
         # delta is the sum of the differences of all the points in the path
         δ = 0
@@ -468,10 +472,6 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
         end
         S = Ŝ(x,xprim,λs,ϑs,λprim,NG)
         print("$(δ),$(sum(S))\n")
-        plot(S)
-        savefig("../Results/S$(l).png")
-        plot(x[:,3],x[:,4])
-        savefig("../Results/SvsW$(l).png")
         l += 1
         # Now overwrite old x
         x = xn

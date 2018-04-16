@@ -243,9 +243,9 @@ function nullcline(F::Number,r::Number,f::Number,ϕ::Number,K::Number,k::Number,
     sad = [ As[2]; Bs[2]; Ss[2]; Ws[2] ]
     if high2low == true
         ss1 = [ As[1]; Bs[1]; Ss[1]; Ws[1] ]
-        ss2 = [ As[3]; Bs[3]; Ss[3]; Ws[3] ]
+        ss2 = [ As[3]; Bs[3]; Ss[3]; Ws[3] ] #seems this one is broken
     else
-        ss1 = [ As[3]; Bs[3]; Ss[3]; Ws[3] ]
+        ss1 = [ As[3]; Bs[3]; Ss[3]; Ws[3] ] #seems this one is broken
         ss2 = [ As[1]; Bs[1]; Ss[1]; Ws[1] ]
     end
     print(ss1)
@@ -379,10 +379,10 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     for i = 1:4
         Hθtt[i] = subs(Hθtt[i], A=>x[1,1], B=>x[1,2], S=>x[1,3], W=>x[1,4]) |> float
         Hθt[i] = subs(Hθt[i], A=>x[end,1], B=>x[end,2], S=>x[end,3], W=>x[end,4]) |> float
+        xi[1,i] = Δτ*(Hθtt[i]) + x[1,i]
+        # End point
+        xi[2,i] = Δτ*(Hθt[i]) + x[end,i]
     end
-    xi[1,:] = Δτ*(Hθtt) + x[1,:]
-    # End point
-    xi[2,:] = Δτ*(Hθt) + x[end,:]
     # Make vector to store constant terms C
     C = fill(NaN, NG+1)
     for i = 2:NG
@@ -434,22 +434,22 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
 
     # Now generate an initial path to optimize over
     ss1, sad, ss2 = nullcline(F,r,f,ϕ,K,k,Ne,high2low)
-    # a = collect(linspace(ss1[1],ss2[1],NG+1))
-    # b = collect(linspace(ss1[2],ss2[2],NG+1))
-    # s = collect(linspace(ss1[3],ss2[3],NG+1))
-    # w = collect(linspace(ss1[4],ss2[4],NG+1))
-    a1 = collect(linspace(ss1[1],sad[1],(NG/2)+1))
-    a2 = collect(linspace(sad[1],ss2[1],(NG/2)+1))
-    a = vcat(a1,a2[2:length(a2)])
-    b1 = collect(linspace(ss1[2],sad[2],(NG/2)+1))
-    b2 = collect(linspace(sad[2],ss2[2],(NG/2)+1))
-    b = vcat(b1,b2[2:length(b2)])
-    s1 = collect(linspace(ss1[3],sad[3],(NG/2)+1))
-    s2 = collect(linspace(sad[3],ss2[3],(NG/2)+1))
-    s = vcat(s1,s2[2:length(s2)])
-    w1 = collect(linspace(ss1[4],sad[4],(NG/2)+1))
-    w2 = collect(linspace(sad[4],ss2[4],(NG/2)+1))
-    w = vcat(w1,w2[2:length(w2)])
+    a = collect(linspace(sad[1],ss1[1],NG+1))
+    b = collect(linspace(sad[2],ss1[2],NG+1))
+    s = collect(linspace(sad[3],ss1[3],NG+1))
+    w = collect(linspace(sad[4],ss1[4],NG+1))
+    # a1 = collect(linspace(ss1[1],sad[1],(NG/2)+1))
+    # a2 = collect(linspace(sad[1],ss2[1],(NG/2)+1))
+    # a = vcat(a1,a2[2:length(a2)])
+    # b1 = collect(linspace(ss1[2],sad[2],(NG/2)+1))
+    # b2 = collect(linspace(sad[2],ss2[2],(NG/2)+1))
+    # b = vcat(b1,b2[2:length(b2)])
+    # s1 = collect(linspace(ss1[3],sad[3],(NG/2)+1))
+    # s2 = collect(linspace(sad[3],ss2[3],(NG/2)+1))
+    # s = vcat(s1,s2[2:length(s2)])
+    # w1 = collect(linspace(ss1[4],sad[4],(NG/2)+1))
+    # w2 = collect(linspace(sad[4],ss2[4],(NG/2)+1))
+    # w = vcat(w1,w2[2:length(w2)])
     x = hcat(a,b,s,w)
 
     # Then appropriatly discretise the path such that it works with this algorithm
@@ -472,10 +472,14 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
         end
         S = Ŝ(x,xprim,λs,ϑs,λprim,NG)
         print("$(δ),$(sum(S))\n")
+        if l % 7 == 0
+            plot(S)
+            savefig("../Results/S$(l).png")
+        end
         l += 1
         # Now overwrite old x
         x = xn
-        if δ <=  0.000000005
+        if δ <=  0.00025
             convrg = true
             print("$(l) steps to converge\n")
         end
@@ -565,15 +569,14 @@ function main()
     Ne = 12000 # number of elements in the system
 
     # Optimisation parameters
-    NM = 150 # number of segments to discretise MAP onto
-    NG = 150 # number of segments to optimize gMAP over
+    NM = 300 # number of segments to discretise MAP onto
+    NG = 300 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.0000002#0.0000001 # I've made this choice arbitarily, too large and the algorithm breaks
-    high2low = true # Set if starting from high state or low state
+    Δτ = 0.0000002 # I've made this choice arbitarily, too large and the algorithm breaks
+    high2low = false # Set if starting from high state or low state
 
     # Now call simulation function with these parameters
     path = gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2low)
-    x, xprim, λs, ϑs, λprim = genvars(path)
     plot(path[:,1],path[:,2])
     savefig("../Results/Graph1.png")
     plot(path[:,3],path[:,4])

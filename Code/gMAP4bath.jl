@@ -572,7 +572,7 @@ function main()
     NM = 300 # number of segments to discretise MAP onto
     NG = 300 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.0000002 # I've made this choice arbitarily, too large and the algorithm breaks
+    Δτ = 0.0002 # I've made this choice arbitarily, too large and the algorithm breaks
     high2low = false # Set if starting from high state or low state
 
     # Now call simulation function with these parameters

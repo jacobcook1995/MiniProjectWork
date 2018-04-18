@@ -24,10 +24,10 @@ function Ds()
     e[2,2] = sqrt(q*S*r/(r + f*A^2) + qmin*B + Q*B + Qmin*W)
     e[3,1] = -sqrt(k*S*r/(r + f*B^2) + kmin*A)
     e[3,2] = -sqrt(q*S*r/(r + f*A^2) + qmin*B)
-    e[3,3] = sqrt(F)
+    e[3,3] = sqrt(F + k*S*r/(r + f*B^2) + q*S*r/(r + f*A^2) + qmin*B + kmin*A)
     e[4,1] = -sqrt(K*A + Kmin*W)
     e[4,2] = -sqrt(Q*B + Qmin*W)
-    e[4,4] = sqrt(F)
+    e[4,4] = sqrt(F + Kmin*W + Qmin*W + K*A + Q*B)
     # Now do the transformations required
     eT = transpose(e)
     D = e*eT
@@ -219,9 +219,9 @@ function gensyms(ps::AbstractVector)
 end
 
 # function to find the zeros of the function
-function nullcline(F::Number,r::Number,f::Number,ϕ::Number,K::Number,k::Number,Ne::Int,high2low::Bool)
+function nullcline(F::Number,r::Number,f::Number,ϕ::Number,K::Number,k::Number,kmin::Number,Ne::Int,high2low::Bool)
     # Define read in parameters
-    g(x) = F./(1 + ((r + f*x.^2)./(ϕ*r + (f/ϕ)*((F/K - x).^2)))) + K.*x - F
+    g(x) = F*(1 + (kmin/K))/(1 + ((r + f*x^2)/(ϕ*r + (f/ϕ)*((F/K - x)^2)))) - (kmin + K)*((F/K) - x)
     three = false
     n = 0
     As = []
@@ -237,7 +237,7 @@ function nullcline(F::Number,r::Number,f::Number,ϕ::Number,K::Number,k::Number,
     Ws = zeros(n)
     for i = 1:n
         Bs[i] = (1/ϕ)*((F/K) - As[i])
-        Ss[i] = F/(k*r*(1/(r + f*Bs[i]^2) + ϕ/(r + f*As[i]^2)))
+        Ss[i] = (F + kmin*(As[i] + ϕ*Bs[i]))/(k*r*(1/(r + f*Bs[i]^2) + ϕ/(r + f*As[i]^2)))
         Ws[i] = Ne - As[i] - Bs[i] - Ss[i]
     end
     sad = [ As[2]; Bs[2]; Ss[2]; Ws[2] ]
@@ -348,16 +348,19 @@ end
 
 # function to be solved by NLsolve
 function g!(F::AbstractArray, x::AbstractArray, C::AbstractVector, K::AbstractArray, xi::AbstractArray, NG::Int)
-    # Start point
-    F[1,:] = x[1,:] - xi[1,:]
+    for j = 1:4
+        # Start point
+        F[1,j] = x[1,j] - xi[1,j]
+        # end point
+        F[NG+1,:] = x[NG+1,:] - xi[2,:]
+    end
+
     # first path
     for i = 2:NG
         for j = 1:4
             F[i,j] = x[i,j] - C[i]*(x[i+1,j] - 2*x[i,j] + x[i-1,j]) - K[i,j]
         end
     end
-    # end point
-    F[end,:] = x[end,:] - xi[2,:]
     return(F)
 end
 
@@ -371,13 +374,13 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     xi = fill(NaN, 2, 4)
     # the fixed points are allowed to vary as both are at zeros
     # Start point
-    Hθt = Hθ # temporary hamiltonian so master isn't changed
+    Hθt = Array{SymEngine.Basic,1}(4) # temporary hamiltonian so master isn't changed
     for i = 1:4
-        Hθt[i] = subs(Hθt[i], the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
+        Hθt[i] = subs(Hθ[i], the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
     end
-    Hθtt = Hθt
+    Hθtt = Array{SymEngine.Basic,1}(4)
     for i = 1:4
-        Hθtt[i] = subs(Hθtt[i], A=>x[1,1], B=>x[1,2], S=>x[1,3], W=>x[1,4]) |> float
+        Hθtt[i] = subs(Hθt[i], A=>x[1,1], B=>x[1,2], S=>x[1,3], W=>x[1,4]) |> float
         Hθt[i] = subs(Hθt[i], A=>x[end,1], B=>x[end,2], S=>x[end,3], W=>x[end,4]) |> float
         xi[1,i] = Δτ*(Hθtt[i]) + x[1,i]
         # End point
@@ -390,6 +393,7 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     end
     # Make array to store constant vector K's
     K = fill(NaN, NG+1, 4)
+    K4 = fill(0.0, NG+1, 4, 4)
     Hxt = Array{SymEngine.Basic,1}(4)
     Hθθt = Array{SymEngine.Basic,2}(4,4)
     Hθxt = Array{SymEngine.Basic,2}(4,4)
@@ -405,6 +409,7 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
             # Save temporary Hamiltonians so that the substitution doesn't overwrite orginal
             Hxt[l] = subs(Hx[l], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
             Hxt[l] = subs(Hxt[l], the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
+            println(Hxt[l])
             for m = 1:4
                 Hθθt[m,l] = subs(Hθθ[m,l], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
                 Hθθt[m,l] = subs(Hθθt[m,l], the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
@@ -412,10 +417,24 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
                 Hθxt[m,l] = subs(Hθxt[m,l], the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
                 # Update K's with new contributions from Hamiltonians
                 K[i,m] -= Δτ*λs[i]*(Hθxt[m,l]*xprim[i,l])
-                K[i,m] += Δτ*(Hθθt[m,l]*Hxt[l])
+                #K[i,m] += Δτ*(Hθθt[m,l]*Hxt[l])
+                K4[i,m,l] += (Hθθt[m,l]*Hxt[l])
+
             end
         end
     end
+    plot(K4[:,:,1])
+    savefig("../Results/GraphK11.png")
+    plot(K4[:,:,2])
+    savefig("../Results/GraphK12.png")
+    plot(K4[:,:,3])
+    savefig("../Results/GraphK13.png")
+    plot(K4[:,:,4])
+    savefig("../Results/GraphK14.png")
+    K41 = sum(K4,3)
+    plot(K41[:,:])
+    savefig("../Results/GraphK4.png")
+    error()
     # Make an initial guess of the path, as prior path
     newxi = x
     # make f! a closure of g! for specific xi, C, K
@@ -433,11 +452,11 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
     ϑ, λ, Hθ, Hθx, Hθθ, Hx = gensyms(paras)
 
     # Now generate an initial path to optimize over
-    ss1, sad, ss2 = nullcline(F,r,f,ϕ,K,k,Ne,high2low)
-    a = collect(linspace(sad[1],ss1[1],NG+1))
-    b = collect(linspace(sad[2],ss1[2],NG+1))
-    s = collect(linspace(sad[3],ss1[3],NG+1))
-    w = collect(linspace(sad[4],ss1[4],NG+1))
+    ss1, sad, ss2 = nullcline(F,r,f,ϕ,K,k,kmin,Ne,high2low)
+    a = collect(linspace(ss1[1],sad[1],NG+1))
+    b = collect(linspace(ss1[2],sad[2],NG+1))
+    s = collect(linspace(ss1[3],sad[3],NG+1))
+    w = collect(linspace(ss1[4],sad[4],NG+1))
     # a1 = collect(linspace(ss1[1],sad[1],(NG/2)+1))
     # a2 = collect(linspace(sad[1],ss2[1],(NG/2)+1))
     # a = vcat(a1,a2[2:length(a2)])
@@ -470,11 +489,25 @@ function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2lo
                 δ += abs(x[i,j] - xn[i,j])
             end
         end
-        S = Ŝ(x,xprim,λs,ϑs,λprim,NG)
+        S = Ŝ(xn,xprim,λs,ϑs,λprim,NG)
         print("$(δ),$(sum(S))\n")
-        if l % 7 == 0
+        if l % 1 == 0
+            plot(xn[:,1])
+            savefig("../Results/GraphA$(l).png")
+            plot(xn[:,2])
+            savefig("../Results/GraphB$(l).png")
+            plot(xn[:,3])
+            savefig("../Results/GraphS$(l).png")
+            plot(xn[:,4])
+            savefig("../Results/GraphW$(l).png")
             plot(S)
             savefig("../Results/S$(l).png")
+            plot(λs)
+            savefig("../Results/lambda$(l).png")
+            plot(ϑs)
+            savefig("../Results/vartheta$(l).png")
+            plot(xprim)
+            savefig("../Results/velos$(l).png")
         end
         l += 1
         # Now overwrite old x
@@ -559,10 +592,10 @@ function main()
     k = K*Ω
     Q = K*ϕ
     q = Q*Ω
-    kmin = 10.0^-20 # set all too 10.0^-20 for now
-    Kmin = 10.0^-20
-    qmin = 10.0^-20
-    Qmin = 10.0^-20
+    kmin = 1000 # now reverse creation is an important process
+    Kmin = 10.0^-20 # remains neligable though
+    qmin = ϕ*kmin
+    Qmin = ϕ*Kmin
     f = 1000/(Ω^2) # Promoter switching
     r = 10
     F = 250
@@ -572,7 +605,7 @@ function main()
     NM = 300 # number of segments to discretise MAP onto
     NG = 300 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.0002 # I've made this choice arbitarily, too large and the algorithm breaks
+    Δτ = 0.0000005 # I've made this choice arbitarily, too large and the algorithm breaks
     high2low = false # Set if starting from high state or low state
 
     # Now call simulation function with these parameters

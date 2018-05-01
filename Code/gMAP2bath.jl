@@ -372,7 +372,7 @@ function gMAP()
         l += 1
         # Now overwrite old x
         x = xn
-        if δ <=  0.0000001 #0.00000000005
+        if δ <=  0.00000000005
             convrg = true
             print("$(l) steps to converge\n")
         end

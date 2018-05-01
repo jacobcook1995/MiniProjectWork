@@ -26,7 +26,7 @@ const r = 10
 const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
-const N = 450 # number of segments optimised over
+const N = 150 # number of segments optimised over
 
 # Multiplicative Guassian noise matrix
 function e!(E, x)
@@ -404,8 +404,8 @@ function run(tau,noit)
     end
 
     act = sum(acts)
-    points = [ (ents[:,1] + ents[:,2]), (kins[:,1] + kins[:,2]), (pots[:,1] + pots[:,2]), (acts[:,1] + acts[:,2]),
-                (nois1[:,1] + nois1[:,2]), (nois2[:,1] + nois2[:,2]), (nois3[:,1] + nois3[:,2]) ]
+    points = [ (ents[:,1] + ents[:,2]), (kins[:,1] + kins[:,2]), (pots[:,1] + pots[:,2]), (acts[:,1] + acts[:,2])]#,
+                #(nois1[:,1] + nois1[:,2]), (nois2[:,1] + nois2[:,2]), (nois3[:,1] + nois3[:,2]) ]
     segcent = zeros(N,1)
     for i = 1:N
         segcent[i] = (pathmin[i,1] + pathmin[i+1,1])/2
@@ -413,8 +413,8 @@ function run(tau,noit)
     ptwo = plot(segcent, points, xaxis = "A", yaxis = "Entropy Production", marker = :auto)
     ptwo = scatter!(ptwo, [star[1]], [0.0], seriescolor = :green)
     ptwo = scatter!(ptwo, [inflex[1]], [0.0], seriescolor = :orange)
-    ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red, leg = false)
-    annotate!(inflex[1]+3, minimum(ents)+0.01, text("Action = $(act)\n", :left, font(5, "Courier")))
+    ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red)#, leg = false)
+    #annotate!(inflex[1]+3, minimum(ents)+0.01, text("Action = $(act)\n", :left, font(5, "Courier")))
     plot(pone, ptwo, layout = (1,2))
     savefig("../Results/Entropy$(high2low).png")
 

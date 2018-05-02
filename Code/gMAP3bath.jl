@@ -497,6 +497,18 @@ function gMAP(K,k,Q,q,kmin,qmin,f,r,F,NM::Int,NG::Int,Nmid::Int,Δτ,high2low::B
     s2 = collect(linspace(sad[3],ss2[3],NG+2-Nmid))
     s = vcat(s1,s2[2:length(s2)])
     x = hcat(a,b,s)
+    e11 = k*ss1[3]*r/(r + f*ss1[2]^2) - K*ss1[1] - kmin*ss1[1]
+    e12 = q*ss1[3]*r/(r + f*ss1[1]^2) - Q*ss1[2] - qmin*ss1[2]
+    e13 = -k*ss1[3]*r/(r + f*ss1[2]^2) - q*ss1[3]*r/(r + f*ss1[1]^2) + kmin*ss1[1] + qmin*ss1[2] + F
+    println("$(e11),$(e12),$(e13)")
+    e21 = k*sad[3]*r/(r + f*sad[2]^2) - K*sad[1] - kmin*sad[1]
+    e22 = q*sad[3]*r/(r + f*sad[1]^2) - Q*sad[2] - qmin*sad[2]
+    e23 = -k*sad[3]*r/(r + f*sad[2]^2) - q*sad[3]*r/(r + f*sad[1]^2) + kmin*sad[1] + qmin*sad[2] + F
+    println("$(e21),$(e22),$(e23)")
+    e31 = k*ss2[3]*r/(r + f*ss2[2]^2) - K*ss2[1] - kmin*ss2[1]
+    e32 = q*ss2[3]*r/(r + f*ss2[1]^2) - Q*ss2[2] - qmin*ss2[2]
+    e33 = -k*ss2[3]*r/(r + f*ss2[2]^2) - q*ss2[3]*r/(r + f*ss2[1]^2) + kmin*ss2[1] + qmin*ss2[2] + F
+    println("$(e31),$(e32),$(e33)")
 
     # Then appropriatly discretise the path such that it works with this algorithm
     x = discretise(x,NG,Nmid)
@@ -611,7 +623,7 @@ function main()
     q = 11/15
     kmin = 0.5 # now reverse creation is an important process
     qmin = 0.1
-    f = 100 # Promoter switching
+    f = 1000 # Promoter switching
     r = 10
     F = 10
 

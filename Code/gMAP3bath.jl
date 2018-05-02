@@ -197,7 +197,7 @@ end
 
 # function to find the zeros of the function
 function nullcline(F::Number,r::Number,f::Number,K::Number,Q::Number,k::Number,q::Number,kmin::Number,qmin::Number,high2low::Bool)
-    g(x) = (K - kmin)*(q/k)*((r + f*((F - K*x)/Q)^2)/(r + f*x^2))*x - (qmin + Q)*(F - K*x)/Q
+    g(x) = (K + kmin)*(q/k)*((r + f*((F - K*x)/Q)^2)/(r + f*x^2))*x - (qmin + Q)*(F - K*x)/Q
     three = false
     n = 0
     As = []
@@ -212,7 +212,7 @@ function nullcline(F::Number,r::Number,f::Number,K::Number,Q::Number,k::Number,q
     Ss = zeros(n)
     for i = 1:n
         Bs[i] = (F - K*As[i])/Q
-        Ss[i] = (1/(k*r))*(r + f*((F - K*As[i])/Q)^2)*(K - kmin)*As[i]
+        Ss[i] = (1/(k*r))*(r + f*((F - K*As[i])/Q)^2)*(K + kmin)*As[i]
     end
     sad = [ As[2]; Bs[2]; Ss[2] ]
     if high2low == true
@@ -497,18 +497,6 @@ function gMAP(K,k,Q,q,kmin,qmin,f,r,F,NM::Int,NG::Int,Nmid::Int,Δτ,high2low::B
     s2 = collect(linspace(sad[3],ss2[3],NG+2-Nmid))
     s = vcat(s1,s2[2:length(s2)])
     x = hcat(a,b,s)
-    e11 = k*ss1[3]*r/(r + f*ss1[2]^2) - K*ss1[1] - kmin*ss1[1]
-    e12 = q*ss1[3]*r/(r + f*ss1[1]^2) - Q*ss1[2] - qmin*ss1[2]
-    e13 = -k*ss1[3]*r/(r + f*ss1[2]^2) - q*ss1[3]*r/(r + f*ss1[1]^2) + kmin*ss1[1] + qmin*ss1[2] + F
-    println("$(e11),$(e12),$(e13)")
-    e21 = k*sad[3]*r/(r + f*sad[2]^2) - K*sad[1] - kmin*sad[1]
-    e22 = q*sad[3]*r/(r + f*sad[1]^2) - Q*sad[2] - qmin*sad[2]
-    e23 = -k*sad[3]*r/(r + f*sad[2]^2) - q*sad[3]*r/(r + f*sad[1]^2) + kmin*sad[1] + qmin*sad[2] + F
-    println("$(e21),$(e22),$(e23)")
-    e31 = k*ss2[3]*r/(r + f*ss2[2]^2) - K*ss2[1] - kmin*ss2[1]
-    e32 = q*ss2[3]*r/(r + f*ss2[1]^2) - Q*ss2[2] - qmin*ss2[2]
-    e33 = -k*ss2[3]*r/(r + f*ss2[2]^2) - q*ss2[3]*r/(r + f*ss2[1]^2) + kmin*ss2[1] + qmin*ss2[2] + F
-    println("$(e31),$(e32),$(e33)")
 
     # Then appropriatly discretise the path such that it works with this algorithm
     x = discretise(x,NG,Nmid)
@@ -522,16 +510,9 @@ function gMAP(K,k,Q,q,kmin,qmin,f,r,F,NM::Int,NG::Int,Nmid::Int,Δτ,high2low::B
         x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG,Nmid)
         newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG,Nmid,H)
         xn = discretise(newx.zero,NG,Nmid)
-        # delta is the sum of the differences of all the points in the path
-        δ = 0
-        for i = 1:NG+1
-            for j = 1:3
-                δ += abs(x[i,j] - xn[i,j])
-            end
-        end
         S = Ŝ(xn,xprim,λs,ϑs,λprim,NG)
-        print("$(δ),$(sum(S))\n")
-        if l % 50 == 0
+        print("$(sum(S))\n")
+        if l % 500 == 0
             plot(x[:,1],x[:,2])
             savefig("../Results/GraphAB$(l).png")
             plot(x[:,3])
@@ -541,13 +522,12 @@ function gMAP(K,k,Q,q,kmin,qmin,f,r,F,NM::Int,NG::Int,Nmid::Int,Δτ,high2low::B
             plot(ϑs)
             savefig("../Results/vartheta$(l).png")
         end
+        if l != 0 && l % 2000 == 0
+            convrg = true
+        end
         l += 1
         # Now overwrite old x
         x = xn
-        if δ <=  0.00025
-            convrg = true
-            print("$(l) steps to converge\n")
-        end
     end
     return(x)
 end
@@ -623,7 +603,7 @@ function main()
     q = 11/15
     kmin = 0.5 # now reverse creation is an important process
     qmin = 0.1
-    f = 1000 # Promoter switching
+    f = 1 # Promoter switching
     r = 10
     F = 10
 
@@ -632,8 +612,8 @@ function main()
     NM = 300 # number of segments to discretise MAP onto
     NG = 300 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.01 # I've made this choice arbitarily, too large and the algorithm breaks
-    high2low = false # Set if starting from high state or low state
+    Δτ = 0.1#0.01 # I've made this choice arbitarily, too large and the algorithm breaks
+    high2low = true # Set if starting from high state or low state
 
     # Now call simulation function with these parameters
     path = gMAP(K,k,Q,q,kmin,qmin,f,r,F,NM,NG,Nmid,Δτ,high2low)
@@ -641,6 +621,19 @@ function main()
     savefig("../Results/Graph1.png")
     plot(path[:,3])
     savefig("../Results/Graph2.png")
+    # Now print out the path
+    # Block of code to write all this data to a file so I can go through it
+    if length(ARGS) >= 1
+        output_file = "../Results/$(ARGS[1]).csv"
+        out_file = open(output_file, "w")
+        # open file for writing
+        for i = 1:size(path,1)
+            line = "$(path[i,1]),$(path[i,2]),$(path[i,3])\n"
+            write(out_file, line)
+        end
+        # then close file
+        close(out_file)
+    end
 end
 
 

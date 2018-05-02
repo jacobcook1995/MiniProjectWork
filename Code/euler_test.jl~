@@ -223,5 +223,5 @@ D = Dmin1()
 const Dminconst = D
 
 # run the main function
-@time main()
+# @time main()
 # @time test()

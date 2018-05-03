@@ -613,7 +613,7 @@ function main()
     NG = 300 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
     Δτ = 0.1#0.01 # I've made this choice arbitarily, too large and the algorithm breaks
-    high2low = false # Set if starting from high state or low state
+    high2low = true # Set if starting from high state or low state
 
     # Now call simulation function with these parameters
     path = gMAP(K,k,Q,q,kmin,qmin,f,r,F,NM,NG,Nmid,Δτ,high2low)

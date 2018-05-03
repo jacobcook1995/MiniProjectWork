@@ -89,7 +89,7 @@ function main()
     plot!(A12, B2, xlim = (0,LA), ylim = (0,LB), legend = false)
     savefig("../Results/HeatMapA.png")
     # Make heatmap of change in B
-    heatmap(Bticks, Aticks,δB, xlabel = "B", ylabel = "A")
+    heatmap(Bticks, Aticks, δB, xlabel = "B", ylabel = "A")
     plot!(A12, B2, xlim = (0,LA), ylim = (0,LB), legend = false)
     savefig("../Results/HeatMapB.png")
     heatmap(Bticks, Aticks, δA-δB, xlabel = "B", ylabel = "A")

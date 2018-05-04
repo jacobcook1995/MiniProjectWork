@@ -568,7 +568,7 @@ function timdis(ts::AbstractVector,x::AbstractArray,NM::Int)
     for i = 1:NM+1
         higher = false
         while higher == false
-            if ts[j] >= t[i] || j == NG+1
+            if ts[j] >= t[i] || j == length(ts)
                 inds[i] = j
                 higher = true
             else
@@ -579,7 +579,7 @@ function timdis(ts::AbstractVector,x::AbstractArray,NM::Int)
     # First do end points as they are fixed
     path = zeros(NM+1,3)
     path[1,:] = x[1,:]
-    path[NM+1,:] = x[NG+1,:]
+    path[NM+1,:] = x[end,:]
     # This is done to linear order, which is probably good enough
     for i = 2:NM
         one = inds[i] - 1

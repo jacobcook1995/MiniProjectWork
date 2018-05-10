@@ -222,9 +222,8 @@ function gensyms(ps::AbstractVector)
 end
 
 # function to find the zeros of the function
-function nullcline(F::Number,r::Number,f::Number,ϕ::Number,K::Number,k::Number,kmin::Number,Ne::Int,high2low::Bool)
-    # Define read in parameters
-    g(x) = F*(1 + (kmin/K))/(1 + ((r + f*x^2)/(ϕ*r + (f/ϕ)*((F/K - x)^2)))) - (kmin + K)*((F/K) - x)
+function nullcline(F::Number,r::Number,f::Number,K::Number,Q::Number,k::Number,q::Number,kmin::Number,qmin::Number,high2low::Bool,Ne)
+    g(x) = (K + kmin)*(q/k)*((r + f*((F - K*x)/Q)^2)/(r + f*x^2))*x - (qmin + Q)*(F - K*x)/Q
     three = false
     n = 0
     As = []
@@ -239,8 +238,8 @@ function nullcline(F::Number,r::Number,f::Number,ϕ::Number,K::Number,k::Number,
     Ss = zeros(n)
     Ws = zeros(n)
     for i = 1:n
-        Bs[i] = (1/ϕ)*((F/K) - As[i])
-        Ss[i] = (F + kmin*(As[i] + ϕ*Bs[i]))/(k*r*(1/(r + f*Bs[i]^2) + ϕ/(r + f*As[i]^2)))
+        Bs[i] = (F - K*As[i])/Q
+        Ss[i] = (1/(k*r))*(r + f*((F - K*As[i])/Q)^2)*(K + kmin)*As[i]
         Ws[i] = Ne - As[i] - Bs[i] - Ss[i]
     end
     sad = [ As[2]; Bs[2]; Ss[2]; Ws[2] ]
@@ -510,14 +509,14 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
 end
 
 # main function generates symbolic matrices that the 4 variables can be subbed into
-function gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int,NG::Int,Nmid::Int,Δτ,high2low::Bool)
+function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int,NG::Int,Nmid::Int,Δτ,high2low::Bool)
     # make vector of these optimisation parameters
     paras = [ K; k; Q; q; kmin; Kmin; qmin; Qmin; f; r; F ]
     # generate symbolic forms for equations required for the simulation
     ϑ, λ, Hθ, Hθx, Hθθ, Hx, H = gensyms(paras)
 
     # Now generate an initial path to optimize over
-    ss1, sad, ss2 = nullcline(F,r,f,ϕ,K,k,kmin,Ne,high2low)
+    ss1, sad, ss2 = nullcline(F,r,f,K,Q,k,q,kmin,qmin,high2low,Ne)
     a1 = collect(linspace(ss1[1],sad[1],Nmid))
     a2 = collect(linspace(sad[1],ss2[1],NG+2-Nmid))
     a = vcat(a1,a2[2:length(a2)])
@@ -640,32 +639,29 @@ end
 
 function main()
     # General parameters
-    Ω = 10 # forward backward ratio
-    Ωr = 10 # this is the volume in a more meaningful sense
-    ϕ = 0.1 # ratio ϕ = q/k
-    K = 10
-    k = K*Ω
-    Q = K*ϕ
-    q = Q*Ω
-    kmin = 1 # now reverse creation is an important process
-    Kmin = 10.0^-20 # remains neligable though
-    qmin = ϕ*kmin
-    Qmin = ϕ*Kmin
-    f = 1000/(Ωr^2) # Promoter switching
+    Ω = 60 # system size, this is just a fudge to get my Euler-Maruyama algorithm (later) to work
+    K = 1
+    k = 1
+    Q = 1
+    q = 11/15
+    kmin = 0.5 # now reverse creation is an important process
+    qmin = 0.1
+    f = 1/((Ω/60)^2) # Promoter switching
     r = 10
-    F = 250*(Ωr/Ω)
-    Ne = 150*Ωr # number of elements in the system
-
+    F = 10*(Ω/60)
+    Kmin = 10.0^-20 # remains neligable though
+    Qmin = 10.0^-20
+    Ne = 150*(Ω/60) # number of elements in the system
 
     # Optimisation parameters
     NM = 300 # number of segments to discretise MAP onto
     NG = 300 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.00005 # I've made this choice arbitarily, too large and the algorithm breaks
+    Δτ = 0.1 # I've made this choice arbitarily, too large and the algorithm breaks
     high2low = false # Set if starting from high state or low state
 
     # Now call simulation function with these parameters
-    path = gMAP(Ω,ϕ,K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2low)
+    path = gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2low)
     plot(path[:,1],path[:,2])
     savefig("../Results/Graph1.png")
     plot(path[:,3],path[:,4])

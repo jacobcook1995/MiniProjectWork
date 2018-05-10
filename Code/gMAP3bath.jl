@@ -597,16 +597,16 @@ end
 
 function main()
     # General parameters
+    Ω = 60 # system size
     K = 1
     k = 1
     Q = 1
     q = 11/15
     kmin = 0.5 # now reverse creation is an important process
     qmin = 0.1
-    f = 1 # Promoter switching
+    f = 1/((Ω/60)^2) # Promoter switching
     r = 10
-    F = 10
-
+    F = 10*(Ω/60)
 
     # Optimisation parameters
     NM = 300 # number of segments to discretise MAP onto

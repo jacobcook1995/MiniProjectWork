@@ -303,8 +303,8 @@ function f!(G, x, ps)
     sym[2] = q*x[3]*r/(r+f*x[1]^2) - Q*x[2] - qmin*x[2]
     sym[3] = -k*x[3]*r/(r + f*x[2]^2) - q*x[3]*r/(r + f*x[1]^2) + kmin*x[1] + qmin*x[2] + F
     for i = 1:3
-       sym[i] = subs(sym[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], qmin=>ps[6], f=>ps[7])
-       G[i] = subs(sym[i], r=>ps[8], F=>ps[9]) |> float
+        sym[i] = subs(sym[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], qmin=>ps[6], f=>ps[7])
+        G[i] = subs(sym[i], r=>ps[8], F=>ps[9]) |> float
     end
     return G
 end
@@ -480,15 +480,16 @@ function main()
     savefig("../Results/Graph3D.png")
 
     # Now moving onto entropy production calculations
+    Ω = 60 # system size
     K = 1
     k = 1
     Q = 1
     q = 11/15
     kmin = 0.5 # now reverse creation is an important process
     qmin = 0.1
-    f = 1 # Promoter switching
+    f = 1/((Ω/60)^2) # Promoter switching
     r = 10
-    F = 10
+    F = 10*(Ω/60)
     NM = 300
     Nmid = convert(Int64, ceil((NG1+1)/2))
     paras = [ K; k; Q; q; kmin; qmin; f; r; F ]

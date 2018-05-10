@@ -339,7 +339,11 @@ function EntProd(pathmin,tau,NM,ps)
     termsthi = zeros(3,3,NM)
     termsthif = zeros(3,3,NM)
     termsf = zeros(3,3,NM)
-    Fterms = zeros(7,NM)
+    Fqs = zeros(3,NM)
+    Ffs = zeros(3,NM)
+    Fs = zeros(NM)
+    Acts = zeros(NM)
+    Ents = zeros(NM)
     h = [ 0.0; 0.0; 0.0 ]
     thiv = [ 0.0; 0.0; 0.0 ]
     d = [ 0.0 0.0 0.0; 0.0 0.0 0.0; 0.0 0.0 0.0 ]
@@ -361,6 +365,7 @@ function EntProd(pathmin,tau,NM,ps)
             posS = (path[i-1,3] + path[i,3])/2
         end
         h = f!(h, [posA posB posS], ps)
+        h[3] -= F
         d = D!(d, [posA posB posS], ps)
         for j = 1:3
             if i == 1
@@ -374,21 +379,31 @@ function EntProd(pathmin,tau,NM,ps)
         # Now calcualtion step
         for k = 1:3
             for j = 1:3
-                termsthi[j,k,i] = 0.5*(thiv[j]*d[j,k]*thiv[k])*deltat
-                termsthif[j,k,i] = 0.5*(-h[j]*d[j,k]*thiv[k] - thiv[j]*d[j,k]*h[k])*deltat
-                termsf[j,k,i] = 0.5*(h[j]*d[j,k]*h[k])*deltat
+                termsthi[j,k,i] = thiv[j]*d[j,k]*thiv[k]
+                termsthif[j,k,i] = h[j]*d[j,k]*thiv[k]
+                termsf[j,k,i] = h[j]*d[j,k]*h[k]
             end
+            Fqs[k,i] = thiv[k]*d[k,3]*F
+            Ffs[k,i] = h[k]*d[k,3]*F
         end
-        Fterms[1,i] = 0.5*(F*d[3,1]*thiv[1] + thiv[1]*d[1,3]*F)*deltat
-        Fterms[2,i] = 0.5*(F*d[3,2]*thiv[2] + thiv[2]*d[2,3]*F)*deltat
-        Fterms[3,i] = 0.5*(F*d[3,3]*thiv[3] + thiv[3]*d[3,3]*F)*deltat
-        Fterms[4,i] = 0.5*(-F*d[3,1]*h[1] - h[1]*d[1,3]*F)*deltat
-        Fterms[5,i] = 0.5*(-F*d[3,2]*h[2] - h[2]*d[2,3]*F)*deltat
-        Fterms[6,i] = 0.5*(-F*d[3,3]*h[3] - h[3]*d[3,3]*F)*deltat
-        Fterms[7,i] = 0.5*(F*d[3,3]*F)*deltat
+        Fs[i] = F*d[3,3]*F
     end
-
-    return(termsthi,termsthif,termsf,Fterms)
+    # Now use these terms to calculate overall action along path and the entropy production
+    for i = 1:NM
+        Acts[i] = Fs[i]*(deltat/2)
+        for k = 1:3
+            for j = 1:3
+                Acts[i] += termsthi[j,k,i]*(deltat/2)
+                Acts[i] -= termsthif[j,k,i]*deltat
+                Acts[i] += termsf[j,k,i]*(deltat/2)
+                Ents[i] += termsthif[j,k,i]*(2*deltat)
+            end
+            Acts[i] -= Fqs[k,i]*deltat
+            Acts[i] += Ffs[k,i]*deltat
+            Ents[i] += Fqs[k,i]*(2*deltat) # comment this out to see the effect at somepoint
+        end
+    end
+    return(Acts,Ents)
 end
 
 function main()
@@ -511,46 +526,17 @@ function main()
     savefig("../Results/NewPath2.png")
     # now can use these paths to carry out a calculation of the action via MAP
     ps = [ K; k; Q; q; kmin; qmin; f; r; F]
-    this1, thif1, fs1, Ft1 = EntProd(path1,t1[end],NM1,ps)
-    this2, thif2, fs2, Ft2 = EntProd(path2,t2[end],NM2,ps)
-    plot(Ft1,leg = false)
-    savefig("../Results/Fterms1.png")
-    plot(Ft2, leg = false)
-    savefig("../Results/Fterms2.png")
-    Ft1 = squeeze(sum(Ft1,2),2)
-    Ft2 = squeeze(sum(Ft2,2),2)
-    plot(Ft1,leg = false)
-    savefig("../Results/Fterms1sum.png")
-    plot(Ft2, leg = false)
-    savefig("../Results/Fterms2sum.png")
-    this1 = squeeze(sum(this1,1),1)
-    this1 = squeeze(sum(this1,1),1)
-    plot(this1)
-    savefig("../Results/KE1.png")
-    thif1 = squeeze(sum(thif1,1),1)
-    thif1 = squeeze(sum(thif1,1),1)
-    plot(thif1)
-    savefig("../Results/PE1.png")
-    fs1 = squeeze(sum(fs1,1),1)
-    fs1 = squeeze(sum(fs1,1),1)
-    plot(fs1)
-    savefig("../Results/Ent1.png")
-    this2 = squeeze(sum(this2,1),1)
-    this2 = squeeze(sum(this2,1),1)
-    plot(this2)
-    savefig("../Results/KE2.png")
-    thif2 = squeeze(sum(thif2,1),1)
-    thif2 = squeeze(sum(thif2,1),1)
-    plot(thif2)
-    savefig("../Results/PE2.png")
-    fs2 = squeeze(sum(fs2,1),1)
-    fs2 = squeeze(sum(fs2,1),1)
-    plot(fs2)
-    savefig("../Results/Ent2.png")
-    plot(path1[1:end-1,1],fs1+thif1+this1)
+    acts1, ents1 = EntProd(path1,t1[end],NM1,ps)
+    acts2, ents2 = EntProd(path2,t2[end],NM2,ps)
+    plot(acts1)
     savefig("../Results/Act1.png")
-    plot(path2[1:end-1,1],fs2+thif2+this2)
+    plot(acts2)
     savefig("../Results/Act2.png")
+    plot(ents1)
+    savefig("../Results/Ent1.png")
+    plot(ents2)
+    savefig("../Results/Ent2.png")
+
 end
 
 @time main()

@@ -552,7 +552,7 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int,NG::Int,Nmid::Int,Δ�
         end
         S = Ŝ(xn,xprim,λs,ϑs,λprim,NG)
         print("$(δ),$(sum(S))\n")
-        if l % 50 == 0
+        if l % 500 == 0
             plot(x[:,1],x[:,2])
             savefig("../Results/GraphAB$(l).png")
             plot(x[:,3],x[:,4])
@@ -562,13 +562,12 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int,NG::Int,Nmid::Int,Δ�
             plot(ϑs)
             savefig("../Results/vartheta$(l).png")
         end
-        l += 1
         # Now overwrite old x
         x = xn
-        if δ <=  0.00025
+        if l == 4000
             convrg = true
-            print("$(l) steps to converge\n")
         end
+        l += 1
     end
     return(x)
 end
@@ -658,7 +657,7 @@ function main()
     NG = 300 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
     Δτ = 0.1 # I've made this choice arbitarily, too large and the algorithm breaks
-    high2low = false # Set if starting from high state or low state
+    high2low = true # Set if starting from high state or low state
 
     # Now call simulation function with these parameters
     path = gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2low)
@@ -666,6 +665,19 @@ function main()
     savefig("../Results/Graph1.png")
     plot(path[:,3],path[:,4])
     savefig("../Results/Graph2.png")
+    # Now print out the path
+    # Block of code to write all this data to a file so I can go through it
+    if length(ARGS) >= 1
+        output_file = "../Results/$(ARGS[1]).csv"
+        out_file = open(output_file, "w")
+        # open file for writing
+        for i = 1:size(path,1)
+            line = "$(path[i,1]),$(path[i,2]),$(path[i,3]),$(path[i,4])\n"
+            write(out_file, line)
+        end
+        # then close file
+        close(out_file)
+    end
 end
 
 

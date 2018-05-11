@@ -187,8 +187,8 @@ function main()
     f = 1/((Ω/60)^2) # Promoter switching
     r = 10
     F = 10*(Ω/60)
-    high2low = true # somewhat meaningless in this script
-    T = 15#150 # time period studied
+    high2low = false
+    T = 150 # time period studied
 
     # find start, mid and end points
     star, mid, fin = nullcline(F,r,f,K,Q,k,q,kmin,qmin,high2low)
@@ -212,6 +212,8 @@ function main()
     savefig("../Results/PossiblyMoreUseful.png")
     plot(ents1)
     savefig("../Results/PossiblyMoreUseful2.png")
+    println(sum(ents1)/length(ents1))
+    println(sum(acts1)/length(acts1))
 end
 
 @time main()

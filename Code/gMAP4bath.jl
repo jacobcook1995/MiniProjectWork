@@ -543,15 +543,8 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int,NG::Int,Nmid::Int,Δ�
         x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG,Nmid)
         newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG,Nmid,H)
         xn = discretise(newx.zero,NG,Nmid)
-        # delta is the sum of the differences of all the points in the path
-        δ = 0
-        for i = 1:NG+1
-            for j = 1:4
-                δ += abs(x[i,j] - xn[i,j])
-            end
-        end
         S = Ŝ(xn,xprim,λs,ϑs,λprim,NG)
-        print("$(δ),$(sum(S))\n")
+        print("$(sum(S))\n")
         if l % 500 == 0
             plot(x[:,1],x[:,2])
             savefig("../Results/GraphAB$(l).png")

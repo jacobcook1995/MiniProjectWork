@@ -501,7 +501,7 @@ function main()
     plot(λs2)
     savefig("../Results/lambda2.png")
     S1 = Ŝ(x1,xprim1,λs1,ϑs1,λprim1,NG1)
-    println("Action Path 2 = $(sum(S1))")
+    println("Action Path 1 = $(sum(S1))")
     S2 = Ŝ(x2,xprim2,λs2,ϑs2,λprim2,NG2)
     println("Action Path 2 = $(sum(S2))")
     # change lambdas to be appropriate for time discretisation

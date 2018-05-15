@@ -44,24 +44,31 @@ function nullcline(F::Number,r::Number,f::Number,K::Number,Q::Number,k::Number,q
 end
 
 # Vector of functions from MAP case
-function f!(G, x, ps)
-    K, k, Q, q, kmin, qmin, f, r, F, Kmin, Qmin = symbols("K k Q q kmin qmin f r F Kmin Qmin")
+function fs(ps::AbstractVector)
+    K, k, Q, q, kmin, qmin, f, r, F, Kmin, Qmin, A, B, S, W = symbols("K k Q q kmin qmin f r F Kmin Qmin A B S W")
     sym = Array{SymEngine.Basic}(4)
-    sym[1] = k*x[3]*r/(r+f*x[2]^2) - K*x[1] - kmin*x[1] + Kmin*x[4]
-    sym[2] = q*x[3]*r/(r+f*x[1]^2) - Q*x[2] - qmin*x[2] + Qmin*x[4]
-    sym[3] = -k*x[3]*r/(r + f*x[2]^2) - q*x[3]*r/(r + f*x[1]^2) + kmin*x[1] + qmin*x[2] + F
-    sym[4] = K*x[1] + Q*x[2] - Kmin*x[4] - Qmin*x[4] - F
+    sym[1] = k*S*r/(r+f*B^2) - K*A - kmin*A + Kmin*W
+    sym[2] = q*S*r/(r+f*A^2) - Q*B - qmin*B + Qmin*W
+    sym[3] = -k*S*r/(r + f*B^2) - q*S*r/(r + f*A^2) + kmin*A + qmin*B + F
+    sym[4] = K*A + Q*B - Kmin*W - Qmin*W - F
     for i = 1:4
         sym[i] = subs(sym[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], qmin=>ps[6], f=>ps[7])
-        G[i] = subs(sym[i], r=>ps[8], F=>ps[9], Kmin=>ps[10], Qmin=>ps[11]) |> float
+        sym[i] = subs(sym[i], r=>ps[8], F=>ps[9], Kmin=>ps[10], Qmin=>ps[11])
+    end
+    return sym
+end
+
+function f!(G::AbstractVector, x::AbstractVector, sym::Array{SymEngine.Basic,1})
+    A, B, S, W = symbols("A B S W")
+    for i = 1:4
+        G[i] = subs(sym[i], A=>x[1], B=>x[2], S=>x[3], W=>x[4]) |> float
     end
     return G
 end
 
 # Diffusion matrix from MAP case
-function D!(D, x, ps)
-    A, B, S, W, K, k, Q, q, kmin, qmin, f, r, F, Kmin, Qmin = symbols("A B S W K k Q q kmin qmin f r F Kmin Qmin")
-    # Make a symbolic version of the matrix, needs no input in this case
+function Ds(ps::AbstractVector)
+    K, k, Q, q, kmin, qmin, f, r, F, Kmin, Qmin, A, B, S, W = symbols("K k Q q kmin qmin f r F Kmin Qmin A B S W")
     e = Array{SymEngine.Basic,2}(4,4)
     e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
     e[1,1] = sqrt(k*S*r/(r + f*B^2) + kmin*A + K*A + Kmin*W)
@@ -78,7 +85,18 @@ function D!(D, x, ps)
     for j = 1:4
         for i = 1:4
            D[i,j] = subs(D[i,j], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], qmin=>ps[6], f=>ps[7])
-           D[i,j] = subs(D[i,j], r=>ps[8], F=>ps[9], Kmin=>ps[10], Qmin=>ps[11], A=>x[1], B=>x[2], S=>x[3], W=>x[4]) |> float
+           D[i,j] = subs(D[i,j], r=>ps[8], F=>ps[9], Kmin=>ps[10], Qmin=>ps[11])
+       end
+    end
+    return D
+end
+
+function D!(D::AbstractArray, x::AbstractVector, par::Array{SymEngine.Basic,2})
+    A, B, S, W = symbols("A B S W")
+    # Make a symbolic version of the matrix, needs no input in this case
+    for j = 1:4
+        for i = 1:4
+           D[i,j] = subs(par[i,j], A=>x[1], B=>x[2], S=>x[3], W=>x[4]) |> float
        end
     end
     return D
@@ -95,13 +113,16 @@ function EntProd(pathmin,tau,NM,ps)
     Ffs = zeros(4,NM)
     Fs = zeros(NM)
     Acts = zeros(NM)
-    Ents = zeros(NM)
+    Ents1 = zeros(NM)
+    Ents2 = zeros(NM)
     h = [ 0.0; 0.0; 0.0; 0.0 ]
     thiv = [ 0.0; 0.0; 0.0; 0.0 ]
     d = [ 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 ]
     deltat = tau/NM
     # Remove fixed points from path
     path = pathmin[2:NM]
+    fp = fs(ps)
+    Dmin = Ds(ps)
     for i = 1:NM # This gives an extra contribution compared to the optimisation!
         if i == 1
             posA = (pathmin[1][1] + path[i][1])/2
@@ -119,10 +140,10 @@ function EntProd(pathmin,tau,NM,ps)
             posS = (path[i-1][3] + path[i][3])/2
             posW = (path[i-1][4] + path[i][4])/2
         end
-        h = f!(h, [posA posB posS posW], ps)
+        h = f!(h, [posA; posB; posS; posW], fp)
         h[3] -= F
         h[4] += F
-        d = D!(d, [posA posB posS posW], ps)
+        d = D!(d, [posA; posB; posS; posW], Dmin)
         for j = 1:4
             if i == 1
                 thiv[j] = (path[i][j] - pathmin[1][j])/deltat
@@ -152,14 +173,14 @@ function EntProd(pathmin,tau,NM,ps)
                 Acts[i] += termsthi[j,k,i]*(deltat/2)
                 Acts[i] -= termsthif[j,k,i]*deltat
                 Acts[i] += termsf[j,k,i]*(deltat/2)
-                Ents[i] += termsthif[j,k,i]*(2*deltat)
+                Ents1[i] += termsthif[j,k,i]*(2*deltat)
             end
             Acts[i] -= Fqs[k,i]*deltat
             Acts[i] += Ffs[k,i]*deltat
-            Ents[i] += Fqs[k,i]*(2*deltat) # comment this out to see the effect at somepoint
+            Ents2[i] += Fqs[k,i]*(2*deltat) # comment this out to see the effect at somepoint
         end
     end
-    return(Acts,Ents)
+    return(Acts,Ents1,Ents2)
 end
 
 # f: function A = u[1], B = u[2], S = u[3]
@@ -206,10 +227,11 @@ function main()
     Kmin = 10.0^-20 # remains neligable though
     Qmin = 10.0^-20
     Ne = 150*(Ω/Ωr)
-    T = 150#150
-    high2low = true
+    T = 1
+    high2low = false
     ps = [ K; k; Q; q; kmin; qmin; f; r; F; Kmin; Qmin ]
-
+    n = 10000 # number of euler runs to do
+    data = zeros(3,n) # preallocate memory
     # find start, mid and end points
     star, mid, fin = nullcline(F,r,f,K,Q,k,q,kmin,qmin,high2low,Ne)
     # make closed functions
@@ -220,33 +242,32 @@ function main()
     dt = (1/2)^(10)
     tspan = (0.0,T)
     prob = SDEProblem(fc, gc, u₀, tspan, noise_rate_prototype = zeros(4,4)) # SDEProblem
-    sol = DifferentialEquations.solve(prob, EM(), dt = dt) # To avoid namespace conflict with SymPy
-    plot(transpose(sol[1:3,:]))
-    savefig("../Results/ProbablyNotAGoodGraph.png")
     Numb  = convert(Int64, floor(T/dt))
-    tot1 = zeros(Numb)
-    tot2 = zeros(Numb)
-    tot3 = zeros(Numb)
-    for i = 1:Numb
-        tot1[i] = sol[i][1] + sol[i][2] + sol[i][3] + sol[i][4]
+    for i = 1:n
+        sol = DifferentialEquations.solve(prob, EM(), dt = dt) # To avoid namespace conflict with SymPy
+        # Now would like to calculate both entropy production and the action along this path
+        # now can use these paths to carry out a calculation of the action via MAP
+        NM = size(sol[:],1)-1
+        acts1, ents1, ents2 = EntProd(sol,T,NM,ps)
+        data[1,i] = sum(acts1)/T
+        data[2,i] = sum(ents1)/T
+        data[3,i] = sum(ents2)/T
+        if i % 100
+            println(i)
+        end
     end
-    plot(tot1)
-    savefig("../Results/Total1.png")
-    plot(tot2)
-    savefig("../Results/Total2.png")
-    plot(tot3)
-    savefig("../Results/Total3.png")
-
-    # Now would like to calculate both entropy production and the action along this path
-    # now can use these paths to carry out a calculation of the action via MAP
-    NM = size(sol[:],1)-1
-    acts1, ents1 = EntProd(sol,T,NM,ps)
-    plot(acts1)
-    savefig("../Results/PossiblyMoreUseful.png")
-    plot(ents1)
-    savefig("../Results/PossiblyMoreUseful2.png")
-    println(sum(ents1)/length(ents1))
-    println(sum(acts1)/length(acts1))
+    # Now need to write out this data to are file
+    if length(ARGS) >= 1
+        output_file = "../Results/$(ARGS[1]).csv"
+        out_file = open(output_file, "w")
+        # open file for writing
+        for i = 1:size(data,2)
+            line = "$(data[1,i]),$(data[2,i]),$(data[3,i])\n"
+            write(out_file, line)
+        end
+        # then close file
+        close(out_file)
+    end
 end
 
 @time main()

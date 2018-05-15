@@ -546,6 +546,7 @@ function main()
     S2 = Ŝ(x2,xprim2,λs2,ϑs2,λprim2,NG2)
     println("Action Path 2 = $(sum(S2))")
     # change lambdas to be appropriate for time discretisation
+
     for i = 2:NG1
         if λs1[i] < 10.0^-4
             λs1[i] = (λs1[i+1] + λs1[i-1])/2
@@ -558,11 +559,9 @@ function main()
     end
     λs1[1] = λs1[2]
     λs1[end] = λs1[end-1]
-    println("$(λs1[Nmid]),$(λs1[Nmid+1]),$(λs1[Nmid-1])")
     t1 = times(x1,xprim1,λs1,ϑs1,λprim1,NG1)
     λs2[1] = λs2[2]
     λs2[end] = λs2[end-1]
-    println("$(λs2[Nmid]),$(λs2[Nmid+1]),$(λs2[Nmid-1])")
     t2 = times(x2,xprim2,λs2,ϑs2,λprim2,NG2)
     plot(λs1)
     savefig("../Results/lambdas1.png")
@@ -594,6 +593,10 @@ function main()
     savefig("../Results/Ent2.png")
     println(sum(acts1))
     println(sum(acts2))
+    println(sum(ents1))
+    println(sum(ents2))
+    println(ents1)
+    println(ents2)
 
 end
 

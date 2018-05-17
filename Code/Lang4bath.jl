@@ -180,7 +180,8 @@ function EntProd(pathmin,tau,NM,ps)
             Ents2[i] += Fqs[k,i]*(2*deltat) # comment this out to see the effect at somepoint
         end
     end
-    return(Acts,Ents1,Ents2)
+
+    return(Acts,Ents1,Ents2,termsthi,termsthif,termsf,Fqs,Ffs,Fs)
 end
 
 # f: function A = u[1], B = u[2], S = u[3]
@@ -228,10 +229,10 @@ function main()
     Qmin = 10.0^-20
     Ne = 150*(Ω/Ωr)
     T = 1
-    high2low = false
+    high2low = true
     ps = [ K; k; Q; q; kmin; qmin; f; r; F; Kmin; Qmin ]
     n = 10000 # number of euler runs to do
-    data = zeros(3,n) # preallocate memory
+    data = zeros(24,n) # preallocate memory
     # find start, mid and end points
     star, mid, fin = nullcline(F,r,f,K,Q,k,q,kmin,qmin,high2low,Ne)
     # make closed functions
@@ -248,11 +249,26 @@ function main()
         # Now would like to calculate both entropy production and the action along this path
         # now can use these paths to carry out a calculation of the action via MAP
         NM = size(sol[:],1)-1
-        acts1, ents1, ents2 = EntProd(sol,T,NM,ps)
+        acts1, ents1, ents2, termsthi, termsthif, termsf, Fqs, Ffs, Fs = EntProd(sol,T,NM,ps)
+        termsthi = squeeze(sum(termsthi,3),3)
+        termsthi = squeeze(sum(termsthi,2),2)
+        termsthif = squeeze(sum(termsthif,3),3)
+        termsthif = squeeze(sum(termsthif,2),2)
+        termsf = squeeze(sum(termsf,3),3)
+        termsf = squeeze(sum(termsf,2),2)
+        Fqs = squeeze(sum(Fqs,2),2)
+        Ffs = squeeze(sum(Ffs,2),2)
+        Fs = sum(Fs)
         data[1,i] = sum(acts1)/T
         data[2,i] = sum(ents1)/T
         data[3,i] = sum(ents2)/T
-        if i % 100
+        data[4:7,i] = termsthi
+        data[8:11,i] = termsthif
+        data[12:15,i] = termsf
+        data[16:19,i] = Fqs
+        data[20:23,i] = Ffs
+        data[24,i] = Fs
+        if i % 100 == 0
             println(i)
         end
     end
@@ -262,7 +278,11 @@ function main()
         out_file = open(output_file, "w")
         # open file for writing
         for i = 1:size(data,2)
-            line = "$(data[1,i]),$(data[2,i]),$(data[3,i])\n"
+            line1 = "$(data[1,i]),$(data[2,i]),$(data[3,i]),$(data[4,i]),$(data[5,i]),$(data[6,i]),"
+            line2 = "$(data[7,i]),$(data[8,i]),$(data[9,i]),$(data[10,i]),$(data[11,i]),$(data[12,i]),"
+            line3 = "$(data[13,i]),$(data[14,i]),$(data[15,i]),$(data[16,i]),$(data[17,i]),$(data[18,i]),"
+            line4 = "$(data[19,i]),$(data[20,i]),$(data[21,i]),$(data[22,i]),$(data[23,i]),$(data[24,i])\n"
+            line = line1 * line2 * line3 * line4
             write(out_file, line)
         end
         # then close file

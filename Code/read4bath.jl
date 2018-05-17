@@ -438,7 +438,7 @@ function EntProd(pathmin,tau,NM,ps)
             Ents[i] += Fqs[k,i]*(2*deltat) # comment this out to see the effect at somepoint
         end
     end
-    return(Acts,Ents)
+    return(Acts,Ents,termsf,Ffs)
 end
 
 function main()
@@ -572,7 +572,7 @@ function main()
     plot(t2)
     savefig("../Results/times2.png")
     # Now rediscretise path into time discretisation
-    NM1 = NM2 = 300
+    NM1 = NM2 = 600
     path1 = timdis(t1,x1,NM1)
     plot(path1[:,1],path1[:,2],path1[:,3])
     savefig("../Results/NewPath1.png")
@@ -581,8 +581,8 @@ function main()
     savefig("../Results/NewPath2.png")
     # now can use these paths to carry out a calculation of the action via MAP
     ps = [ K; k; Q; q; kmin; qmin; f; r; F; Kmin; Qmin]
-    acts1, ents1 = EntProd(path1,t1[end],NM1,ps)
-    acts2, ents2 = EntProd(path2,t2[end],NM2,ps)
+    acts1, ents1, termsf1, Ffs1 = EntProd(path1,t1[end],NM1,ps)
+    acts2, ents2, termsf2, Ffs2 = EntProd(path2,t2[end],NM2,ps)
     plot(acts1)
     savefig("../Results/Act1.png")
     plot(acts2)
@@ -595,8 +595,16 @@ function main()
     println(sum(acts2))
     println(sum(ents1))
     println(sum(ents2))
-    println(ents1)
-    println(ents2)
+    termsf1 = squeeze(sum(termsf1,1),1)
+    termsf2 = squeeze(sum(termsf2,1),1)
+    plot(transpose(termsf1))
+    savefig("../Results/Fterms1.png")
+    plot(transpose(termsf2))
+    savefig("../Results/Fterms2.png")
+    plot(transpose(Ffs1))
+    savefig("../Results/Fsquare1.png")
+    plot(transpose(Ffs2))
+    savefig("../Results/Fsquare2.png")
 
 end
 

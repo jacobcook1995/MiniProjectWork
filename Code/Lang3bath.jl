@@ -178,17 +178,18 @@ end
 function main()
     # General parameters
     Ω = 60 # system size
+    Ωr = Ω
     K = 1
     k = 1
     Q = 1
     q = 11/15
     kmin = 0.5 # now reverse creation is an important process
     qmin = 0.1
-    f = 1/((Ω/60)^2) # Promoter switching
+    f = 1/((Ω/Ωr)^2) # Promoter switching
     r = 10
-    F = 10*(Ω/60)
+    F = 10*(Ω/Ωr)
     high2low = false
-    T = 150 # time period studied
+    T = 1.5 # time period studied
 
     # find start, mid and end points
     star, mid, fin = nullcline(F,r,f,K,Q,k,q,kmin,qmin,high2low)

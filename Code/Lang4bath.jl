@@ -153,17 +153,17 @@ function EntProd(pathmin,tau,NM,ps)
                 thiv[j] = (path[i][j] - path[i-1][j])/(deltat)
             end
         end
-        # Now calcualtion step
+        # Now calculation step
         for k = 1:4
             for j = 1:4
                 termsthi[j,k,i] = thiv[j]*d[j,k]*thiv[k]
                 termsthif[j,k,i] = h[j]*d[j,k]*thiv[k]
                 termsf[j,k,i] = h[j]*d[j,k]*h[k]
             end
-            Fqs[k,i] = thiv[k]*d[k,3]*F - thiv[k]*d[k,4]*F
-            Ffs[k,i] = h[k]*d[k,3]*F - h[k]*d[k,4]*F
+            Fqs[k,i] = thiv[k]*(d[k,3] - d[k,4])*F
+            Ffs[k,i] = h[k]*(d[k,3] - d[k,4])*F
         end
-        Fs[i] = F*d[3,3]*F + F*d[4,4]*F
+        Fs[i] = F*(d[3,3] + d[4,4] - d[4,3] - d[3,4])*F
     end
     # Now use these terms to calculate overall action along path and the entropy production
     for i = 1:NM
@@ -180,7 +180,6 @@ function EntProd(pathmin,tau,NM,ps)
             Ents2[i] += Fqs[k,i]*(2*deltat) # comment this out to see the effect at somepoint
         end
     end
-
     return(Acts,Ents1,Ents2,termsthi,termsthif,termsf,Fqs,Ffs,Fs)
 end
 
@@ -228,10 +227,10 @@ function main()
     Kmin = 10.0^-20 # remains neligable though
     Qmin = 10.0^-20
     Ne = 150*(Ω/Ωr)
-    T = 1
-    high2low = true
+    T = 0.015
+    high2low = false
     ps = [ K; k; Q; q; kmin; qmin; f; r; F; Kmin; Qmin ]
-    n = 10000 # number of euler runs to do
+    n = 2000#10000 # number of euler runs to do
     data = zeros(24,n) # preallocate memory
     # find start, mid and end points
     star, mid, fin = nullcline(F,r,f,K,Q,k,q,kmin,qmin,high2low,Ne)
@@ -240,7 +239,7 @@ function main()
     gc(du,u,p,t) = g1(du,u,p,t,K,k,Q,q,kmin,qmin,f,r,F,Ω,Kmin,Qmin)
     # First generate a run of the problem
     u₀ = star
-    dt = (1/2)^(10)
+    dt = (1/2)^(15)#10)
     tspan = (0.0,T)
     prob = SDEProblem(fc, gc, u₀, tspan, noise_rate_prototype = zeros(4,4)) # SDEProblem
     Numb  = convert(Int64, floor(T/dt))
@@ -262,12 +261,12 @@ function main()
         data[1,i] = sum(acts1)/T
         data[2,i] = sum(ents1)/T
         data[3,i] = sum(ents2)/T
-        data[4:7,i] = termsthi
-        data[8:11,i] = termsthif
-        data[12:15,i] = termsf
-        data[16:19,i] = Fqs
-        data[20:23,i] = Ffs
-        data[24,i] = Fs
+        data[4:7,i] = termsthi/T
+        data[8:11,i] = termsthif/T
+        data[12:15,i] = termsf/T
+        data[16:19,i] = Fqs/T
+        data[20:23,i] = Ffs/T
+        data[24,i] = Fs/T
         if i % 100 == 0
             println(i)
         end

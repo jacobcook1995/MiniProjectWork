@@ -13,7 +13,7 @@ function writeout(times::Array{Float64,1},vars::Array{Int64,2})
     out_file = open(filename, "w")
     # open file for writing
     for i = 1:size(vars,2)
-        line = "$(vars[1,i]),$(vars[2,i]),$(vars[3,i]),$(vars[4,i])\n"
+        line = "$(vars[1,i]),$(vars[2,i]),$(vars[3,i]),$(vars[4,i]),$(times[i])\n"
         write(out_file, line)
     end
     # then close file
@@ -141,7 +141,7 @@ function main()
     Kmin = 10.0^-20 # remains neligable though
     Qmin = 10.0^-20
     Ne = 150.0*Ω # number of elements in the system
-    high2low = false
+    high2low = true
 
     # first need to use these parameters to find a steady state
     star1, _, _ = nullcline(F,r,f,K,Q,k,q,kmin,qmin,high2low,Ne)
@@ -154,7 +154,7 @@ function main()
     noits = 5000000
     vars, times = gillespie(K,k,Q,q,kmin,qmin,f,r,F,Kmin,Qmin,noits,star2)
     if length(ARGS) >= 1
-        @time writeout(times,vars)
+        writeout(times,vars)
     end
 
 end

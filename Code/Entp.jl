@@ -143,7 +143,8 @@ function EntProd(vars::Array{Float64,2},τ::Array{Float64,1},Ω)
         end
         Acts -= Fqs[k]*deltat
         Acts += Ffs[k]*deltat
-        Ents += Fqs[k]*(2*deltat) # comment this out to see the effect at somepoint
+        #Ents += Fqs[k]*(2*deltat) # comment this out to see the effect at somepoint
+        Ents -= Ffs[k]*(2*deltat)
     end
     return(Acts,Ents,deltat,thiv,Ffs,Fqs,Fs,termsthi,termsf,termsthif)
 end
@@ -160,20 +161,20 @@ function main()
     vars = vars/Ω
     # Now need to do the calculation of entropy production
     At = St = 0
-    A = zeros(199999)
-    S = zeros(199999)
-    for i = 2:200000#length(times)
+    A = zeros(4999999)
+    S = zeros(4999999)
+    for i = 2:5000000#length(times)
         A[i-1], S[i-1] = EntProd(vars[:,i-1:i],times[i-1:i],Ω)
         At += A[i-1]
         St += S[i-1]
-        if i % 1000 == 0
+        if i % 50000 == 0
             println("$(i),$(At/times[i-1]),$(St/times[i-1])")
         end
     end
     plot(A)
-    savefig("../Results/A.png")
+    savefig("../Results/A$(ARGS[1]).png")
     plot(S)
-    savefig("../Results/S.png")
+    savefig("../Results/S$(ARGS[1]).png")
     return(nothing)
 end
 

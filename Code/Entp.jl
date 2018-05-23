@@ -143,8 +143,7 @@ function EntProd(vars::Array{Float64,2},τ::Array{Float64,1},Ω)
         end
         Acts -= Fqs[k]*deltat
         Acts += Ffs[k]*deltat
-        #Ents += Fqs[k]*(2*deltat) # comment this out to see the effect at somepoint
-        Ents -= Ffs[k]*(2*deltat)
+        Ents += Fqs[k]*(2*deltat) # comment this out to see the effect at somepoint
     end
     return(Acts,Ents,deltat,thiv,Ffs,Fqs,Fs,termsthi,termsf,termsthif)
 end

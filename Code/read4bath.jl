@@ -435,7 +435,8 @@ function EntProd(pathmin,tau,NM,ps)
             end
             Acts[i] -= Fqs[k,i]*deltat
             Acts[i] += Ffs[k,i]*deltat
-            Ents[i] += Fqs[k,i]*(2*deltat) # comment this out to see the effect at somepoint
+            #Ents[i] += Fqs[k,i]*(2*deltat) # comment this out to see the effect at somepoint
+            Ents[i] -= Ffs[k,i]*(2*deltat)
         end
     end
     return(Acts,Ents)
@@ -546,21 +547,51 @@ function main()
     S2 = Ŝ(x2,xprim2,λs2,ϑs2,λprim2,NG2)
     println("Action Path 2 = $(sum(S2))")
     # change lambdas to be appropriate for time discretisation
-
-    for i = 2:NG1
-        if λs1[i] < 10.0^-4
-            λs1[i] = (λs1[i+1] + λs1[i-1])/2
+    star1 = star2 = false
+    i = j = 0
+    while star1 == false
+        i += 1
+        if λs1[i] > 10.0^-5
+            star1 = true
         end
     end
-    for i = 2:NG2
-        if λs2[i] < 10.0^-4
-            λs2[i] = (λs2[i+1] + λs2[i-1])/2
+    λs1[1:i-1] = λs1[i]
+    while star2 == false
+        j += 1
+        if λs2[j] > 10.0^-5
+            star2 = true
         end
     end
-    λs1[1] = λs1[2]
+    λs2[1:j-1] = λs2[j]
+    # second lot of loops to take care of the middle
+    mid1 = mid2 = trig1 = trig2 = false
+    k = i
+    m = j
+    ks = ke = ms = me = 0
+    while mid1 == false
+        k += 1
+        if trig1 == false && λs1[k] < 10.0^-5
+            trig1 = true
+            ks = k
+        elseif trig1 == true && λs1[k] > 10.0^-5
+            ke = k
+            mid1 = true
+        end
+    end
+    λs1[ks-1:ke] = (λs1[ks-1] + λs1[ke])/2
+    while mid2 == false
+        m += 1
+        if trig2 == false && λs2[m] < 10.0^-5
+            trig2 = true
+            ms = m
+        elseif trig2 == true && λs2[m] > 10.0^-5
+            me = m
+            mid2 = true
+        end
+    end
+    λs2[ms-1:me] = (λs2[ms-1] + λs2[me])/2
     λs1[end] = λs1[end-1]
     t1 = times(x1,xprim1,λs1,ϑs1,λprim1,NG1)
-    λs2[1] = λs2[2]
     λs2[end] = λs2[end-1]
     t2 = times(x2,xprim2,λs2,ϑs2,λprim2,NG2)
     plot(λs1)
@@ -572,7 +603,7 @@ function main()
     plot(t2)
     savefig("../Results/times2.png")
     # Now rediscretise path into time discretisation
-    NM1 = NM2 = 300
+    NM1 = NM2 = 600
     path1 = timdis(t1,x1,NM1)
     plot(path1[:,1],path1[:,2],path1[:,3])
     savefig("../Results/NewPath1.png")
@@ -595,7 +626,6 @@ function main()
     println(sum(acts2))
     println(sum(ents1))
     println(sum(ents2))
-
 end
 
 @time main()

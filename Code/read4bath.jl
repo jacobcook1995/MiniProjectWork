@@ -435,12 +435,13 @@ function EntProd(pathmin,tau,NM,ps)
             end
             Acts[i] -= Fqs[k,i]*deltat
             Acts[i] += Ffs[k,i]*deltat
-            #Ents[i] += Fqs[k,i]*(2*deltat) # comment this out to see the effect at somepoint
-            Ents[i] -= Ffs[k,i]*(2*deltat)
+            Ents[i] += Fqs[k,i]*(2*deltat) # comment this out to see the effect at somepoint
+            #Ents[i] -= Ffs[k,i]*(2*deltat)
         end
     end
     return(Acts,Ents)
 end
+
 
 function main()
     # create array to hold read in data
@@ -521,15 +522,15 @@ function main()
 
     # Now moving onto entropy production calculations
     Ω = 60 # system size
-    K = 1
-    k = 1
-    Q = 1
+    K = 1.0
+    k = 1.0
+    Q = 1.0
     q = 11/15
     kmin = 0.5 # now reverse creation is an important process
     qmin = 0.1
-    f = 1/((Ω/60)^2) # Promoter switching
-    r = 10
-    F = 10*(Ω/60)
+    f = 1.0/((Ω/60)^2) # Promoter switching
+    r = 10.0
+    F = 10.0*(Ω/60)
     Kmin = 10.0^-20
     Qmin = 10.0^-20
 
@@ -542,6 +543,8 @@ function main()
     savefig("../Results/lambda1.png")
     plot(λs2)
     savefig("../Results/lambda2.png")
+    λs1old = λs1[1:end]
+    λs2old = λs2[1:end]
     S1 = Ŝ(x1,xprim1,λs1,ϑs1,λprim1,NG1)
     println("Action Path 1 = $(sum(S1))")
     S2 = Ŝ(x2,xprim2,λs2,ϑs2,λprim2,NG2)
@@ -565,20 +568,20 @@ function main()
     λs2[1:j-1] = λs2[j]
     # second lot of loops to take care of the middle
     mid1 = mid2 = trig1 = trig2 = false
-    k = i
+    ki = i
     m = j
     ks = ke = ms = me = 0
     while mid1 == false
-        k += 1
-        if trig1 == false && λs1[k] < 10.0^-5
+        ki += 1
+        if trig1 == false && λs1[ki] < 10.0^-5
             trig1 = true
-            ks = k
-        elseif trig1 == true && λs1[k] > 10.0^-5
-            ke = k
+            ks = ki
+        elseif trig1 == true && λs1[ki] > 10.0^-5
+            ke = ki
             mid1 = true
         end
     end
-    λs1[ks-1:ke] = (λs1[ks-1] + λs1[ke])/2
+    λs1[ks:ke-1] = (λs1[ks-1] + λs1[ke])/2
     while mid2 == false
         m += 1
         if trig2 == false && λs2[m] < 10.0^-5
@@ -589,14 +592,14 @@ function main()
             mid2 = true
         end
     end
-    λs2[ms-1:me] = (λs2[ms-1] + λs2[me])/2
+    λs2[ms:me-1] = (λs2[ms-1] + λs2[me])/2
     λs1[end] = λs1[end-1]
     t1 = times(x1,xprim1,λs1,ϑs1,λprim1,NG1)
     λs2[end] = λs2[end-1]
     t2 = times(x2,xprim2,λs2,ϑs2,λprim2,NG2)
-    plot(λs1)
+    plot(λs1-λs1old)
     savefig("../Results/lambdas1.png")
-    plot(λs2)
+    plot(λs2-λs2old)
     savefig("../Results/lambdas2.png")
     plot(t1)
     savefig("../Results/times1.png")

@@ -6,21 +6,35 @@
 # This will first be done for the two species case
 
 using Roots
+using Plots
+import GR
 
 # Now construct the three relevant vectors of equations
-function f!(F::Array{Float64,1},x::Array{Int64,1},k::Float64,q::Float64,K::Float64,Q::Float64,r::Float64,f::Float64)
+function f!(F::Array{Float64,1},x::Array{Float64,1},k::Float64,q::Float64,K::Float64,Q::Float64,r::Float64,f::Float64)
     F[1] = k*r/(r+f*x[2]*x[2]) - K*x[1]
     F[2] = q*r/(r+f*x[1]*x[1]) - Q*x[2]
     return F
 end
 
 # Then construct the necessary matrices
-function D!(D::Array{Float64,2},x::Array{Int64,1},k::Float64,q::Float64,K::Float64,Q::Float64,r::Float64,f::Float64)
+function D!(D::Array{Float64,2},x::Array{Float64,1},k::Float64,q::Float64,K::Float64,Q::Float64,r::Float64,f::Float64)
     D[1,1] = k*r/(r+f*x[2]*x[2]) + K*x[1]
     D[1,2] = 0
     D[2,1] = 0
     D[2,2] = q*r/(r+f*x[1]*x[1]) + Q*x[2]
     return D
+end
+
+function p!(p::Array{Float64,1},x::Array{Float64,1},k::Float64,q::Float64,kmin::Float64,qmin::Float64,r::Float64,f::Float64)
+    p[1] = k*r/(r + f*x[2]^2) - kmin*x[1]
+    p[2] = q*r/(r + f*x[1]^2) - qmin*x[2]
+    return(p)
+end
+
+function d!(d::Array{Float64,1},x::Array{Float64,1},K::Float64,Kmin::Float64,Q::Float64,Qmin::Float64)
+    d[1] = K*x[1] - Kmin
+    d[2] = Q*x[2] - Qmin
+    return(d)
 end
 
 # finction to find start end and saddle points
@@ -114,7 +128,8 @@ end
 
 function Gillespie!(stead::Array{Int64,1},K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,
                     qmin::Float64,f::Float64,r::Float64,Kmin::Float64,Qmin::Float64,noits::Int64,
-                    pf::Array{Float64,1},pb::Array{Float64,1},times::Array{Float64,1},vars::Array{Int64,2},q::Array{Int64,2})
+                    pf::Array{Float64,1},pb::Array{Float64,1},times::Array{Float64,1},vars::Array{Int64,2},
+                    qs::Array{Float64,2},fs::Array{Float64,2},Ds::Array{Float64,3},ds::Array{Float64,2},ps::Array{Float64,2})
     # Preallocate for simulation
     times[1] = 0
     vars[:,1] = stead
@@ -132,15 +147,22 @@ function Gillespie!(stead::Array{Int64,1},K::Float64,k::Float64,Q::Float64,q::Fl
         times[i+1] = times[i] + τ
         # do gillepsie step
         vars[:,i+1], pf[i], reac = step(rs,vars[:,i],reac)
-        q[1,i] = (vars[1,i+1] - vars[1,i])/(τ)
-        q[2,i] = (vars[2,i+1] - vars[2,i])/(τ)
+        qs[1,i] = (vars[1,i+1] - vars[1,i])/(τ)
+        qs[2,i] = (vars[2,i+1] - vars[2,i])/(τ)
+        posA = (vars[1,i+1] + vars[1,i])/(2)
+        posB = (vars[2,i+1] + vars[2,i])/(2)
+        fs[:,i] = f!(fs[:,i],[posA, posB],k,q,K,Q,r,f)
+        ds[:,i] = d!(ds[:,i],[posA, posB],K,Kmin,Q,Qmin)
+        ps[:,i] = p!(ps[:,i],[posA, posB],k,q,kmin,qmin,r,f)
+        Ds[:,:,i] = D!(Ds[:,:,i],[posA, posB],k,q,K,Q,r,f)
+        Ds[:,:,i] = Ds[:,:,i]/τ # applies here as we need a τ in each expression, D will be inverted later
         # final reverse rate
         if i == noits
             rs = rates(vars[1,end],vars[2,end],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
             pb[end] = rev(rs,reac)
         end
     end
-    return(pf,pb,times,vars)
+    return(pf,pb,times,vars,qs,fs,Ds,ds,ps)
 end
 
 # function to run multiple short gillespie simulations in order to improve sampling statistics
@@ -149,12 +171,20 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
                     highA::Array{Int64,1},highB::Array{Int64,1})
     SA = zeros(noruns)
     SB = zeros(noruns)
-    minA = zeros(noruns)
-    minB = zeros(noruns)
-    maxA = zeros(noruns)
-    maxB = zeros(noruns)
-    pA = ones(noruns)
-    pB = ones(noruns)
+    PA = ones(BigFloat,noruns)
+    PB = ones(BigFloat,noruns)
+    qqA = zeros(noruns)
+    qfA = zeros(noruns)
+    ffA = zeros(noruns)
+    qqB = zeros(noruns)
+    qfB = zeros(noruns)
+    ffB = zeros(noruns)
+    ddA = zeros(noruns)
+    pdA = zeros(noruns)
+    ppA = zeros(noruns)
+    ddB = zeros(noruns)
+    pdB = zeros(noruns)
+    ppB = zeros(noruns)
     # preallocating arrays used inside function
     pfA = zeros(noits)
     pbA = zeros(noits)
@@ -164,33 +194,59 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
     pbB = zeros(noits)
     timesB = zeros(noits+1)
     varsB = fill(0,2,noits+1)
+    qA = zeros(2,noits)
+    fA = zeros(2,noits)
+    DA = zeros(2,2,noits)
+    qB = zeros(2,noits)
+    fB = zeros(2,noits)
+    DB = zeros(2,2,noits)
+    dA = zeros(2,noits)
+    pA = zeros(2,noits)
+    dB = zeros(2,noits)
+    pB = zeros(2,noits)
     for j = 1:noruns
-        ran = rand(-5:5)
-        varsA = varsA + ran # vary starting posistion slightly
-        varsB = varsB - ran
-        pfA, pbA, timesA, varsA = Gillespie!(highA,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,pfA,pbA,timesA,varsA)
-        pfB, pbB, timesB, varsB = Gillespie!(highB,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,pfB,pbB,timesB,varsB)
-        varsA = varsA - ran # reverse change
-        varsB = varsB + ran
+        pfA, pbA, timesA, varsA, qA, fA, DA, dA, pA = Gillespie!(highA,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,pfA,pbA,timesA,varsA,qA,fA,DA,dA,pA)
+        pfB, pbB, timesB, varsB, qB, fB, DB, dB, pB = Gillespie!(highB,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,pfB,pbB,timesB,varsB,qB,fB,DB,dB,pB)
         # calculate total entropy production
         for i = 1:noits
-            SA[j] += log(pfA[i]) - log(pbA[i])
-            SB[j] += log(pfB[i]) - log(pbB[i])
-            pA[j] *= pfA[i]
-            pB[j] *= pfB[i]
+            SA[j] += (log(pfA[i]) - log(pbA[i])) # do probability weighting at each step
+            SB[j] += (log(pfB[i]) - log(pbB[i])) # does this work????????
+            PA[j] *= pfA[i]
+            PB[j] *= pfB[i]
+            for l = 1:2
+                qfA[j] += qA[l,i]*fA[l,i]/DA[l,l,i]
+                qqA[j] += qA[l,i]*qA[l,i]/DA[l,l,i]
+                ffA[j] += fA[l,i]*fA[l,i]/DA[l,l,i]
+                ppA[j] += pA[l,i]*pA[l,i]/DA[l,l,i]
+                pdA[j] += pA[l,i]*dA[l,i]/DA[l,l,i]
+                ddA[j] += dA[l,i]*dA[l,i]/DA[l,l,i]
+                qfB[j] += qB[l,i]*fB[l,i]/DB[l,l,i]
+                qqB[j] += qB[l,i]*qB[l,i]/DB[l,l,i]
+                ffB[j] += fB[l,i]*fB[l,i]/DB[l,l,i]
+                ppB[j] += pB[l,i]*pB[l,i]/DB[l,l,i]
+                pdB[j] += pB[l,i]*dB[l,i]/DB[l,l,i]
+                ddB[j] += dB[l,i]*dB[l,i]/DB[l,l,i]
+            end
         end
 
         # convert total entropy production to entropy production rate
         SA[j] = SA[j]/timesA[end]
         SB[j] = SB[j]/timesB[end]
-        # store this data so validity can be checked later on
-        minA[j] = minimum(varsA[1,:])
-        minB[j] = minimum(varsB[2,:])
-        maxA[j] = maximum(varsA[2,:])
-        maxB[j] = maximum(varsB[1,:])
+        qfA[j] = qfA[j]/timesA[end]
+        qqA[j] = qqA[j]/timesA[end]
+        ffA[j] = ffA[j]/timesA[end]
+        qfB[j] = qfB[j]/timesB[end]
+        qqB[j] = qqB[j]/timesB[end]
+        ffB[j] = ffB[j]/timesB[end]
+        ppA[j] = ppA[j]/timesA[end]
+        pdA[j] = pdA[j]/timesA[end]
+        ddA[j] = ddA[j]/timesA[end]
+        ppB[j] = ppB[j]/timesB[end]
+        pdB[j] = pdB[j]/timesB[end]
+        ddB[j] = ddB[j]/timesB[end]
     end
     println("Gillespies Done!")
-    return(SA,SB,minA,minB,maxA,maxB,pA,pB)
+    return(SA,SB,PA,PB,qfA,qqA,ffA,qfB,qqB,ffB,ppA,pdA,ddA,ppB,pdB,ddB)
 end
 
 # function to compute the shannon entropy at a fixed point
@@ -242,22 +298,95 @@ function main()
     println("Entropy production rate of high A state via Shannon formula = $(SAS)")
     println("Entropy production rate of high B state via Shannon formula = $(SBS)")
     # now run multiple Gillespie simulations
-    noits = 500#250 # this number must be kept low to insure that the paths do not become less probable than the computer can ennumerate
-    noruns = 2500 # memory allocation real problem if this is too large
-    SA, SB, minA, minB, maxA, maxB, pA, pB = multgill(noits,noruns,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin,star2,fin2)
-    pA = pA/sum(pA)
-    pB = pB/sum(pB)
-    SAG = SBG = 0
+    noits = 500000 # this number must be kept low to insure that the paths do not become less probable than the computer can ennumerate
+    noruns = 25000 # memory allocation real problem if this is too large
+    SA, SB, PA, PB, qfA, qqA, ffA, qfB, qqB, ffB, ppA, pdA, ddA, ppB, pdB, ddB = multgill(noits,noruns,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin,star2,fin2)
+    PA = PA/sum(PA)
+    PB = PB/sum(PB)
+    SAG = SBG = qfAw = qfBw = ppAw = ppBw = ddAw = ddBw = pdAw = pdBw = qqAw = ffAw = qqBw = ffBw = 0
     for i = 1:noruns
-        SAG += pA[i]*SA[i]
-        SBG += pB[i]*SB[i]
+        SAG += PA[i]*SA[i]
+        SBG += PB[i]*SB[i]
+        qfAw += PA[i]*qfA[i]
+        qfBw += PB[i]*qfB[i]
+        ppAw += PA[i]*ppA[i]
+        ppBw += PB[i]*ppB[i]
+        ddAw += PA[i]*ddA[i]
+        ddBw += PB[i]*ddB[i]
+        pdAw += PA[i]*pdA[i]
+        pdBw += PB[i]*pdB[i]
+        qqAw += PA[i]*qqA[i]
+        ffAw += PA[i]*ffA[i]
+        qqBw += PB[i]*qqB[i]
+        ffBw += PB[i]*ffB[i]
     end
-    println(SAG)
-    println(SBG)
-    println(maximum(pA))
-    println(minimum(pA))
-    println(maximum(pB))
-    println(minimum(pB))
+    # SA histogram
+    pone = histogram(SA, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,SAG)], color = :red)
+    pone = vline!(pone, [sum(SA)/noruns], color = :green)
+    savefig("../Results/HistSA$(ARGS[1]).png")
+
+    # SB histogram
+    pone = histogram(SB, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,SBG)], color = :red)
+    pone = vline!(pone, [sum(SB)/noruns], color = :green)
+    savefig("../Results/HistSB$(ARGS[1]).png")
+
+    # qAf histogram
+    pone = histogram(2*qfA, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,2*qfAw)], color = :red)
+    pone = vline!(pone, [2*sum(qfA)/noruns], color = :green)
+    savefig("../Results/HistqfA$(ARGS[1]).png")
+
+    # qBf histogram
+    pone = histogram(2*qfB, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,2*qfBw)], color = :red)
+    pone = vline!(pone, [2*sum(qfB)/noruns], color = :green)
+    savefig("../Results/HistqfB$(ARGS[1]).png")
+
+    # ppA ddA histogram
+    epA = 2*(ppA+ddA)
+    pone = histogram(epA, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,2*(ppAw+ddAw))], color = :red)
+    pone = vline!(pone, [sum(epA)/noruns], color = :green)
+    annotate!(minimum(epA),0.2*noruns,text("mean ratio=$((sum(SA))/sum(epA))\nweighted mean ratio=$(convert(Float64,SAG)/convert(Float64,2*(ppAw+ddAw)))",:left))
+    savefig("../Results/HistppAddA$(ARGS[1]).png")
+
+    # ppA ddA histogram
+    epB = 2*(ppB+ddB)
+    pone = histogram(epB, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,2*(ppBw+ddBw))], color = :red)
+    pone = vline!(pone, [sum(epB)/noruns], color = :green)
+    annotate!(minimum(epB),0.2*noruns,text("mean ratio=$((sum(SB))/sum(epB))\nweighted mean ratio=$(convert(Float64,SBG)/convert(Float64,2*(ppBw+ddBw)))",:left))
+    savefig("../Results/HistppBddB$(ARGS[1]).png")
+
+    # pdA histogram
+    pone = histogram(4*(pdA), xlabel = "Entropy Flow", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,4*(pdAw))], color = :red)
+    pone = vline!(pone, [4*sum(pdA)/noruns], color = :green)
+    savefig("../Results/HistpdA$(ARGS[1]).png")
+
+    # pdB histogram
+    pone = histogram(4*(pdB), xlabel = "Entropy Flow", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,4*(pdBw))], color = :red)
+    pone = vline!(pone, [4*sum(pdB)/noruns], color = :green)
+    savefig("../Results/HistpdB$(ARGS[1]).png")
+
+    # action steady state A histogram
+    ActA = 0.5*(qqA+ffA)-qfA
+    pone = histogram(ActA, xlabel = "Action", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,0.5*(qqAw+ffAw) - qfAw)], color = :red)
+    pone = vline!(pone, [(sum(ActA))/noruns], color = :green)
+    annotate!(0.4*maximum(ActA),0.2*noruns,text("mean Action=$(convert(Float64,0.5*(qqAw+ffAw) - qfAw))\nweighted mean Action=$((sum(ActA))/noruns)",:left))
+    savefig("../Results/HistActA$(ARGS[1])")
+
+    # action steady state B histogram
+    ActB = 0.5*(qqB+ffB)-qfB
+    pone = histogram(ActB, xlabel = "Action", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,0.5*(qqBw+ffBw) - qfBw)], color = :red)
+    pone = vline!(pone, [(sum(ActB))/noruns], color = :green)
+    annotate!(0.4*maximum(ActB),0.2*noruns,text("mean Action=$(convert(Float64,0.5*(qqBw+ffBw) - qfBw))\nweighted mean Action=$((sum(ActB))/noruns)",:left))
+    savefig("../Results/HistActB$(ARGS[1])")
     return(nothing)
 end
 

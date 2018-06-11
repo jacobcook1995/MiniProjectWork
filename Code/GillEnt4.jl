@@ -173,13 +173,8 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
     timesB = zeros(noits+1)
     varsB = fill(0,4,noits+1)
     for j = 1:noruns
-        ran = rand(-5:5)
-        varsA = varsA + ran # vary starting posistion slightly
-        varsB = varsB - ran
         pfA, pbA, timesA, varsA = Gillespie!(highA,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,F,Fmin,noits,pfA,pbA,timesA,varsA)
         pfB, pbB, timesB, varsB = Gillespie!(highB,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,F,Fmin,noits,pfB,pbB,timesB,varsB)
-        varsA = varsA - ran # reverse change
-        varsB = varsB + ran
         # calculate total entropy production
         for i = 1:noits
             SA[j] += log(pfA[i]) - log(pbA[i])

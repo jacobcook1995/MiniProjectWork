@@ -23,7 +23,7 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = false # Set if starting from high state or low state
+const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
@@ -416,6 +416,7 @@ function run(tau,noit)
     ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red)#, leg = false)
     #annotate!(inflex[1]+3, minimum(ents)+0.01, text("Action = $(act)\n", :left, font(5, "Courier")))
     plot(pone, ptwo, layout = (1,2))
+    println(sum(ents))
     savefig("../Results/Entropy$(high2low).png")
 
 end
@@ -444,5 +445,5 @@ function main()
 
 end
 
-@time run(21.105258823966956,5)#18.952490234375
+@time run(18.937290073966956,5)#18.952490234375
 #@time main()

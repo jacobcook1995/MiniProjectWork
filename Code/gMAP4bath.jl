@@ -38,6 +38,11 @@ end
 function Dmins()
     D = Ds()
     Dmin = inv(D)
+    for j = 1:4
+        for i = 1:4
+            Dmin[i,j] = expand(Dmin[i,j])
+        end
+    end
     return(Dmin)
 end
 
@@ -65,6 +70,7 @@ function Hs()
     H += 0.5*the2*(D[2,1]*the1 + D[2,2]*the2 + D[2,3]*the3 + D[2,4]*the4)
     H += 0.5*the3*(D[3,1]*the1 + D[3,2]*the2 + D[3,3]*the3 + D[3,4]*the4)
     H += 0.5*the4*(D[4,1]*the1 + D[4,2]*the2 + D[4,3]*the3 + D[4,4]*the4)
+    H = expand(H)
     return(H)
 end
 
@@ -540,8 +546,8 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int,NG::Int,Nmid::Int,Δ�
     gr()
     xold = x
     while convrg == false
-        x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG,Nmid)
-        newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG,Nmid,H)
+        @time x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG,Nmid)
+        @time newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG,Nmid,H)
         xn = discretise(newx.zero,NG,Nmid)
         S = Ŝ(xn,xprim,λs,ϑs,λprim,NG)
         print("$(sum(S))\n")

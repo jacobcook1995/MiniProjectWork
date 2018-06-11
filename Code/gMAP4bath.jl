@@ -557,7 +557,7 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int,NG::Int,Nmid::Int,Δ�
         end
         # Now overwrite old x
         x = xn
-        if l == 4000
+        if l == 10000
             convrg = true
         end
         l += 1
@@ -647,7 +647,7 @@ function main()
 
     # Optimisation parameters
     NM = 300 # number of segments to discretise MAP onto
-    NG = 300 # number of segments to optimize gMAP over
+    NG = 600 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
     Δτ = 0.1 # I've made this choice arbitarily, too large and the algorithm breaks
     high2low = true # Set if starting from high state or low state

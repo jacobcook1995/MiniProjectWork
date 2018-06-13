@@ -7,6 +7,7 @@
 
 using Roots
 using Plots
+using StatsBase
 import GR
 
 # Now construct the three relevant vectors of equations
@@ -298,8 +299,8 @@ function main()
     println("Entropy production rate of high A state via Shannon formula = $(SAS)")
     println("Entropy production rate of high B state via Shannon formula = $(SBS)")
     # now run multiple Gillespie simulations
-    noits = 500000 # this number must be kept low to insure that the paths do not become less probable than the computer can ennumerate
-    noruns = 25000 # memory allocation real problem if this is too large
+    noits = 50#0000 # this number must be kept low to insure that the paths do not become less probable than the computer can ennumerate
+    noruns = 25#000 # memory allocation real problem if this is too large
     SA, SB, PA, PB, qfA, qqA, ffA, qfB, qqB, ffB, ppA, pdA, ddA, ppB, pdB, ddB = multgill(noits,noruns,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin,star2,fin2)
     PA = PA/sum(PA)
     PB = PB/sum(PB)
@@ -346,18 +347,20 @@ function main()
 
     # ppA ddA histogram
     epA = 2*(ppA+ddA)
+    h = fit(Histogram, epA, closed=:right)
     pone = histogram(epA, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
     pone = vline!(pone, [convert(Float64,2*(ppAw+ddAw))], color = :red)
     pone = vline!(pone, [sum(epA)/noruns], color = :green)
-    annotate!(minimum(epA),0.2*noruns,text("mean ratio=$((sum(SA))/sum(epA))\nweighted mean ratio=$(convert(Float64,SAG)/convert(Float64,2*(ppAw+ddAw)))",:left))
+    annotate!(minimum(epA),0.15*maximum(h.weights),text("mean ratio=$((sum(SA))/sum(epA))\nweighted mean ratio=$(convert(Float64,SAG)/convert(Float64,2*(ppAw+ddAw)))",:left))
     savefig("../Results/HistppAddA$(ARGS[1]).png")
 
     # ppA ddA histogram
     epB = 2*(ppB+ddB)
+    h = fit(Histogram, epB, closed=:right)
     pone = histogram(epB, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
     pone = vline!(pone, [convert(Float64,2*(ppBw+ddBw))], color = :red)
     pone = vline!(pone, [sum(epB)/noruns], color = :green)
-    annotate!(minimum(epB),0.2*noruns,text("mean ratio=$((sum(SB))/sum(epB))\nweighted mean ratio=$(convert(Float64,SBG)/convert(Float64,2*(ppBw+ddBw)))",:left))
+    annotate!(minimum(epB),0.15*maximum(h.weights),text("mean ratio=$((sum(SB))/sum(epB))\nweighted mean ratio=$(convert(Float64,SBG)/convert(Float64,2*(ppBw+ddBw)))",:left))
     savefig("../Results/HistppBddB$(ARGS[1]).png")
 
     # pdA histogram
@@ -374,18 +377,22 @@ function main()
 
     # action steady state A histogram
     ActA = 0.5*(qqA+ffA)-qfA
+    h = fit(Histogram, ActA, closed=:right)
     pone = histogram(ActA, xlabel = "Action", ylabel = "Frequency", color = :blue, legend = false)
     pone = vline!(pone, [convert(Float64,0.5*(qqAw+ffAw) - qfAw)], color = :red)
     pone = vline!(pone, [(sum(ActA))/noruns], color = :green)
-    annotate!(0.4*maximum(ActA),0.2*noruns,text("mean Action=$(convert(Float64,0.5*(qqAw+ffAw) - qfAw))\nweighted mean Action=$((sum(ActA))/noruns)",:left))
+    println(maximum(h.weights))
+    annotate!(0.4*maximum(ActA),0.05*maximum(h.weights),text("mean Action=$(convert(Float64,0.5*(qqAw+ffAw) - qfAw))\nweighted mean Action=$((sum(ActA))/noruns)",:left))
     savefig("../Results/HistActA$(ARGS[1])")
 
     # action steady state B histogram
     ActB = 0.5*(qqB+ffB)-qfB
+    h = fit(Histogram, ActB, closed=:right)
     pone = histogram(ActB, xlabel = "Action", ylabel = "Frequency", color = :blue, legend = false)
     pone = vline!(pone, [convert(Float64,0.5*(qqBw+ffBw) - qfBw)], color = :red)
     pone = vline!(pone, [(sum(ActB))/noruns], color = :green)
-    annotate!(0.4*maximum(ActB),0.2*noruns,text("mean Action=$(convert(Float64,0.5*(qqBw+ffBw) - qfBw))\nweighted mean Action=$((sum(ActB))/noruns)",:left))
+    println(maximum(h.weights))
+    annotate!(0.4*maximum(ActB),0.05*maximum(h.weights),text("mean Action=$(convert(Float64,0.5*(qqBw+ffBw) - qfBw))\nweighted mean Action=$((sum(ActB))/noruns)",:left))
     savefig("../Results/HistActB$(ARGS[1])")
     return(nothing)
 end

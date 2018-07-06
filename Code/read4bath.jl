@@ -375,6 +375,8 @@ function EntProd(pathmin,tau,NM,ps)
     Fs = zeros(NM)
     Acts = zeros(NM)
     Ents = zeros(NM)
+    Kins = zeros(NM)
+    Pots = zeros(NM)
     h = [ 0.0; 0.0; 0.0; 0.0 ]
     thiv = [ 0.0; 0.0; 0.0; 0.0 ]
     d = [ 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 ]
@@ -426,20 +428,23 @@ function EntProd(pathmin,tau,NM,ps)
     # Now use these terms to calculate overall action along path and the entropy production
     for i = 1:NM
         Acts[i] = Fs[i]*(deltat/2)
+        Pots[i] = Fs[i]*(deltat/2)
         for k = 1:4
             for j = 1:4
                 Acts[i] += termsthi[j,k,i]*(deltat/2)
+                Kins[i] += termsthi[j,k,i]*(deltat/2)
                 Acts[i] -= termsthif[j,k,i]*deltat
                 Acts[i] += termsf[j,k,i]*(deltat/2)
+                Pots[i] += termsf[j,k,i]*(deltat/2)
                 Ents[i] += termsthif[j,k,i]*(2*deltat)
             end
             Acts[i] -= Fqs[k,i]*deltat
             Acts[i] += Ffs[k,i]*deltat
             Ents[i] += Fqs[k,i]*(2*deltat) # comment this out to see the effect at somepoint
-            #Ents[i] -= Ffs[k,i]*(2*deltat)
+            Pots[i] += Ffs[k,i]*deltat
         end
     end
-    return(Acts,Ents)
+    return(Acts,Ents,Kins,Pots)
 end
 
 
@@ -605,8 +610,18 @@ function main()
     savefig("../Results/times1.png")
     plot(t2)
     savefig("../Results/times2.png")
+    # define midA, midB, midS, midW
+    midA1 = x1[ks,1]
+    midB1 = x1[ks,2]
+    midS1 = x1[ks,3]
+    midW1 = x1[ks,4]
+    midA2 = x2[ms,1]
+    midB2 = x2[ms,2]
+    midS2 = x2[ms,3]
+    midW2 = x2[ms,4]
+
     # Now rediscretise path into time discretisation
-    NM1 = NM2 = 600
+    NM1 = NM2 = 300
     path1 = timdis(t1,x1,NM1)
     plot(path1[:,1],path1[:,2],path1[:,3])
     savefig("../Results/NewPath1.png")
@@ -615,20 +630,40 @@ function main()
     savefig("../Results/NewPath2.png")
     # now can use these paths to carry out a calculation of the action via MAP
     ps = [ K; k; Q; q; kmin; qmin; f; r; F; Kmin; Qmin]
-    acts1, ents1 = EntProd(path1,t1[end],NM1,ps)
-    acts2, ents2 = EntProd(path2,t2[end],NM2,ps)
-    plot(acts1)
-    savefig("../Results/Act1.png")
-    plot(acts2)
-    savefig("../Results/Act2.png")
-    plot(ents1)
-    savefig("../Results/Ent1.png")
-    plot(ents2)
-    savefig("../Results/Ent2.png")
-    println(sum(acts1))
-    println(sum(acts2))
-    println(sum(ents1))
-    println(sum(ents2))
+    acts1, ents1, kins1, pots1 = EntProd(path1,t1[end],NM1,ps)
+    acts2, ents2, kins2, pots2 = EntProd(path2,t2[end],NM2,ps)
+    points1 = [ 0.5*ents1, kins1, pots1, acts1]
+    points2 = [ 0.5*ents2, kins2, pots2, acts2]
+    pone = plot(path1[1:300,1], points1, xaxis = "arc point", yaxis = "Action Contributions", marker = :auto, legend = false)
+    pone = scatter!(pone, [path1[1,1]], [0.0], seriescolor = :green)
+    pone = scatter!(pone, [midA1], [0.0], seriescolor = :orange)
+    pone = scatter!(pone, [path1[end,1]], [0.0], seriescolor = :red)
+    savefig("../Results/EntropyProduction1.png")
+    ptwo = plot(path2[1:300,1], points2, xaxis = "arc point", yaxis = "Action Contributions", marker = :auto, legend = false)
+    ptwo = scatter!(ptwo, [path2[1,1]], [0.0], seriescolor = :green)
+    ptwo = scatter!(ptwo, [midA2], [0.0], seriescolor = :orange)
+    ptwo = scatter!(ptwo, [path2[end,1]], [0.0], seriescolor = :red)
+    savefig("../Results/EntropyProduction2.png")
+    pone = plot(path1[:,1], path1[:,2], xaxis = "A", yaxis = "B", legend = false)
+    pone = scatter!(pone, [path1[1,1]], [path1[1,2]], seriescolor = :green)
+    pone = scatter!(pone, [midA1], [midB1], seriescolor = :orange)
+    pone = scatter!(pone, [path1[end,1]], [path1[end,2]], seriescolor = :red)
+    savefig("../Results/AvsB1.png")
+    pone = plot(path1[:,3], path1[:,4], xaxis = "S", yaxis = "W", legend = false)
+    pone = scatter!(pone, [path1[1,3]], [path1[1,4]], seriescolor = :green)
+    pone = scatter!(pone, [midS1], [midW1], seriescolor = :orange)
+    pone = scatter!(pone, [path1[end,3]], [path1[end,4]], seriescolor = :red)
+    savefig("../Results/SvsW1.png")
+    pone = plot(path2[:,1], path2[:,2], xaxis = "A", yaxis = "B", legend = false)
+    pone = scatter!(pone, [path2[1,1]], [path2[1,2]], seriescolor = :green)
+    pone = scatter!(pone, [midA2], [midB2], seriescolor = :orange)
+    pone = scatter!(pone, [path2[end,1]], [path2[end,2]], seriescolor = :red)
+    savefig("../Results/AvsB2.png")
+    pone = plot(path2[:,3], path2[:,4], xaxis = "S", yaxis = "W", legend = false)
+    pone = scatter!(pone, [path2[1,3]], [path2[1,4]], seriescolor = :green)
+    pone = scatter!(pone, [midS2], [midW2], seriescolor = :orange)
+    pone = scatter!(pone, [path2[end,3]], [path2[end,4]], seriescolor = :red)
+    savefig("../Results/SvsW2.png")
 end
 
 @time main()

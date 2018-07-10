@@ -347,7 +347,7 @@ function run(tau,noit)
     pone = scatter!(pone, [mid], [tmid], lab = "Saddle", seriescolor = :orange)
     pone = scatter!(pone, [fin], [t], lab = "Finish", seriescolor = :red) # put end point in
     ents, kins, pots, acts, prod, flow =  EntProd(pathmin,t)
-
+    println("Rate of change of entropy = $(sum(ents))")
     # Block of code to write all this data to a file so I can go through it
     if length(ARGS) >= 1
         output_file = "../Results/$(ARGS[1]).csv"

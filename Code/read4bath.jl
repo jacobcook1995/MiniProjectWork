@@ -634,6 +634,8 @@ function main()
     acts2, ents2, kins2, pots2 = EntProd(path2,t2[end],NM2,ps)
     points1 = [ 0.5*ents1, kins1, pots1, acts1]
     points2 = [ 0.5*ents2, kins2, pots2, acts2]
+    println(sum(ents1))
+    println(sum(ents2))
     pone = plot(path1[1:300,1], points1, xaxis = "arc point", yaxis = "Action Contributions", marker = :auto, legend = false)
     pone = scatter!(pone, [path1[1,1]], [0.0], seriescolor = :green)
     pone = scatter!(pone, [midA1], [0.0], seriescolor = :orange)

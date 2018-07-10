@@ -137,23 +137,28 @@ function multgill(noits::Int64,noruns::Int64,k1::Float64,K1::Float64,k2::Float64
     pdown = zeros(noruns)
     Sup = zeros(noruns)
     Sdown = zeros(noruns)
+    p = zeros(BigFloat,noruns)
     # generate high and low states
     star2 = round(Int64,star1)
     fin2 = round(Int64,fin1)
+    mid2 = round(Int64,mid1)
     # upper and lower bounds for the threshold
     up = ceil(Int64,mid1)
     down = floor(Int64,mid1)
+    up = down # set this for now DELETE later
     # preallocating arrays used inside function
     pfX = zeros(noits)
     pbX = zeros(noits)
     timesX = zeros(noits+1)
     varsX = fill(0,noits+1)
     for j = 1:noruns
-        init = fin2-star2 # generate an initial condition here, should be more complex in future
+        p[j] = 1
+        init = mid2 # generate an initial condition here, should be more complex in future
         pfX, pbX, timesX, varsX, pup[j], pdown[j], hl = Gillespie!(init,k1,K1,k2,K2,B,noits,pfX,pbX,timesX,varsX,V,up,down)
         # calculate total entropy production
         for i = 1:noits
             SX[j] += log(pfX[i]) - log(pbX[i])
+            p[j] *= pfX[i]
             if hl[i] == 1
                 Sup[j] += log(pfX[i]) - log(pbX[i])
             elseif hl[i] == 2
@@ -170,7 +175,7 @@ function multgill(noits::Int64,noruns::Int64,k1::Float64,K1::Float64,k2::Float64
         maxX[j] = maximum(varsX)
     end
     println("Gillespies Done!")
-    return(SX,minX,maxX,pup,pdown,Sup,Sdown)
+    return(SX,minX,maxX,pup,pdown,Sup,Sdown,p)
 end
 
 # main function
@@ -180,27 +185,26 @@ function main()
     k2 = 1.0 # k_{+2}
     K2 = 1.0 # k_{-2}
     B = 4.0
-    V = 20
+    V = 10
     high2low = false
     # first need to use these parameters to find a steady state
     star1, mid1, fin1 = nullcline(k1,K1,k2,K2,B,high2low,V)
     # now run multiple Gillespie simulations
-    noits = 25000000
-    noruns = 50
-    SX, minX, maxX, pup, pdown, Sup, Sdown = multgill(noits,noruns,k1,K1,k2,K2,B,star1,mid1,fin1,V)
+    noits = 250000000
+    noruns = 10
+    SX, minX, maxX, pup, pdown, Sup, Sdown, pf = multgill(noits,noruns,k1,K1,k2,K2,B,star1,mid1,fin1,V)
     println(sum(SX)/(V*noruns))
     # calculations here
-    Su = sum(Sup)/(V*noruns)
-    Sd = sum(Sdown)/(V*noruns)
-    pu = sum(pup)/(noruns)
-    pd = sum(pdown)/(noruns)
-    pr = pu/pd
-    e = exp(Su-Sd)
-    println(pr)
-    println(e)
-    println(e/pr)
+    println(pup)
+    println(pdown)
+    println(Sup)
+    println(Sdown)
     pone = scatter(exp.((Sup-Sdown)/V),pup./pdown)
-    savefig("../Results/Scatter.png")
+    savefig("../Results/ScatterSch.png")
+    pone = scatter(log.(pf),pup./pdown)
+    savefig("../Results/Scatter2Sch.png")
+    pone = scatter(log.(pf),exp.((Sup-Sdown)/V))
+    savefig("../Results/Scatter3Sch.png")
     return(nothing)
 end
 

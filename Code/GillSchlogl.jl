@@ -137,6 +137,7 @@ function multgill(noits::Int64,noruns::Int64,k1::Float64,K1::Float64,k2::Float64
     pdown = zeros(noruns)
     Sup = zeros(noruns)
     Sdown = zeros(noruns)
+    ts = zeros(noruns)
     p = zeros(BigFloat,noruns)
     # generate high and low states
     star2 = round(Int64,star1)
@@ -170,12 +171,13 @@ function multgill(noits::Int64,noruns::Int64,k1::Float64,K1::Float64,k2::Float64
         SX[j] = SX[j]/timesX[end]
         Sup[j] = Sup[j]/timesX[end]
         Sdown[j] = Sdown[j]/timesX[end]
+        ts[j] = timesX[end]
         # store this data so validity can be checked later on
         minX[j] = minimum(varsX)
         maxX[j] = maximum(varsX)
     end
     println("Gillespies Done!")
-    return(SX,minX,maxX,pup,pdown,Sup,Sdown,p)
+    return(SX,minX,maxX,pup,pdown,Sup,Sdown,p,ts)
 end
 
 # main function
@@ -185,20 +187,22 @@ function main()
     k2 = 1.0 # k_{+2}
     K2 = 1.0 # k_{-2}
     B = 4.0
-    V = 10
+    V = 15
     high2low = false
     # first need to use these parameters to find a steady state
     star1, mid1, fin1 = nullcline(k1,K1,k2,K2,B,high2low,V)
     # now run multiple Gillespie simulations
-    noits = 250000000
-    noruns = 10
-    SX, minX, maxX, pup, pdown, Sup, Sdown, pf = multgill(noits,noruns,k1,K1,k2,K2,B,star1,mid1,fin1,V)
+    noits = 2500000
+    noruns = 50
+    SX, minX, maxX, pup, pdown, Sup, Sdown, pf, ts = multgill(noits,noruns,k1,K1,k2,K2,B,star1,mid1,fin1,V)
     println(sum(SX)/(V*noruns))
     # calculations here
-    println(pup)
-    println(pdown)
-    println(Sup)
-    println(Sdown)
+    # rescale pf here
+    t = maximum(ts)
+    println(t)
+    for i = 1:noruns
+        pf[i] = (pf[i])^(t/ts[i])
+    end
     pone = scatter(exp.((Sup-Sdown)/V),pup./pdown)
     savefig("../Results/ScatterSch.png")
     pone = scatter(log.(pf),pup./pdown)

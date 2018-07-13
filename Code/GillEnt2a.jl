@@ -151,6 +151,7 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
     pdown = zeros(noruns)
     Sup = zeros(noruns)
     Sdown = zeros(noruns)
+    ts = zeros(noruns)
     p = zeros(BigFloat,noruns)
     # generate high and low states
     star2 = round.(Int64,star1)
@@ -179,7 +180,6 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
             end
             p[j] *= pf[i]
         end
-
         # convert total entropy production to entropy production rate
         S[j] = S[j]/times[end]
         Sup[j] = Sup[j]/times[end]
@@ -190,9 +190,10 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
         min[j,2] = minimum(vars[2,:])
         max[j,1] = maximum(vars[2,:])
         max[j,2] = maximum(vars[1,:])
+        ts[j] = times[end]
     end
     println("Gillespies Done!")
-    return(S,min,max,pup,pdown,Sup,Sdown,p)
+    return(S,min,max,pup,pdown,Sup,Sdown,p,ts)
 end
 
 # function to compute the shannon entropy at a fixed point
@@ -217,7 +218,7 @@ end
 # main function
 function main()
     # General parameters
-    Ω = 50.0
+    Ω = 20.0
     K = 10.0
     k = K*Ω # steady state for A=k/K=1
     Q = 1.0
@@ -235,22 +236,18 @@ function main()
     # now the steady state will be used to find shannon entropy productions
     SAS = shannon(star1,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin)
     SBS = shannon(fin1,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin)
-    println("Entropy production rate of high A state via Shannon formula = $(SAS)")
-    println("Entropy production rate of high B state via Shannon formula = $(SBS)")
+    println("Entropy production rate of high A state via Shannon formula = $(SAS/Ω)")
+    println("Entropy production rate of high B state via Shannon formula = $(SBS/Ω)")
     # now run multiple Gillespie simulations
-    noits = 2500000
+    noits = 1000000#0
     noruns = 500
-    S, min, max, pup, pdown, Sup, Sdown, pf = multgill(noits,noruns,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin,star1,mid1,fin1)
-    # calculations here
-    Su = sum(Sup)/(Ω*noruns)
-    Sd = sum(Sdown)/(Ω*noruns)
-    pu = sum(pup)/(noruns)
-    pd = sum(pdown)/(noruns)
-    pr = pu/pd
-    e = exp(Su-Sd)
-    println(pr)
-    println(e)
-    println(e/pr)
+    S, min, max, pup, pdown, Sup, Sdown, pf, ts = multgill(noits,noruns,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin,star1,mid1,fin1)
+    # rescale pf here
+    t = maximum(ts)
+    println(t)
+    for i = 1:noruns
+        pf[i] = (pf[i])^(t/ts[i])
+    end
     pone = scatter(exp.((Sup-Sdown)/(Ω*1000)),pup./pdown)
     savefig("../Results/Scatter.png")
     #pf = pf/sum(pf) # renormalise probability distribution
@@ -258,7 +255,10 @@ function main()
     savefig("../Results/Scatter2.png")
     pone = scatter(log.(pf),exp.((Sup-Sdown)/(Ω*1000)))
     savefig("../Results/Scatter3.png")
-
+    pone = scatter(exp.((Sup+Sdown)/(Ω*1000)),pup./pdown)
+    savefig("../Results/Scatter4.png")
+    pone = scatter(log.(pf),exp.((Sup+Sdown)/(Ω*1000)))
+    savefig("../Results/Scatter5.png")
     println(sum(S)/noruns)
     println(sum(Sup)/noruns)
     println(sum(Sdown)/noruns)

@@ -15,8 +15,8 @@ const K1 = 3.0 # k_{-1}
 const k2 = 1.0 # k_{+2}
 const K2 = 1.0 # k_{-2}
 const B = 4.0
-const V = 200
-const high2low = false # Set if starting from high state or low state
+const V = 20
+const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
@@ -347,7 +347,9 @@ function run(tau,noit)
     pone = scatter!(pone, [mid], [tmid], lab = "Saddle", seriescolor = :orange)
     pone = scatter!(pone, [fin], [t], lab = "Finish", seriescolor = :red) # put end point in
     ents, kins, pots, acts, prod, flow =  EntProd(pathmin,t)
-    println("Rate of change of entropy = $(sum(ents))")
+    println("Change of entropy = $(sum(ents))")
+    println("Change of entropy first half = $(sum(ents[1:midi]))")
+    println("Change of entropy second half = $(sum(ents[(midi+1):end]))")
     # Block of code to write all this data to a file so I can go through it
     if length(ARGS) >= 1
         output_file = "../Results/$(ARGS[1]).csv"

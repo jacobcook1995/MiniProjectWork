@@ -1,29 +1,15 @@
 #!/usr/bin/env julia
-# gill.jl
+# gill4.jl
 # A script to efficently perform a gillespie simulation of the full 4 species model
-# This script generates this as a trajectory so that steady state entropy production
-# can be calculated
+# This script generates  histograms of the probability distribution from gillespie simulation
 
 using Roots
 using Plots
 import GR
-# function to write out data as a csv
-function writeout(times::Array{Float64,1},vars::Array{Int64,2})
-    filename = "../Results/$(ARGS[1]).csv"
-    out_file = open(filename, "w")
-    # open file for writing
-    for i = 1:size(vars,2)
-        line = "$(vars[1,i]),$(vars[2,i]),$(vars[3,i]),$(vars[4,i]),$(times[i])\n"
-        write(out_file, line)
-    end
-    # then close file
-    close(out_file)
-    return(nothing) # return nothing
-end
 
 # function to find the zeros of the function
 function nullcline(F::Float64,r::Float64,f::Float64,K::Float64,Q::Float64,k::Float64,
-                    q::Float64,kmin::Float64,qmin::Float64,high2low::Bool,Ne::Float64)
+                    q::Float64,kmin::Float64,qmin::Float64,Ne::Float64)
     g(x) = (K + kmin)*(q/k)*((r + f*((F - K*x)/Q)^2)/(r + f*x^2))*x - (qmin + Q)*(F - K*x)/Q
     three = false
     n = 0
@@ -43,14 +29,9 @@ function nullcline(F::Float64,r::Float64,f::Float64,K::Float64,Q::Float64,k::Flo
         Ss[i] = (1/(k*r))*(r + f*((F - K*As[i])/Q)^2)*(K + kmin)*As[i]
         Ws[i] = Ne - As[i] - Bs[i] - Ss[i]
     end
+    ss1 = [ As[1]; Bs[1]; Ss[1]; Ws[1] ]
     sad = [ As[2]; Bs[2]; Ss[2]; Ws[2] ]
-    if high2low == true
-        ss1 = [ As[1]; Bs[1]; Ss[1]; Ws[1] ]
-        ss2 = [ As[3]; Bs[3]; Ss[3]; Ws[3] ]
-    else
-        ss1 = [ As[3]; Bs[3]; Ss[3]; Ws[3] ]
-        ss2 = [ As[1]; Bs[1]; Ss[1]; Ws[1] ]
-    end
+    ss2 = [ As[3]; Bs[3]; Ss[3]; Ws[3] ]
     print("$(ss1)\n")
     print("$(sad)\n")
     print("$(ss2)\n")
@@ -65,14 +46,14 @@ function rates(A::Int64,B::Int64,S::Int64,W::Int64,k::Float64,K::Float64,q::Floa
 end
 
 # function to calculate the time step
-function timstep(rates::AbstractVector)
+function timstep(rates::Array{Float64,1})
     r = rand()
     τ = -log(r)/sum(rates)
     return(τ)
 end
 
 # function to advance gillespie one step
-function step(rates::AbstractVector,vars::Array{Int64,1})
+function step(rates:::Array{Float64,1}vars::Array{Int64,1})
     r = rand()
     rs = rates/sum(rates)
     if r < rs[1]
@@ -108,28 +89,46 @@ end
 
 # function to actually run a gillepsie simulation
 function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmin::Float64,
-                    f::Float64,r::Float64,F::Float64,Kmin::Float64,Qmin::Float64,noits::Int64,star::Array{Int64,1})
-    times = zeros(noits+1)
-    vars = fill(0,4,noits+1)
-    vars[:,1] = star
+                    f::Float64,F::Float64,r::Float64,Kmin::Float64,Qmin::Float64,noits::Int64,star::Array{Int64,1},
+                    maxA::Int64,maxB::Int64,maxS::Int64,maxW::Int64)
+    # change this so that it uses less memory
+    times = zeros(2)
+    vars = fill(0,4,2)
+    vars[:,2] = star
+    # need to think about the histogram sizes here
+    histA = zeros(3*maxA)
+    histB = zeros(3*maxB)
+    histS = zeros(3*maxS)
+    histW = zeros(3*maxW)
     for i = 1:noits
+        vars[:,1] = vars[:,2]
+        times[1] = times[2]
         # calculate rates
-        rs = rates(vars[1,i],vars[2,i],vars[3,i],vars[4,i],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f,F)
+        rs = rates(vars[1,1],vars[2,1],vars[3,1],vars[4,1],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f,F)
         # calculate timestep
         τ = timstep(rs)
         # update time
-        times[i+1] = times[i] + τ
+        times[2] = times[1] + τ
         # do gillepsie step
-        vars[:,i+1] = step(rs,vars[:,i])
+        vars[:,2] = step(rs,vars[:,1])
+        # add to histogram
+        histA[vars[1,1]+1] += times[2] - times[1]
+        histB[vars[2,1]+1] += times[2] - times[1]
+        histS[vars[3,1]+1] += times[2] - times[1]
+        histW[vars[4,1]+1] += times[2] - times[1]
     end
+    histA = histA/times[2]
+    histB = histB/times[2]
+    histS = histS/times[2]
+    histW = histW/times[2]
     println("Gillespie Done!")
-    return(vars,times)
+    return(histA,histB,histS,histW)
 end
 
 # main function
 function main()
     # General parameters
-    Ω = 60 # Ω = 1, gMAP parameterisation
+    Ω = 2 # Ω = 1, gMAP parameterisation
     K = 1.0
     k = 1.0
     Q = 1.0
@@ -142,22 +141,40 @@ function main()
     Kmin = 10.0^-20 # remains neligable though
     Qmin = 10.0^-20
     Ne = 150.0*Ω # number of elements in the system
-    high2low = true
 
     # first need to use these parameters to find a steady state
-    star1, _, _ = nullcline(F,r,f,K,Q,k,q,kmin,qmin,high2low,Ne)
+    star1, mid1, fin1 = nullcline(F,r,f,K,Q,k,q,kmin,qmin,Ne)
     # round star so that it becomes a vector of integers
     star2 = fill(0,4)
+    mid2 = fill(0,4)
+    fin2 = fill(0,4)
     for i = 1:4
         star2[i] = round(Int64,star1[i])
+        mid2[i] = round(Int64,mid1[i])
+        fin2[i] = round(Int64,fin1[i])
     end
+    # find maximum value of each variable
+    maxA = maximum([star2[1], mid2[1], fin2[1]])
+    maxB = maximum([star2[2], mid2[2], fin2[2]])
+    maxS = maximum([star2[3], mid2[3], fin2[3]])
+    maxW = maximum([star2[4], mid2[4], fin2[4]])
     # now run gillespie
-    noits = 5000000
-    vars, times = gillespie(K,k,Q,q,kmin,qmin,f,r,F,Kmin,Qmin,noits,star2)
-    if length(ARGS) >= 1
-        writeout(times,vars)
-    end
-
+    noits = 500000000
+    # maybe randomise the starting point somewhat
+    # also maybe remove the vars
+    histA, histB, histS, histW = gillespie(K,k,Q,q,kmin,qmin,f,F,r,Kmin,Qmin,noits,mid2,maxA,maxB,maxS,maxW)
+    lisA = collect(0:(3*maxA-1))
+    lisB = collect(0:(3*maxB-1))
+    lisS = collect(0:(3*maxS-1))
+    lisW = collect(0:(3*maxW-1))
+    bar(lisA,histA)
+    savefig("../Results/MeGraph.png")
+    bar(lisB,histB)
+    savefig("../Results/MeGraph2.png")
+    bar(lisS,histS)
+    savefig("../Results/MeGraph3.png")
+    bar(lisW,histW)
+    savefig("../Results/MeGraph4.png")
 end
 
 @time main()

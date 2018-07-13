@@ -44,6 +44,18 @@ function f!(F, x)
     return F
 end
 
+function f1!(f1, x)
+    f1[1] = k*r/(r+f*x[2]*x[2]) - kmin
+    f1[2] = q*r/(r+f*x[1]*x[1]) - qmin
+    return f1
+end
+
+function f2!(f2, x)
+    f2[1] = K*x[1] - Kmin
+    f2[2] = Q*x[2] - Qmin
+    return f2
+end
+
 function fA!(FA, x)
     FA[1] = -K
     FA[2] = -2*q*r*f*x[1]/((r+f*x[1]*x[1])^2)
@@ -325,8 +337,12 @@ function EntProd(pathmin,tau)
     KE = zeros(N, 2)
     PE = zeros(N, 2)
     acts = zeros(N, 2)
+    prods = zeros(N, 2)
+    flows = zeros(N, 2)
     h = [0.0; 0.0]
     d = [0.0 0.0; 0.0 0.0]
+    f1 = [0.0; 0.0]
+    f2 = [0.0; 0.0]
     deltat = tau/N
     # Remove fixed points from path
     path = pathmin[2:N,:]
@@ -343,6 +359,8 @@ function EntProd(pathmin,tau)
         end
         h = f!(h, [posA posB])
         d = D!(d, [posA posB])
+        f1 = f1!(f1, [posA posB])
+        f2 = f2!(f2, [posA posB])
         for j = 1:2
             if i == 1
                 thiv = (path[i,j] - star[j])/deltat
@@ -354,10 +372,12 @@ function EntProd(pathmin,tau)
             ents[i,j] = h[j]*thiv*deltat/d[j,j]
             KE[i,j] = thiv*thiv*deltat/(2*d[j,j])
             PE[i,j] = h[j]*h[j]*deltat/(2*d[j,j])
+            prods[i,j] = (f1[j]^2 + f2[j]^2)*deltat/d[j,j]
+            flows[i,j] = 2*f1[j]*f2[j]*deltat/d[j,j]
         end
     end
     acts = KE + PE - ents
-    return(ents, KE, PE, acts)
+    return(ents, KE, PE, acts, prods, flows)
 end
 
 
@@ -371,11 +391,25 @@ function run(tau,noit)
     print(S)
     print("\n")
     gr()
+    times = collect(linspace(0.0,t,N+1))
+    tmid = 0
+    midi = 0
+    for i = 1:N+1
+        if pathmin[i,1] >= inflex[1] && high2low == false
+            tmid = times[i]
+            midi = i
+            break
+        elseif pathmin[i,1] <= inflex[1] && high2low == true
+            tmid = times[i]
+            midi = i
+            break
+        end
+    end
     pone = plot(pathmin[:,1],pathmin[:,2], lab = "MAP", xaxis = "A", yaxis = "B")
     pone = scatter!(pone, [star[1]], [star[2]], lab = "Start", seriescolor = :green) # put start point in
     pone = scatter!(pone, [inflex[1]], [inflex[2]], lab = "Saddle Point", seriescolor = :orange)
     pone = scatter!(pone, [fin[1]], [fin[2]], lab = "Finish", seriescolor = :red) # put end point in
-    ents, kins, pots, acts =  EntProd(pathmin,t)
+    ents, kins, pots, acts, prod, flow =  EntProd(pathmin,t)
     # Block of code to write all this data to a file so I can go through it
     if length(ARGS) >= 1
         output_file = "../Results/$(ARGS[1]).csv"
@@ -404,7 +438,15 @@ function run(tau,noit)
     #annotate!(inflex[1]+3, minimum(ents)+0.01, text("Action = $(act)\n", :left, font(5, "Courier")))
     plot(pone, ptwo, layout = (1,2))
     println("EntProd = $(sum(ents))")
+    println("Change of entropy first half = $(sum(ents[1:midi,1:2]))")
+    println("Change of entropy second half = $(sum(ents[(midi+1):end,1:2]))")
     savefig("../Results/Entropy$(high2low).png")
+    points2 = [ (ents[:,1] + ents[:,2]), (prod[:,1] + prod[:,2]), (flow[:,1] + flow[:,2]), (prod[:,1] + prod[:,2] - flow[:,1] - flow[:,2])  ]
+    pthree = plot(segcent, points2)
+    pthree = scatter!(pthree, [star[1]], [0.0], seriescolor = :green)
+    pthree = scatter!(pthree, [inflex[1]], [0.0], seriescolor = :orange)
+    pthree = scatter!(pthree, [fin[1]], [0.0], seriescolor = :red, leg = false)
+    savefig("../Results/$(high2low)Entropies.png")
 
 end
 
@@ -426,6 +468,10 @@ const pb = vcat(pb1,pb2[2:length(pb2)])
 # const pa = collect(star[1]:((fin[1]-star[1])/N):fin[1])
 # const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
 const thi1 = hcat(pa,pb)
+if high2low == false
+    @time run(18.93848025951383,5)
+else
+    @time run(21.938117878175667,5)
+end
 
-@time run(18.93854129467008,5)#18.952490234375
 #@time main()

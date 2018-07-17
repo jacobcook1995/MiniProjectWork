@@ -72,8 +72,7 @@ function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmi
     times = zeros(2)
     vars = fill(0,2,2)
     vars[:,2] = star
-    histA = zeros(4*Ω)
-    histB = zeros(4*Ω)
+    hist = zeros(4*Ω,4*Ω)
     for i = 1:noits
         vars[:,1] = vars[:,2]
         times[1] = times[2]
@@ -86,13 +85,11 @@ function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmi
         # do gillepsie step
         vars[:,2] = step(rs,vars[:,1])
         # add to histogram
-        histA[vars[1,1]+1] += times[2] - times[1]
-        histB[vars[2,1]+1] += times[2] - times[1]
+        hist[vars[1,1]+1,vars[2,1]+1] += times[2] - times[1]
     end
-    histA = histA/times[2]
-    histB = histB/times[2]
+    hist = hist/times[2]
     println("Gillespie Done!")
-    return(histA,histB)
+    return(hist)
 end
 
 # main function
@@ -111,22 +108,53 @@ function main()
     r = 10.0
 
     # first need to use these parameters to find a steady state
-    star1, _, _ = nullcline(r,f,K,Q,k,q,kmin,qmin)
+    star1, mid1, _ = nullcline(r,f,K,Q,k,q,kmin,qmin)
     # round star so that it becomes a vector of integers
     star2 = fill(0,2)
+    mid2 = fill(0,2)
     for i = 1:2
         star2[i] = round(Int64,star1[i])
+        mid2[i] = round(Int64,mid1[i])
     end
     # now run gillespie
-    noits = 500000000
+    noits = 50000000
     # maybe randomise the starting point somewhat
     # also maybe remove the vars
-    histA, histB = gillespie(K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,star2,Ω)
-    lis = collect(0:(4*Ω-1))
-    bar(lis,histA)
-    savefig("../Results/MeGraph.png")
-    bar(lis,histB)
-    savefig("../Results/MeGraph2.png")
+    hist = gillespie(K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,star2,Ω)
+    # new histograms
+    histL = hist[1:(mid2[1]+1),(mid2[2]+2):end]
+    histH = hist[(mid2[1]+2):end,1:(mid2[2]+1)]
+    # renormalise
+    histL = histL/sum(histL)
+    histH = histH/sum(histH)
+    SL = 0
+    for j = 1:size(histL,2)
+        for i = 1:size(histL,1)
+            if histL[i,j] != 0
+                SL -= histL[i,j]*log(histL[i,j])
+            end
+        end
+    end
+    SH = 0
+    for j = 1:size(histH,2)
+        for i = 1:size(histH,1)
+            if histH[i,j] != 0
+                SH -= histH[i,j]*log(histH[i,j])
+            end
+        end
+    end
+    S = 0
+    for j = 1:size(hist,2)
+        for i = 1:size(hist,1)
+            if hist[i,j] != 0
+                S -= hist[i,j]*log(hist[i,j])
+            end
+        end
+    end
+    println(S)
+    println(SL)
+    println(SH)
+    return(nothing)
 end
 
 @time main()

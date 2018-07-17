@@ -101,14 +101,41 @@ function main()
     star2 = round(Int64,star1)
     mid2 = round(Int64,mid1)
     fin2 = round(Int64,fin1)
-
     # now run gillespie
-    noits = 500000000
+    noits = 50000000
     maxX = maximum([star2, mid2, fin2])
     histX = gillespie(k1,K1,k2,K2,B,noits,mid2,Ω,maxX)
     lis = collect(0:(4*maxX-1))
     bar(lis,histX)
     savefig("../Results/MeGraph.png")
+    # split histogram into two
+    histX1 = histX[1:(mid2+1)]
+    histX2 = histX[(mid2+2):end]
+    # renormalise
+    histX1 = histX1/sum(histX1)
+    histX2 = histX2/sum(histX2)
+    # then do entropy calculation
+    S = 0
+    for i = 1:length(histX)
+        if histX[i] != 0
+            S -= histX[i]*log(histX[i])
+        end
+    end
+    S1 = 0
+    for i = 1:length(histX1)
+        if histX1[i] != 0
+            S1 -= histX1[i]*log(histX1[i])
+        end
+    end
+    S2 = 0
+    for i = 1:length(histX2)
+        if histX2[i] != 0
+            S2 -= histX2[i]*log(histX2[i])
+        end
+    end
+    println(S)
+    println(S1)
+    println(S2)
     return(nothing)
 end
 

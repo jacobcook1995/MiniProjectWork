@@ -53,7 +53,7 @@ function timstep(rates::Array{Float64,1})
 end
 
 # function to advance gillespie one step
-function step(rates:::Array{Float64,1}vars::Array{Int64,1})
+function step(rates::Array{Float64,1},vars::Array{Int64,1})
     r = rand()
     rs = rates/sum(rates)
     if r < rs[1]
@@ -96,10 +96,7 @@ function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmi
     vars = fill(0,4,2)
     vars[:,2] = star
     # need to think about the histogram sizes here
-    histA = zeros(3*maxA)
-    histB = zeros(3*maxB)
-    histS = zeros(3*maxS)
-    histW = zeros(3*maxW)
+    hist = zeros(3*maxA,3*maxB,3*maxS,3*maxW)
     for i = 1:noits
         vars[:,1] = vars[:,2]
         times[1] = times[2]
@@ -112,17 +109,11 @@ function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmi
         # do gillepsie step
         vars[:,2] = step(rs,vars[:,1])
         # add to histogram
-        histA[vars[1,1]+1] += times[2] - times[1]
-        histB[vars[2,1]+1] += times[2] - times[1]
-        histS[vars[3,1]+1] += times[2] - times[1]
-        histW[vars[4,1]+1] += times[2] - times[1]
+        hist[vars[1,1]+1,vars[2,1]+1,vars[3,1]+1,vars[4,1]+1] += times[2] - times[1]
     end
-    histA = histA/times[2]
-    histB = histB/times[2]
-    histS = histS/times[2]
-    histW = histW/times[2]
+    hist = hist/times[2]
     println("Gillespie Done!")
-    return(histA,histB,histS,histW)
+    return(hist)
 end
 
 # main function
@@ -162,19 +153,54 @@ function main()
     noits = 500000000
     # maybe randomise the starting point somewhat
     # also maybe remove the vars
-    histA, histB, histS, histW = gillespie(K,k,Q,q,kmin,qmin,f,F,r,Kmin,Qmin,noits,mid2,maxA,maxB,maxS,maxW)
-    lisA = collect(0:(3*maxA-1))
-    lisB = collect(0:(3*maxB-1))
-    lisS = collect(0:(3*maxS-1))
-    lisW = collect(0:(3*maxW-1))
-    bar(lisA,histA)
-    savefig("../Results/MeGraph.png")
-    bar(lisB,histB)
-    savefig("../Results/MeGraph2.png")
-    bar(lisS,histS)
-    savefig("../Results/MeGraph3.png")
-    bar(lisW,histW)
-    savefig("../Results/MeGraph4.png")
+    hist = gillespie(K,k,Q,q,kmin,qmin,f,F,r,Kmin,Qmin,noits,mid2,maxA,maxB,maxS,maxW)
+    # now split into high and low histograms
+    histL = hist[1:(mid2[1]+1),(mid2[2]+2):end,:,:]
+    histH = hist[(mid2[1]+2):end,1:(mid2[2]+1),:,:]
+    # renormalise
+    histL = histL/sum(histL)
+    histH = histH/sum(histH)
+    # calculate entropy
+    SL = 0
+    for m = 1:size(histL,4)
+        for l = 1:size(histL,3)
+            for j = 1:size(histL,2)
+                for i = 1:size(histL,1)
+                    if histL[i,j,l,m] != 0
+                        SL -= histL[i,j,l,m]*log(histL[i,j,l,m])
+                    end
+                end
+            end
+        end
+    end
+    SH = 0
+    for m = 1:size(histH,4)
+        for l = 1:size(histH,3)
+            for j = 1:size(histH,2)
+                for i = 1:size(histH,1)
+                    if histH[i,j,l,m] != 0
+                        SH -= histH[i,j,l,m]*log(histH[i,j,l,m])
+                    end
+                end
+            end
+        end
+    end
+    S = 0
+    for m = 1:size(hist,4)
+        for l = 1:size(hist,3)
+            for j = 1:size(hist,2)
+                for i = 1:size(hist,1)
+                    if hist[i,j,l,m] != 0
+                        S -= hist[i,j,l,m]*log(hist[i,j,l,m])
+                    end
+                end
+            end
+        end
+    end
+    println(S)
+    println(SL)
+    println(SH)
+    return(nothing)
 end
 
 @time main()

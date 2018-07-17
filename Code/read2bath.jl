@@ -16,7 +16,7 @@ const qmin = 10.0^-20
 const Qmin = 10.0^-20
 const f = 1000/(Ω^2) # Promoter switching
 const r = 10
-const high2low = true # Set if starting from high state or low state
+const high2low = false # Set if starting from high state or low state
 
 # Vector of functions from MAP case
 function f!(F, x)
@@ -160,19 +160,23 @@ function main()
     end
     print("$(t1),$(S1)\n")
     print("$(t2),$(S2)\n")
-    N1 = 150
-    N2 = 150
+    points1r = points1[end:-1:1,:]
+    points2r = points2[end:-1:1,:]
+    N1 = 600
+    N2 = 600
     segcent1 = zeros(N1)
     segcent2 = zeros(N2)
     act1 = zeros(N1)
     act2 = zeros(N2)
-    p = plot(points1[:,1],points1[:,2],label="MAP")
-    p = plot!(p,points2[:,1],points2[:,2],xaxis = "A",yaxis = "B",label="gMAP")
-    p = scatter!(p, [points1[1,1]], [points1[1,2]], seriescolor = :green,label="Start")
-    p = scatter!(p, [points1[end,1]], [points1[end,2]], seriescolor = :red,label="Finish")
+    p = plot(points1[:,1],points1[:,2],label = "MAP")
+    p = plot!(p,points2[:,1],points2[:,2],xaxis = "A",yaxis = "B",label = "gMAP")
+    p = scatter!(p, [points1[1,1]], [points1[1,2]], seriescolor = :green,label = "Start")
+    p = scatter!(p, [points1[end,1]], [points1[end,2]], seriescolor = :red,label = "Finish")
     savefig("../Results/CombinedGraph.png")
     ents1, entsp1, entsf1, kins1, pots1, acts1 = EntProd(points1,t1,N1)
     ents2, entsp2, entsf2, kins2, pots2, acts2 = EntProd(points2,t2,N2)
+    ents1r, entsp1r, entsf1r, kins1r, pots1r, acts1r = EntProd(points1r,t1,N1)
+    ents2r, entsp2r, entsf2r, kins2r, pots2r, acts2r = EntProd(points2r,t2,N2)
     for i = 1:N1
         segcent1[i] = (points1[i,1] + points1[i+1,1])/2
     end
@@ -189,18 +193,14 @@ function main()
     plot(pone, ptwo, layout = (1,2))
     savefig("../Results/CombinedGraph2.png")
     print("MAP Action = $(sum(act1))\ngMAP Action = $(sum(act2))\n")
-    plot(entsp1)
-    savefig("../Results/entsp1.png")
-    plot(entsf1)
-    savefig("../Results/entsf1.png")
-    plot(entsp2)
-    savefig("../Results/entsp2.png")
-    plot(entsf2)
-    savefig("../Results/entsf2.png")
-    S1 = sum(entsp1) + sum(entsf1)
-    println(S1)
-    S2 = sum(entsp2) + sum(entsf2)
-    println(S2)
+    # from one state
+    println(sum(ents2)+sum(ents1r))
+    println(sum(ents1)+sum(ents2r))
+    ents1s = ents1[:,1]  + ents1[:,2]
+    ents1rs = ents1r[:,1]  + ents1r[:,2]
+    plot([ents1s,ents1rs])
+    savefig("../Results/TestGraph.png")
+    return(nothing)
 end
 
 @time main()

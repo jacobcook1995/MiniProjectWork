@@ -150,16 +150,16 @@ function main()
     maxS = maximum([star2[3], mid2[3], fin2[3]])
     maxW = maximum([star2[4], mid2[4], fin2[4]])
     # now run gillespie
-    noits = 500000000
+    noits = 50000000
     # maybe randomise the starting point somewhat
     # also maybe remove the vars
-    hist = gillespie(K,k,Q,q,kmin,qmin,f,F,r,Kmin,Qmin,noits,mid2,maxA,maxB,maxS,maxW)
+    hist = gillespie(K,k,Q,q,kmin,qmin,f,F,r,Kmin,Qmin,noits,star2,maxA,maxB,maxS,maxW)
     # now split into high and low histograms
     histL = hist[1:(mid2[1]+1),(mid2[2]+2):end,:,:]
     histH = hist[(mid2[1]+2):end,1:(mid2[2]+1),:,:]
     # renormalise
-    histL = histL/sum(histL)
-    histH = histH/sum(histH)
+    # histL = histL/sum(histL)
+    # histH = histH/sum(histH)
     # calculate entropy
     SL = 0
     for m = 1:size(histL,4)

@@ -186,6 +186,8 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
     ddB = zeros(noruns)
     pdB = zeros(noruns)
     ppB = zeros(noruns)
+    tA = zeros(noruns)
+    tB = zeros(noruns)
     # preallocating arrays used inside function
     pfA = zeros(noits)
     pbA = zeros(noits)
@@ -245,9 +247,11 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
         ppB[j] = ppB[j]/timesB[end]
         pdB[j] = pdB[j]/timesB[end]
         ddB[j] = ddB[j]/timesB[end]
+        tA[j] = timesA[end]
+        tB[j] = timesB[end]
     end
     println("Gillespies Done!")
-    return(SA,SB,PA,PB,qfA,qqA,ffA,qfB,qqB,ffB,ppA,pdA,ddA,ppB,pdB,ddB)
+    return(SA,SB,PA,PB,qfA,qqA,ffA,qfB,qqB,ffB,ppA,pdA,ddA,ppB,pdB,ddB,tA,tB)
 end
 
 # function to compute the shannon entropy at a fixed point
@@ -272,7 +276,7 @@ end
 # main function
 function main()
     # General parameters
-    Ω = 300.0
+    Ω = 150.0
     K = 10.0
     k = K*Ω # steady state for A=k/K=1
     Q = 1.0
@@ -299,9 +303,19 @@ function main()
     println("Entropy production rate of high A state via Shannon formula = $(SAS)")
     println("Entropy production rate of high B state via Shannon formula = $(SBS)")
     # now run multiple Gillespie simulations
-    noits = 50#0000 # this number must be kept low to insure that the paths do not become less probable than the computer can ennumerate
-    noruns = 25#000 # memory allocation real problem if this is too large
-    SA, SB, PA, PB, qfA, qqA, ffA, qfB, qqB, ffB, ppA, pdA, ddA, ppB, pdB, ddB = multgill(noits,noruns,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin,star2,fin2)
+    noits = 500000 # this number must be kept low to insure that the paths do not become less probable than the computer can ennumerate
+    noruns = 250#00 # memory allocation real problem if this is too large
+    SA, SB, PA, PB, qfA, qqA, ffA, qfB, qqB, ffB, ppA, pdA, ddA, ppB, pdB, ddB, tA, tB = multgill(noits,noruns,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin,star2,fin2)
+    # alter probabilies to match paths of equal length
+    tAm = maximum(tA)
+    tBm = maximum(tB)
+    for i = 1:length(PA)
+        PA[i] = (PA[i])^(tAm/tA[i])
+    end
+    for i = 1:length(PB)
+        PB[i] = (PB[i])^(tBm/tB[i])
+    end
+    # renormalise probability
     PA = PA/sum(PA)
     PB = PB/sum(PB)
     SAG = SBG = qfAw = qfBw = ppAw = ppBw = ddAw = ddBw = pdAw = pdBw = qqAw = ffAw = qqBw = ffBw = 0
@@ -382,7 +396,7 @@ function main()
     pone = vline!(pone, [convert(Float64,0.5*(qqAw+ffAw) - qfAw)], color = :red)
     pone = vline!(pone, [(sum(ActA))/noruns], color = :green)
     println(maximum(h.weights))
-    annotate!(0.4*maximum(ActA),0.05*maximum(h.weights),text("mean Action=$(convert(Float64,0.5*(qqAw+ffAw) - qfAw))\nweighted mean Action=$((sum(ActA))/noruns)",:left))
+    annotate!(0.4*maximum(ActA),0.05*maximum(h.weights),text("weighted mean Action=$(convert(Float64,0.5*(qqAw+ffAw) - qfAw))\nmean Action=$((sum(ActA))/noruns)",:left))
     savefig("../Results/HistActA$(ARGS[1])")
 
     # action steady state B histogram
@@ -392,7 +406,7 @@ function main()
     pone = vline!(pone, [convert(Float64,0.5*(qqBw+ffBw) - qfBw)], color = :red)
     pone = vline!(pone, [(sum(ActB))/noruns], color = :green)
     println(maximum(h.weights))
-    annotate!(0.4*maximum(ActB),0.05*maximum(h.weights),text("mean Action=$(convert(Float64,0.5*(qqBw+ffBw) - qfBw))\nweighted mean Action=$((sum(ActB))/noruns)",:left))
+    annotate!(0.4*maximum(ActB),0.05*maximum(h.weights),text("weighted mean Action=$(convert(Float64,0.5*(qqBw+ffBw) - qfBw))\nmean Action=$((sum(ActB))/noruns)",:left))
     savefig("../Results/HistActB$(ARGS[1])")
     return(nothing)
 end

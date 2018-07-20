@@ -26,7 +26,7 @@ const r = 10
 const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
-const N = 150 # number of segments optimised over
+const N = 600 # number of segments optimised over
 
 # Multiplicative Guassian noise matrix
 function e!(E, x)
@@ -410,6 +410,14 @@ function run(tau,noit)
     pone = scatter!(pone, [inflex[1]], [inflex[2]], lab = "Saddle Point", seriescolor = :orange)
     pone = scatter!(pone, [fin[1]], [fin[2]], lab = "Finish", seriescolor = :red) # put end point in
     ents, kins, pots, acts, prod, flow =  EntProd(pathmin,t)
+    pathminr = pathmin[end:-1:1,:]
+    entsr, kinsr, potsr, actsr, _, _ = EntProd(pathminr,t)
+    println("Reverse")
+    println(sum(entsr))
+    println("Forward")
+    println(sum(ents))
+    println("Change")
+    println(sum(entsr) + sum(ents))
     # Block of code to write all this data to a file so I can go through it
     if length(ARGS) >= 1
         output_file = "../Results/$(ARGS[1]).csv"
@@ -464,14 +472,10 @@ const pb1 = collect(linspace(star[2],inflex[2],(N/2)+1))
 const pb2 = collect(linspace(inflex[2],fin[2],(N/2)+1))
 const pb = vcat(pb1,pb2[2:length(pb2)])
 
-# First make a reasonable first guess of the path vector
-# const pa = collect(star[1]:((fin[1]-star[1])/N):fin[1])
-# const pb = collect(star[2]:((fin[2]-star[2])/N):fin[2])
+
 const thi1 = hcat(pa,pb)
 if high2low == false
-    @time run(18.93848025951383,5)
+    @time run(18.93817579898832,5) # these are valid for N = 150
 else
-    @time run(21.938117878175667,5)
+    @time run(21.937873737550667,5)
 end
-
-#@time main()

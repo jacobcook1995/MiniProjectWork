@@ -304,7 +304,7 @@ function main()
     println("Entropy production rate of high B state via Shannon formula = $(SBS)")
     # now run multiple Gillespie simulations
     noits = 500000 # this number must be kept low to insure that the paths do not become less probable than the computer can ennumerate
-    noruns = 250#00 # memory allocation real problem if this is too large
+    noruns = 2500#0 # memory allocation real problem if this is too large
     SA, SB, PA, PB, qfA, qqA, ffA, qfB, qqB, ffB, ppA, pdA, ddA, ppB, pdB, ddB, tA, tB = multgill(noits,noruns,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin,star2,fin2)
     # alter probabilies to match paths of equal length
     tAm = maximum(tA)

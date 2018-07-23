@@ -125,7 +125,7 @@ function main()
         fin2[i] = round(Int64,fin1[i])
     end
     # now run gillespie
-    noits = 250000000
+    noits = 2500000000
     # maybe randomise the starting point somewhat
     # also maybe remove the vars
     hist = gillespie(K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,fin2,Ω)
@@ -209,6 +209,21 @@ function main()
     println(sum(stL))
     stH = st[(mid2[1]+2):end,1:(mid2[2]+1)]
     println(sum(stH))
+    # now need to print histograms
+    histA = zeros(h1) # each row reprents an A?
+    for i = 1:h1
+        histA[i] = sum(hist[i,:])
+    end
+    histB = zeros(h2) # each row reprents a B?
+    for i = 1:h2
+        histB[i] = sum(hist[:,i])
+    end
+    bar(histA)
+    annotate!(2*Ω,0.666*maximum(histA),text("dS_t = $(sum(st))\ndS = $(sum(s))",:left))
+    savefig("../Results/HistA$(ARGS[1]).png")
+    bar(histB)
+    annotate!(2*Ω,0.666*maximum(histB),text("dS_m = $(sum(sm))",:left))
+    savefig("../Results/HistB$(ARGS[1]).png")
     # # new histograms
     # histL = hist[1:(mid2[1]+1),(mid2[2]+2):end]
     # histH = hist[(mid2[1]+2):end,1:(mid2[2]+1)]

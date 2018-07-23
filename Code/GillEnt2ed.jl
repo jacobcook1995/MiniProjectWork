@@ -163,7 +163,14 @@ function Gillespie!(stead::Array{Int64,1},K::Float64,k::Float64,Q::Float64,q::Fl
             pb[end] = rev(rs,reac)
         end
     end
-    return(pf,pb,times,vars,qs,fs,Ds,ds,ps)
+    j = 0
+    if vars[1,1] < vars[2,1]
+        j = 1
+    else
+        j = 2
+    end
+    max = maximum(vars[j,:])
+    return(pf,pb,times,vars,qs,fs,Ds,ds,ps,max)
 end
 
 # function to run multiple short gillespie simulations in order to improve sampling statistics
@@ -188,6 +195,8 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
     ppB = zeros(noruns)
     tA = zeros(noruns)
     tB = zeros(noruns)
+    maxA = zeros(noruns)
+    maxB = zeros(noruns)
     # preallocating arrays used inside function
     pfA = zeros(noits)
     pbA = zeros(noits)
@@ -208,8 +217,8 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
     dB = zeros(2,noits)
     pB = zeros(2,noits)
     for j = 1:noruns
-        pfA, pbA, timesA, varsA, qA, fA, DA, dA, pA = Gillespie!(highA,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,pfA,pbA,timesA,varsA,qA,fA,DA,dA,pA)
-        pfB, pbB, timesB, varsB, qB, fB, DB, dB, pB = Gillespie!(highB,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,pfB,pbB,timesB,varsB,qB,fB,DB,dB,pB)
+        pfA, pbA, timesA, varsA, qA, fA, DA, dA, pA, maxB[j] = Gillespie!(highA,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,pfA,pbA,timesA,varsA,qA,fA,DA,dA,pA)
+        pfB, pbB, timesB, varsB, qB, fB, DB, dB, pB, maxA[j] = Gillespie!(highB,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,pfB,pbB,timesB,varsB,qB,fB,DB,dB,pB)
         # calculate total entropy production
         for i = 1:noits
             SA[j] += (log(pfA[i]) - log(pbA[i])) # do probability weighting at each step
@@ -251,7 +260,7 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
         tB[j] = timesB[end]
     end
     println("Gillespies Done!")
-    return(SA,SB,PA,PB,qfA,qqA,ffA,qfB,qqB,ffB,ppA,pdA,ddA,ppB,pdB,ddB,tA,tB)
+    return(SA,SB,PA,PB,qfA,qqA,ffA,qfB,qqB,ffB,ppA,pdA,ddA,ppB,pdB,ddB,tA,tB,maxA,maxB)
 end
 
 # function to compute the shannon entropy at a fixed point
@@ -303,9 +312,11 @@ function main()
     println("Entropy production rate of high A state via Shannon formula = $(SAS)")
     println("Entropy production rate of high B state via Shannon formula = $(SBS)")
     # now run multiple Gillespie simulations
-    noits = 500000 # this number must be kept low to insure that the paths do not become less probable than the computer can ennumerate
+    noits = 5000000 # this number must be kept low to insure that the paths do not become less probable than the computer can ennumerate
     noruns = 2500#0 # memory allocation real problem if this is too large
-    SA, SB, PA, PB, qfA, qqA, ffA, qfB, qqB, ffB, ppA, pdA, ddA, ppB, pdB, ddB, tA, tB = multgill(noits,noruns,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin,star2,fin2)
+    SA, SB, PA, PB, qfA, qqA, ffA, qfB, qqB, ffB, ppA, pdA, ddA, ppB, pdB, ddB, tA, tB, maxA, maxB = multgill(noits,noruns,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin,star2,fin2)
+    println(maximum(maxA))
+    println(maximum(maxB))
     # alter probabilies to match paths of equal length
     tAm = maximum(tA)
     tBm = maximum(tB)
@@ -335,17 +346,17 @@ function main()
         qqBw += PB[i]*qqB[i]
         ffBw += PB[i]*ffB[i]
     end
-    # SA histogram
-    pone = histogram(SA, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
-    pone = vline!(pone, [convert(Float64,SAG)], color = :red)
-    pone = vline!(pone, [sum(SA)/noruns], color = :green)
-    savefig("../Results/HistSA$(ARGS[1]).png")
-
-    # SB histogram
-    pone = histogram(SB, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
-    pone = vline!(pone, [convert(Float64,SBG)], color = :red)
-    pone = vline!(pone, [sum(SB)/noruns], color = :green)
-    savefig("../Results/HistSB$(ARGS[1]).png")
+    # # SA histogram
+    # pone = histogram(SA, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    # pone = vline!(pone, [convert(Float64,SAG)], color = :red)
+    # pone = vline!(pone, [sum(SA)/noruns], color = :green)
+    # savefig("../Results/HistSA$(ARGS[1]).png")
+    #
+    # # SB histogram
+    # pone = histogram(SB, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    # pone = vline!(pone, [convert(Float64,SBG)], color = :red)
+    # pone = vline!(pone, [sum(SB)/noruns], color = :green)
+    # savefig("../Results/HistSB$(ARGS[1]).png")
 
     # qAf histogram
     pone = histogram(2*qfA, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
@@ -359,55 +370,62 @@ function main()
     pone = vline!(pone, [2*sum(qfB)/noruns], color = :green)
     savefig("../Results/HistqfB$(ARGS[1]).png")
 
-    # ppA ddA histogram
-    epA = 2*(ppA+ddA)
-    h = fit(Histogram, epA, closed=:right)
-    pone = histogram(epA, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
-    pone = vline!(pone, [convert(Float64,2*(ppAw+ddAw))], color = :red)
-    pone = vline!(pone, [sum(epA)/noruns], color = :green)
-    annotate!(minimum(epA),0.15*maximum(h.weights),text("mean ratio=$((sum(SA))/sum(epA))\nweighted mean ratio=$(convert(Float64,SAG)/convert(Float64,2*(ppAw+ddAw)))",:left))
-    savefig("../Results/HistppAddA$(ARGS[1]).png")
+    # # ppA ddA histogram
+    # epA = 2*(ppA+ddA)
+    # h = fit(Histogram, epA, closed=:right)
+    # pone = histogram(epA, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    # pone = vline!(pone, [convert(Float64,2*(ppAw+ddAw))], color = :red)
+    # pone = vline!(pone, [sum(epA)/noruns], color = :green)
+    # annotate!(minimum(epA),0.15*maximum(h.weights),text("mean ratio=$((sum(SA))/sum(epA))\nweighted mean ratio=$(convert(Float64,SAG)/convert(Float64,2*(ppAw+ddAw)))",:left))
+    # savefig("../Results/HistppAddA$(ARGS[1]).png")
+    #
+    # # ppA ddA histogram
+    # epB = 2*(ppB+ddB)
+    # h = fit(Histogram, epB, closed=:right)
+    # pone = histogram(epB, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    # pone = vline!(pone, [convert(Float64,2*(ppBw+ddBw))], color = :red)
+    # pone = vline!(pone, [sum(epB)/noruns], color = :green)
+    # annotate!(minimum(epB),0.15*maximum(h.weights),text("mean ratio=$((sum(SB))/sum(epB))\nweighted mean ratio=$(convert(Float64,SBG)/convert(Float64,2*(ppBw+ddBw)))",:left))
+    # savefig("../Results/HistppBddB$(ARGS[1]).png")
+    #
+    # # pdA histogram
+    # pone = histogram(4*(pdA), xlabel = "Entropy Flow", ylabel = "Frequency", color = :blue, legend = false)
+    # pone = vline!(pone, [convert(Float64,4*(pdAw))], color = :red)
+    # pone = vline!(pone, [4*sum(pdA)/noruns], color = :green)
+    # savefig("../Results/HistpdA$(ARGS[1]).png")
+    #
+    # # pdB histogram
+    # pone = histogram(4*(pdB), xlabel = "Entropy Flow", ylabel = "Frequency", color = :blue, legend = false)
+    # pone = vline!(pone, [convert(Float64,4*(pdBw))], color = :red)
+    # pone = vline!(pone, [4*sum(pdB)/noruns], color = :green)
+    # savefig("../Results/HistpdB$(ARGS[1]).png")
+    #
+    # # action steady state A histogram
+    # ActA = 0.5*(qqA+ffA)-qfA
+    # h = fit(Histogram, ActA, closed=:right)
+    # pone = histogram(ActA, xlabel = "Action", ylabel = "Frequency", color = :blue, legend = false)
+    # pone = vline!(pone, [convert(Float64,0.5*(qqAw+ffAw) - qfAw)], color = :red)
+    # pone = vline!(pone, [(sum(ActA))/noruns], color = :green)
+    # println(maximum(h.weights))
+    # annotate!(0.4*maximum(ActA),0.05*maximum(h.weights),text("weighted mean Action=$(convert(Float64,0.5*(qqAw+ffAw) - qfAw))\nmean Action=$((sum(ActA))/noruns)",:left))
+    # savefig("../Results/HistActA$(ARGS[1])")
+    #
+    # # action steady state B histogram
+    # ActB = 0.5*(qqB+ffB)-qfB
+    # h = fit(Histogram, ActB, closed=:right)
+    # pone = histogram(ActB, xlabel = "Action", ylabel = "Frequency", color = :blue, legend = false)
+    # pone = vline!(pone, [convert(Float64,0.5*(qqBw+ffBw) - qfBw)], color = :red)
+    # pone = vline!(pone, [(sum(ActB))/noruns], color = :green)
+    # println(maximum(h.weights))
+    # annotate!(0.4*maximum(ActB),0.05*maximum(h.weights),text("weighted mean Action=$(convert(Float64,0.5*(qqBw+ffBw) - qfBw))\nmean Action=$((sum(ActB))/noruns)",:left))
+    # savefig("../Results/HistActB$(ARGS[1])")
 
-    # ppA ddA histogram
-    epB = 2*(ppB+ddB)
-    h = fit(Histogram, epB, closed=:right)
-    pone = histogram(epB, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
-    pone = vline!(pone, [convert(Float64,2*(ppBw+ddBw))], color = :red)
-    pone = vline!(pone, [sum(epB)/noruns], color = :green)
-    annotate!(minimum(epB),0.15*maximum(h.weights),text("mean ratio=$((sum(SB))/sum(epB))\nweighted mean ratio=$(convert(Float64,SBG)/convert(Float64,2*(ppBw+ddBw)))",:left))
-    savefig("../Results/HistppBddB$(ARGS[1]).png")
+    # now print out the data I'm interested in
+    println(convert(Float64,2*qfAw))
+    println(2*sum(qfA)/noruns)
+    println(convert(Float64,2*qfBw))
+    println(2*sum(qfB)/noruns)
 
-    # pdA histogram
-    pone = histogram(4*(pdA), xlabel = "Entropy Flow", ylabel = "Frequency", color = :blue, legend = false)
-    pone = vline!(pone, [convert(Float64,4*(pdAw))], color = :red)
-    pone = vline!(pone, [4*sum(pdA)/noruns], color = :green)
-    savefig("../Results/HistpdA$(ARGS[1]).png")
-
-    # pdB histogram
-    pone = histogram(4*(pdB), xlabel = "Entropy Flow", ylabel = "Frequency", color = :blue, legend = false)
-    pone = vline!(pone, [convert(Float64,4*(pdBw))], color = :red)
-    pone = vline!(pone, [4*sum(pdB)/noruns], color = :green)
-    savefig("../Results/HistpdB$(ARGS[1]).png")
-
-    # action steady state A histogram
-    ActA = 0.5*(qqA+ffA)-qfA
-    h = fit(Histogram, ActA, closed=:right)
-    pone = histogram(ActA, xlabel = "Action", ylabel = "Frequency", color = :blue, legend = false)
-    pone = vline!(pone, [convert(Float64,0.5*(qqAw+ffAw) - qfAw)], color = :red)
-    pone = vline!(pone, [(sum(ActA))/noruns], color = :green)
-    println(maximum(h.weights))
-    annotate!(0.4*maximum(ActA),0.05*maximum(h.weights),text("weighted mean Action=$(convert(Float64,0.5*(qqAw+ffAw) - qfAw))\nmean Action=$((sum(ActA))/noruns)",:left))
-    savefig("../Results/HistActA$(ARGS[1])")
-
-    # action steady state B histogram
-    ActB = 0.5*(qqB+ffB)-qfB
-    h = fit(Histogram, ActB, closed=:right)
-    pone = histogram(ActB, xlabel = "Action", ylabel = "Frequency", color = :blue, legend = false)
-    pone = vline!(pone, [convert(Float64,0.5*(qqBw+ffBw) - qfBw)], color = :red)
-    pone = vline!(pone, [(sum(ActB))/noruns], color = :green)
-    println(maximum(h.weights))
-    annotate!(0.4*maximum(ActB),0.05*maximum(h.weights),text("weighted mean Action=$(convert(Float64,0.5*(qqBw+ffBw) - qfBw))\nmean Action=$((sum(ActB))/noruns)",:left))
-    savefig("../Results/HistActB$(ARGS[1])")
     return(nothing)
 end
 

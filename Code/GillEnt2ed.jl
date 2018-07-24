@@ -169,8 +169,7 @@ function Gillespie!(stead::Array{Int64,1},K::Float64,k::Float64,Q::Float64,q::Fl
     else
         j = 2
     end
-    max = maximum(vars[j,:])
-    return(pf,pb,times,vars,qs,fs,Ds,ds,ps,max)
+    return(pf,pb,times,vars,qs,fs,Ds,ds,ps)
 end
 
 # function to run multiple short gillespie simulations in order to improve sampling statistics
@@ -195,8 +194,6 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
     ppB = zeros(noruns)
     tA = zeros(noruns)
     tB = zeros(noruns)
-    maxA = zeros(noruns)
-    maxB = zeros(noruns)
     # preallocating arrays used inside function
     pfA = zeros(noits)
     pbA = zeros(noits)
@@ -217,8 +214,8 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
     dB = zeros(2,noits)
     pB = zeros(2,noits)
     for j = 1:noruns
-        pfA, pbA, timesA, varsA, qA, fA, DA, dA, pA, maxB[j] = Gillespie!(highA,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,pfA,pbA,timesA,varsA,qA,fA,DA,dA,pA)
-        pfB, pbB, timesB, varsB, qB, fB, DB, dB, pB, maxA[j] = Gillespie!(highB,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,pfB,pbB,timesB,varsB,qB,fB,DB,dB,pB)
+        pfA, pbA, timesA, varsA, qA, fA, DA, dA, pA = Gillespie!(highA,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,pfA,pbA,timesA,varsA,qA,fA,DA,dA,pA)
+        pfB, pbB, timesB, varsB, qB, fB, DB, dB, pB = Gillespie!(highB,K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,pfB,pbB,timesB,varsB,qB,fB,DB,dB,pB)
         # calculate total entropy production
         for i = 1:noits
             SA[j] += (log(pfA[i]) - log(pbA[i])) # do probability weighting at each step
@@ -260,7 +257,7 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
         tB[j] = timesB[end]
     end
     println("Gillespies Done!")
-    return(SA,SB,PA,PB,qfA,qqA,ffA,qfB,qqB,ffB,ppA,pdA,ddA,ppB,pdB,ddB,tA,tB,maxA,maxB)
+    return(SA,SB,PA,PB,qfA,qqA,ffA,qfB,qqB,ffB,ppA,pdA,ddA,ppB,pdB,ddB,tA,tB)
 end
 
 # function to compute the shannon entropy at a fixed point
@@ -312,29 +309,33 @@ function main()
     println("Entropy production rate of high A state via Shannon formula = $(SAS)")
     println("Entropy production rate of high B state via Shannon formula = $(SBS)")
     # now run multiple Gillespie simulations
-    noits = 5000000 # this number must be kept low to insure that the paths do not become less probable than the computer can ennumerate
-    noruns = 2500#0 # memory allocation real problem if this is too large
-    SA, SB, PA, PB, qfA, qqA, ffA, qfB, qqB, ffB, ppA, pdA, ddA, ppB, pdB, ddB, tA, tB, maxA, maxB = multgill(noits,noruns,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin,star2,fin2)
-    println(maximum(maxA))
-    println(maximum(maxB))
+    noits = 500000#0 # this number must be kept low to insure that the paths do not become less probable than the computer can ennumerate
+    noruns = 250#00 # memory allocation real problem if this is too large
+    SA, SB, PA, PB, qfA, qqA, ffA, qfB, qqB, ffB, ppA, pdA, ddA, ppB, pdB, ddB, tA, tB = multgill(noits,noruns,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin,star2,fin2)
     # alter probabilies to match paths of equal length
     tAm = maximum(tA)
     tBm = maximum(tB)
+    PA2 = zeros(BigFloat,length(PA))
+    PB2 = zeros(BigFloat,length(PB))
     for i = 1:length(PA)
-        PA[i] = (PA[i])^(tAm/tA[i])
+        PA2[i] = (PA[i])^(tAm/tA[i])
     end
     for i = 1:length(PB)
-        PB[i] = (PB[i])^(tBm/tB[i])
+        PB2[i] = (PB[i])^(tBm/tB[i])
     end
     # renormalise probability
     PA = PA/sum(PA)
     PB = PB/sum(PB)
-    SAG = SBG = qfAw = qfBw = ppAw = ppBw = ddAw = ddBw = pdAw = pdBw = qqAw = ffAw = qqBw = ffBw = 0
+    PA2 = PA2/sum(PA2)
+    PB2 = PB2/sum(PB2)
+    SAG = SBG = qfAw = qfBw = ppAw = ppBw = ddAw = ddBw = pdAw = pdBw = qqAw = ffAw = qqBw = ffBw = qfAw2 = qfBw2 = 0
     for i = 1:noruns
         SAG += PA[i]*SA[i]
         SBG += PB[i]*SB[i]
         qfAw += PA[i]*qfA[i]
         qfBw += PB[i]*qfB[i]
+        qfAw2 += PA2[i]*qfA[i]
+        qfBw2 += PB2[i]*qfB[i]
         ppAw += PA[i]*ppA[i]
         ppBw += PB[i]*ppB[i]
         ddAw += PA[i]*ddA[i]
@@ -361,12 +362,14 @@ function main()
     # qAf histogram
     pone = histogram(2*qfA, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
     pone = vline!(pone, [convert(Float64,2*qfAw)], color = :red)
+    pone = vline!(pone, [convert(Float64,2*qfAw2)], color = :yellow)
     pone = vline!(pone, [2*sum(qfA)/noruns], color = :green)
     savefig("../Results/HistqfA$(ARGS[1]).png")
 
     # qBf histogram
     pone = histogram(2*qfB, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
     pone = vline!(pone, [convert(Float64,2*qfBw)], color = :red)
+    pone = vline!(pone, [convert(Float64,2*qfBw2)], color = :yellow)
     pone = vline!(pone, [2*sum(qfB)/noruns], color = :green)
     savefig("../Results/HistqfB$(ARGS[1]).png")
 
@@ -422,8 +425,10 @@ function main()
 
     # now print out the data I'm interested in
     println(convert(Float64,2*qfAw))
+    println(convert(Float64,2*qfAw2))
     println(2*sum(qfA)/noruns)
     println(convert(Float64,2*qfBw))
+    println(convert(Float64,2*qfBw2))
     println(2*sum(qfB)/noruns)
 
     return(nothing)

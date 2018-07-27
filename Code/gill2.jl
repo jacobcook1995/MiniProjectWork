@@ -138,12 +138,12 @@ function main()
     for j = 1:h2
         for i = 1:h1
             rs, dA, dB = rates(i-1,j-1,k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f,true)
-            histw[i+(j-1)*h2,i+(j-1)*h2] = -sum(rs) # self term flow out of state
+            histw[i+(j-1)*h1,i+(j-1)*h1] = -sum(rs) # self term flow out of state
             # flow to other states
             for l = 1:length(rs)
                 # just cancel out flow from state if it's going out of considered region
                 if dA[l] + i > h1 || dB[l] + j > h2
-                    histw[i+(j-1)*h2,i+(j-1)*h2] += rs[l]
+                    histw[i+(j-1)*h1,i+(j-1)*h1] += rs[l]
                 # need to think about how to deal with negative cases
                 elseif dA[l] + i < 1 || dB[l] + j < 1
                     if rs[l] != 0

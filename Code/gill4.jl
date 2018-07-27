@@ -40,9 +40,17 @@ end
 
 # function to construct the rates
 function rates(A::Int64,B::Int64,S::Int64,W::Int64,k::Float64,K::Float64,q::Float64,Q::Float64,
-                kmin::Float64,Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64,F::Float64)
+                kmin::Float64,Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64,F::Float64,diffs::Bool=false)
     rates = [r*k*S/(r+f*B*(B-1)), kmin*A, K*A, Kmin*W, r*q*S/(r+f*A*(A-1)), qmin*B, Q*B, Qmin*W, F]
-    return(rates)
+    if diffs == false
+        return(rates)
+    else
+        dA = [ 1, -1, -1, 1, 0, 0, 0, 0, 0]
+        dB = [ 0, 0, 0, 0, 1, -1, -1, 1, 0]
+        dS = [ -1, 1, 0, 0, -1, 1, 0, 0, 1]
+        dW = [ 0, 0, 1, -1, 0, 0, 1, -1, -1]
+        return(rates,dA,dB,dS,dW)
+    end
 end
 
 # function to calculate the time step
@@ -150,13 +158,131 @@ function main()
     maxS = maximum([star2[3], mid2[3], fin2[3]])
     maxW = maximum([star2[4], mid2[4], fin2[4]])
     # now run gillespie
-    noits = 50000000
+    noits = 50#000000
     # maybe randomise the starting point somewhat
     # also maybe remove the vars
     hist = gillespie(K,k,Q,q,kmin,qmin,f,F,r,Kmin,Qmin,noits,star2,maxA,maxB,maxS,maxW)
+    h1 = size(hist,1)
+    h2 = size(hist,2)
+    h3 = size(hist,3)
+    h4 = size(hist,4)
+    # preallocate as a sparse array
+    h12 = h1*h2
+    h123 = h12*h3
+    h1234 = h123*h4
+    @time I = zeros(Int64,10*h1234)
+    j = 1
+    for i = 1:(10*h1234)
+        I[i] .= j
+        if i % 10 == 0
+            j += 1
+        end
+    end
+    @time J = zeros(10*h1234)
+    tic()
+    for i = 1:h1234
+        # first decompose i, this is wrong
+        w = floor((i-1)/h123)
+        s = floor((i-1-w*h123)/h12)
+        b = floor((i-1-w*h123-s*h12)/h1)
+        a = i-b*h1-s*h12-w*h123-1
+        J[1+(i-1)*10] .= i
+        # check a and s in valid range for reac 1
+        if a == 0 || s >= h3
+            J[3+(i-1)*10] .= 0
+        else
+            J[3+(i-1)*10] .= i - 1 + h12
+        end
+        if a == 0 || w >= h4
+            J[6+(i-1)*10] .= 0
+        else
+            J[6+(i-1)*10] .= i - 1 + h123
+        end
+        if a >= h1 || s == 0
+            J[2+(i-1)*10] .= 0
+        else
+            J[2+(i-1)*10] .= i + 1 - h12
+        end
+        if a >= h1 || w == 0
+            J[7+(i-1)*10] .= 0
+        else
+            J[7+(i-1)*10] .= i + 1 - h123
+        end
+        if b == 0 || s >= h3
+            J[5+(i-1)*10] .= 0
+        else
+            J[5+(i-1)*10] .= i - h1 + h12
+        end
+        if b == 0 || w >= h4
+            J[8+(i-1)*10] .= 0
+        else
+            J[8+(i-1)*10] .= i - h1 + h123
+        end
+        if b >= h2 || s == 0
+            J[4+(i-1)*10] .= 0
+        else
+            J[4+(i-1)*10] .= i + h1 - h12
+        end
+        if b >= h2 || w == 0
+            J[9+(i-1)*10] .= 0
+        else
+            J[9+(i-1)*10] .= i + h1 - h123
+        end
+        # deal with supply case
+        if s >= h3 || w == 0
+            J[10+(i-1)*10] .= 0
+        else
+            J[10+(i-1)*10] .= i + h12 - h123
+        end
+    end
+    toc()
+    @time t = find(J .== 0)
+    # now need to remove zeros elements from J and corresponding elements from I
+    J = deleteat!(J, t)
+    I = deleteat!(I, t)
+    @time V = zeros(length(J))
+    gc()
+    histw = sparse(I,J,V)
+    return(nothing)
+    # now need to actually generate this matrix
+    # This is clearly not going to work as the matrix will be too large to actually store
+    for m = 1:h4
+        for l = 1:h3
+            for j = 1:h2
+                for i = 1:h1
+                    rs, dA, dB, dS, dW = rates(i-1,j-1,l-1,m-1,k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f,F,true)
+                    pos = i + (j-1)*h1 + (l-1)*h12 + (m-1)*h123
+                    histw[pos,pos] .= sum(rs) # self term flow out of state
+                    # flow to other states
+                    for n = 1:length(rs)
+                        # just cancel out flow from state if it's going out of considered region
+                        if dA[n] + i > h1 || dB[n] + j > h2 || dS[n] + l > h3 || dW[n] + m > h4
+                            histw[pos,pos] += rs[n] #@time
+                        elseif dA[n] + i < 1 || dB[n] + j < 1 || dS[n] + l < 1 || dW[n] + m < 1
+                            if m == 1 && n == 9
+                                histw[pos,pos] += rs[n]
+                            elseif l == h3 && n == 9
+                                histw[pos,pos] += rs[n]
+                            elseif rs[n] != 0
+                                println(i,j,l,m,n)
+                                println(dA[n],dB[n],dS[n],dW[n])
+                                error("Non-zero flux to negative part")
+                            end
+                        else
+                            histw[pos,pos + dA[n]+ dB[n]*h1 + dS[n]*h12 + dW[n]*h123] += rs[n] #@time
+                        end
+
+                    end
+                end
+            end
+        end
+    end
+    return(nothing)
     # now split into high and low histograms
     histL = hist[1:(mid2[1]+1),(mid2[2]+2):end,:,:]
     histH = hist[(mid2[1]+2):end,1:(mid2[2]+1),:,:]
+    hist1 = hist[1:(mid2[1]+1),1:(mid2[2]+1),:,:]
+    hist2 = hist[(mid2[1]+2):end,(mid2[2]+2):end,:,:]
     # renormalise
     # histL = histL/sum(histL)
     # histH = histH/sum(histH)
@@ -197,9 +323,37 @@ function main()
             end
         end
     end
+    S1 = 0
+    for m = 1:size(hist1,4)
+        for l = 1:size(hist1,3)
+            for j = 1:size(hist1,2)
+                for i = 1:size(hist1,1)
+                    if hist1[i,j,l,m] != 0
+                        S1 -= hist1[i,j,l,m]*log(hist1[i,j,l,m])
+                    end
+                end
+            end
+        end
+    end
+    S2 = 0
+    for m = 1:size(hist2,4)
+        for l = 1:size(hist2,3)
+            for j = 1:size(hist2,2)
+                for i = 1:size(hist2,1)
+                    if hist2[i,j,l,m] != 0
+                        S2 -= hist2[i,j,l,m]*log(hist2[i,j,l,m])
+                    end
+                end
+            end
+        end
+    end
     println(S)
     println(SL)
     println(SH)
+    println(S-SL-SH)
+    println(S1)
+    println(S2)
+    println(S1+S2)
     return(nothing)
 end
 

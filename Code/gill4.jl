@@ -277,7 +277,6 @@ function main()
             end
         end
     end
-    return(nothing)
     # now split into high and low histograms
     histL = hist[1:(mid2[1]+1),(mid2[2]+2):end,:,:]
     histH = hist[(mid2[1]+2):end,1:(mid2[2]+1),:,:]

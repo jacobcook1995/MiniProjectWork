@@ -6,6 +6,18 @@ using Roots
 using Plots
 import GR
 
+# Now construct the three relevant vectors of equations
+function f!(F::Float64,x::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Int64)
+    F = k1*V - K1*x - k2*X*(X-1)*(X-2)/(V*V) + K2*B*X*(X-1)/V
+    return F
+end
+
+# Then construct the necessary matrices
+function D!(D::Float64,x::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Int64)
+    D = k1*V + K1*x + k2*X*(X-1)*(X-2)/(V*V) + K2*B*X*(X-1)/V
+    return D
+end
+
 # finction to find start end and saddle points
 function nullcline(k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,high2low::Bool,V::Int64)
     # write out equation to be solved
@@ -88,7 +100,7 @@ end
 
 function Gillespie!(stead::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,noits::Int64,
                     pf::Array{Float64,1},pb::Array{Float64,1},times::Array{Float64,1},vars::Array{Int64,1},
-                    V::Int64,up::Int64,down::Int64)
+                    V::Int64,up::Int64,down::Int64,qs::Array{Float64,1},fs::Array{Float64,1},Ds::Array{Float64,1})
     # Preallocate for simulation
     times[1] = 0
     vars[1] = stead
@@ -116,6 +128,11 @@ function Gillespie!(stead::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64
         times[i+1] = times[i] + τ
         # do gillepsie step
         vars[i+1], pf[i], reac = step(rs,vars[i],reac)
+        posX = (vars[i+1] + vars[i])/(2)
+        qs[i] = (vars[i+1] - vars[i])/(τ)
+        fs[i] = f!(fs[i],posX,k1,K1,k2,K2,B,V)
+        Ds[i] = D!(Ds[i],posX,k1,K1,k2,K2,B,V)
+        Ds[i] = Ds[i]/τ # applies here as we need a τ in each expression, D will be inverted later
         # final reverse rate
         if i == noits
             rs = rates(vars[end],k1,K1,k2,K2,B,V)
@@ -124,7 +141,7 @@ function Gillespie!(stead::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64
     end
     pup = tup/times[end]
     pdown = tdown/times[end]
-    return(pf,pb,times,vars,pup,pdown,hl)
+    return(pf,pb,times,vars,pup,pdown,hl,qs,fs,Ds)
 end
 
 # function to run multiple short gillespie simulations in order to improve sampling statistics
@@ -135,10 +152,16 @@ function multgill(noits::Int64,noruns::Int64,k1::Float64,K1::Float64,k2::Float64
     maxX = zeros(noruns)
     pup = zeros(noruns)
     pdown = zeros(noruns)
+    qq = zeros(noruns)
+    qf = zeros(noruns)
+    ff = zeros(noruns)
     Sup = zeros(noruns)
     Sdown = zeros(noruns)
     ts = zeros(noruns)
     p = zeros(BigFloat,noruns)
+    qs = zeros(noits)
+    fs = zeros(noits)
+    Ds = zeros(noits)
     # generate high and low states
     star2 = round(Int64,star1)
     fin2 = round(Int64,fin1)
@@ -155,7 +178,7 @@ function multgill(noits::Int64,noruns::Int64,k1::Float64,K1::Float64,k2::Float64
     for j = 1:noruns
         p[j] = 1
         init = mid2 # generate an initial condition here, should be more complex in future
-        pfX, pbX, timesX, varsX, pup[j], pdown[j], hl = Gillespie!(init,k1,K1,k2,K2,B,noits,pfX,pbX,timesX,varsX,V,up,down)
+        pfX, pbX, timesX, varsX, pup[j], pdown[j], hl, qs, fs, Ds = Gillespie!(init,k1,K1,k2,K2,B,noits,pfX,pbX,timesX,varsX,V,up,down,qs,fs,Ds)
         # calculate total entropy production
         for i = 1:noits
             SX[j] += log(pfX[i]) - log(pbX[i])
@@ -165,6 +188,9 @@ function multgill(noits::Int64,noruns::Int64,k1::Float64,K1::Float64,k2::Float64
             elseif hl[i] == 2
                 Sdown[j] += log(pfX[i]) - log(pbX[i])
             end
+            qf[j] += qs[i]*fs[i]/Ds[i]
+            qq[j] += qs[i]*qs[i]/Ds[i]
+            ff[j] += fs[i]*fs[i]/Ds[i]
         end
 
         # convert total entropy production to entropy production rate
@@ -172,12 +198,15 @@ function multgill(noits::Int64,noruns::Int64,k1::Float64,K1::Float64,k2::Float64
         Sup[j] = Sup[j]/timesX[end]
         Sdown[j] = Sdown[j]/timesX[end]
         ts[j] = timesX[end]
+        qf[j] = qf[j]/timesX[end]
+        qq[j] = qq[j]/timesX[end]
+        ff[j] = ff[j]/timesX[end]
         # store this data so validity can be checked later on
         minX[j] = minimum(varsX)
         maxX[j] = maximum(varsX)
     end
     println("Gillespies Done!")
-    return(SX,minX,maxX,pup,pdown,Sup,Sdown,p,ts)
+    return(SX,minX,maxX,pup,pdown,Sup,Sdown,p,ts,qf,qq,ff)
 end
 
 # main function
@@ -192,9 +221,9 @@ function main()
     # first need to use these parameters to find a steady state
     star1, mid1, fin1 = nullcline(k1,K1,k2,K2,B,high2low,V)
     # now run multiple Gillespie simulations
-    noits = 2500000
+    noits = 250000
     noruns = 50
-    SX, minX, maxX, pup, pdown, Sup, Sdown, pf, ts = multgill(noits,noruns,k1,K1,k2,K2,B,star1,mid1,fin1,V)
+    SX, minX, maxX, pup, pdown, Sup, Sdown, pf, ts, qf, qq, ff = multgill(noits,noruns,k1,K1,k2,K2,B,star1,mid1,fin1,V)
     println(sum(SX)/(V*noruns))
     # calculations here
     # rescale pf here

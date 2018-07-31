@@ -10,17 +10,30 @@ using NLsolve
 import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
-const Ω = 300
-const K = 10
-const k = K*Ω # steady state for A=k/K=1
-const Q = 1
-const q = Q*Ω
-const kmin = 10.0^-20 # set all too 10.0^-20 for now
-const Kmin = 10.0^-20
-const qmin = 10.0^-20
-const Qmin = 10.0^-20
-const f = 1000/(Ω^2) # Promoter switching
+# const Ω = 1.0#300
+# const K = 10.0
+# const k = K*Ω # steady state for A=k/K=1
+# const Q = 1.0
+# const q = Q*Ω
+# const kmin = 10.0^-20 # set all too 10.0^-20 for now
+# const Kmin = (10.0^-20)*Ω
+# const qmin = 10.0^-20
+# const Qmin = (10.0^-20)*Ω
+# const f = 1000.0/(Ω^2) # Promoter switching
+# const r = 10.0
+const Ω = 1
+const Δr = 0.1
+const Kmin = 0.005
+const Qmin = Kmin + Δr
+const K = 1
+const F = 11
+const Q = (F + Δr)/(F-1)
+const k = 10
+const q = 10
+const kmin = 1
+const qmin = 1
 const r = 10
+const f = 1000
 const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
@@ -32,26 +45,20 @@ const Δτ = 0.001 # I've made this choice arbitarily, too large and the algorit
 # A function to find the crossing points of the nullclines so they can be used
 # as start, end and saddle points
 function nullcline()
-    a = 2
-    b = 2
-    A1(x) = k*r/(K*(r+f*x^a))
-    A2(x) = (r/f*(q/(Q*x)-1))^(1/b)
-    g(x) = k*r/(K*(r+f*x^a)) - (r/f*(q/(Q*x)-1))^(1/b) #A1(x) - A2(x)
+    # gonna use SymPy here
+    A1i(x) = sqrt.((r/f)*(q./(Qmin+(qmin+Q).*x) - 1))
+    A1(x) = real(sqrt.(complex((r/f)*(q./(Qmin+(qmin+Q).*x) - 1))))
+    A2(x) = (1/(kmin+K))*((k*r)./(r+f*x.^2) + Kmin)
+    g(x) = A1(x) - A2(x)
     xs = fzeros(g, 0, q/Q)
-    sad = [A1(xs[2]); xs[2]]
-    if high2low == true
-        ss1 = [A1(xs[1]); xs[1]]
-        ss2 = [A1(xs[3]); xs[3]]
-    else
-        ss1 = [A1(xs[3]); xs[3]]
-        ss2 = [A1(xs[1]); xs[1]]
-    end
-    print(ss1)
-    print("\n")
-    print(sad)
-    print("\n")
-    print(ss2)
-    print("\n")
+    println(xs)
+    x1 = 0:0.0000001:0.5
+    plot([A1(x1),A2(x1)])
+    savefig("../Results/GrApH1.png")
+    ss1 = [ A1i(xs[1]), xs[1] ]
+    ss2 = [ A1i(xs[2]), xs[2] ]
+    println(ss1)
+    println(ss2)
     return (ss1,sad,ss2)
 end
 

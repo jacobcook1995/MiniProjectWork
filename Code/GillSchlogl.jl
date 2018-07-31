@@ -7,14 +7,14 @@ using Plots
 import GR
 
 # Now construct the three relevant vectors of equations
-function f!(F::Float64,x::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Int64)
-    F = k1*V - K1*x - k2*X*(X-1)*(X-2)/(V*V) + K2*B*X*(X-1)/V
+function f!(F::Float64,X::Float64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Int64)
+    F = k1*V - K1*X - k2*X*(X-1)*(X-2)/(V*V) + K2*B*X*(X-1)/V
     return F
 end
 
 # Then construct the necessary matrices
-function D!(D::Float64,x::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Int64)
-    D = k1*V + K1*x + k2*X*(X-1)*(X-2)/(V*V) + K2*B*X*(X-1)/V
+function D!(D::Float64,X::Float64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Int64)
+    D = k1*V + K1*X + k2*X*(X-1)*(X-2)/(V*V) + K2*B*X*(X-1)/V
     return D
 end
 
@@ -128,7 +128,7 @@ function Gillespie!(stead::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64
         times[i+1] = times[i] + τ
         # do gillepsie step
         vars[i+1], pf[i], reac = step(rs,vars[i],reac)
-        posX = (vars[i+1] + vars[i])/(2)
+        posX = vars[i]# (vars[i+1] + vars[i])/(2)
         qs[i] = (vars[i+1] - vars[i])/(τ)
         fs[i] = f!(fs[i],posX,k1,K1,k2,K2,B,V)
         Ds[i] = D!(Ds[i],posX,k1,K1,k2,K2,B,V)
@@ -221,23 +221,55 @@ function main()
     # first need to use these parameters to find a steady state
     star1, mid1, fin1 = nullcline(k1,K1,k2,K2,B,high2low,V)
     # now run multiple Gillespie simulations
-    noits = 250000
-    noruns = 50
+    noits = 2500000
+    noruns = 500
     SX, minX, maxX, pup, pdown, Sup, Sdown, pf, ts, qf, qq, ff = multgill(noits,noruns,k1,K1,k2,K2,B,star1,mid1,fin1,V)
     println(sum(SX)/(V*noruns))
     # calculations here
     # rescale pf here
     t = maximum(ts)
     println(t)
+    pf1 = ones(length(pf))
     for i = 1:noruns
-        pf[i] = (pf[i])^(t/ts[i])
+        pf1[i] = (pf[i])^(t/ts[i])
     end
-    pone = scatter(exp.((Sup-Sdown)/V),pup./pdown)
-    savefig("../Results/ScatterSch.png")
-    pone = scatter(log.(pf),pup./pdown)
-    savefig("../Results/Scatter2Sch.png")
-    pone = scatter(log.(pf),exp.((Sup-Sdown)/V))
-    savefig("../Results/Scatter3Sch.png")
+    # renormalise probability
+    pf1 = pf1/sum(pf1)
+    pf = pf/sum(pf)
+    qqw = ffw = qfw = qfw2 = qqw2 = ffw2 = 0
+    for i = 1:noruns
+        qqw += pf[i]*qq[i]
+        qfw += pf[i]*qf[i]
+        ffw += pf[i]*ff[i]
+        qqw2 += pf1[i]*qq[i]
+        qfw2 += pf1[i]*qf[i]
+        ffw2 += pf1[i]*ff[i]
+    end
+    # qf histogram
+    pone = histogram(2*qf, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,2*qfw)], color = :red)
+    pone = vline!(pone, [convert(Float64,2*qfw2)], color = :yellow)
+    pone = vline!(pone, [2*sum(qf)/noruns], color = :green)
+    savefig("../Results/Histqf$(ARGS[1]).png")
+    # ff histogram
+    pone = histogram(2*ff, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,2*ffw)], color = :red)
+    pone = vline!(pone, [convert(Float64,2*ffw2)], color = :yellow)
+    pone = vline!(pone, [2*sum(ff)/noruns], color = :green)
+    savefig("../Results/Histff$(ARGS[1]).png")
+    # qq histogram
+    pone = histogram(2*qq, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,2*qqw)], color = :red)
+    pone = vline!(pone, [convert(Float64,2*qqw2)], color = :yellow)
+    pone = vline!(pone, [2*sum(qq)/noruns], color = :green)
+    savefig("../Results/Histqq$(ARGS[1]).png")
+
+    # pone = scatter(exp.((Sup-Sdown)/V),pup./pdown)
+    # savefig("../Results/ScatterSch.png")
+    # pone = scatter(log.(pf),pup./pdown)
+    # savefig("../Results/Scatter2Sch.png")
+    # pone = scatter(log.(pf),exp.((Sup-Sdown)/V))
+    # savefig("../Results/Scatter3Sch.png")
     return(nothing)
 end
 

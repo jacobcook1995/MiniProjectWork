@@ -217,16 +217,15 @@ end
 
 # main function
 function main()
-    # General parameters
-    Ω = 20.0
+    Ω = 150.0
     K = 10.0
     k = K*Ω # steady state for A=k/K=1
     Q = 1.0
     q = Q*Ω
     kmin = 10.0^-20 # set all too 10.0^-20 for now
-    Kmin = 10.0^-20
+    Kmin = (10.0^-20)*Ω
     qmin = 10.0^-20
-    Qmin = 10.0^-20
+    Qmin = (10.0^-20)*Ω
     f = 1000.0/(Ω^2) # Promoter switching
     r = 10.0
 
@@ -236,8 +235,10 @@ function main()
     # now the steady state will be used to find shannon entropy productions
     SAS = shannon(star1,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin)
     SBS = shannon(fin1,r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin)
-    println("Entropy production rate of high A state via Shannon formula = $(SAS/Ω)")
-    println("Entropy production rate of high B state via Shannon formula = $(SBS/Ω)")
+    println("Entropy production rate of high A state via Shannon formula = $(SAS)")
+    println("Entropy production rate of high B state via Shannon formula = $(SBS)")
+    # remove this once done
+    return(nothing)
     # now run multiple Gillespie simulations
     noits = 1000000#0
     noruns = 500

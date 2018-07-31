@@ -12,7 +12,7 @@ using Roots
 import GR # Need this to stop world age plotting error?
 
 # Firstly should define constants
-const Ω = 300
+const Ω = 1#300
 const K = 10
 const k = K*Ω # steady state for A=k/K=1
 const Q = 1
@@ -26,7 +26,7 @@ const r = 10
 const high2low = false # Set if starting from high state or low state
 
 # Then set parameters of the optimization
-const N = 600 # number of segments optimised over
+const N = 150 # number of segments optimised over
 
 # Multiplicative Guassian noise matrix
 function e!(E, x)
@@ -418,6 +418,7 @@ function run(tau,noit)
     println(sum(ents))
     println("Change")
     println(sum(entsr) + sum(ents))
+    println(sum(actsr))
     # Block of code to write all this data to a file so I can go through it
     if length(ARGS) >= 1
         output_file = "../Results/$(ARGS[1]).csv"

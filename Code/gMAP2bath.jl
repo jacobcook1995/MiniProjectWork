@@ -7,9 +7,8 @@
 using Plots
 using Roots
 using NLsolve
-using SymEngine # Trying alternative substitution method to see if this is faster
-using Interpolations
-import GR # Need this to stop world age plotting error?
+using SymEngine
+import GR # Need this to stop world age plotting error
 
 # A function to find the crossing points of the nullclines so they can be used
 # as start, end and saddle points
@@ -377,8 +376,7 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
 end
 
 # function to discretise a path in a way that makes it compatable with the algorithm
-function discretise(x::AbstractArray,NG::Int64,Nmid::Int64)
-    spline = true
+function discretise(x::AbstractArray,NG::Int64,Nmid::Int64,spline::Bool,sub::Int64)
     if spline == false
         # need to interpolate the data from x onto disx, preserving |x'| = const,
         # i.e equal distance between points
@@ -508,30 +506,126 @@ function discretise(x::AbstractArray,NG::Int64,Nmid::Int64)
         k2 = A2*b2
         # need to interpolate the data from x onto disx, preserving |x'| = const,
         # i.e equal distance between points
-        s1 = zeros(Nmid)
-        s2 = zeros(NG+2-Nmid)
+        n1 = Nmid + (sub-1)*(Nmid-1)
+        s1 = zeros(n1)
+        x1 = zeros(n1)
+        y1 = zeros(n1)
         s1[1] = 0
-        s2[1] = 0
-        sub = 10
-        for i = 2:Nmid
-            dBo = x[i-1,2]
-            for j = 1:sub
-                xs = j*(x[i,1] - x[i-1,1])/sub + x[i-1,1]
-                dA = (x[i,1] - x[i-1,1])/sub
-                dBn = x[i,2] - x[i-1,2]
-                s1[i] = s1[i-1] + sqrt(dA^2 + (dBn-dBo)^2) # Could probably drop the sqrts to speed up the code
-                dBo = dBn
+        x1[1] = x[1,1]
+        y1[1] = x[1,2]
+        j = 1
+        # determine a and b values for initial segement
+        a = k1[j]*(x[j+1,1] - x[j,1]) - (x[j+1,2] - x[j,2])
+        b = -k1[j+1]*(x[j+1,1] - x[j,1]) + (x[j+1,2] - x[j,2])
+        for i = 2:n1
+            x1[i] = x1[i-1] + (1/sub)*(x[j+1,1] - x[j,1])
+            t = (x1[i] - x[j,1])/(x[j+1,1] - x[j,1])
+            y1[i] = (1 - t)*x[j,2] + t*x[j+1,2] + t*(1-t)*(a*(1-t) + b*t)
+            s1[i] = s1[i-1] + sqrt((x1[i]-x1[i-1])^2 + (y1[i]-y1[i-1])^2)
+            if (i-1) % sub == 0 && i != n1
+                j += 1
+                # redefine when moving onto another segment
+                a = k1[j]*(x[j+1,1] - x[j,1]) - (x[j+1,2] - x[j,2])
+                b = -k1[j+1]*(x[j+1,1] - x[j,1]) + (x[j+1,2] - x[j,2])
             end
         end
-        println(k2)
-        error()
+        n2 = NG + 2 - Nmid + (sub-1)*(NG+1-Nmid)
+        s2 = zeros(n2)
+        x2 = zeros(n2)
+        y2 = zeros(n2)
+        s2[1] = 0
+        x2[1] = x[Nmid,1]
+        y2[1] = x[Nmid,2]
+        j = Nmid
+        # determine a and b values for initial segement
+        a = k2[j+1-Nmid]*(x[j+1,1] - x[j,1]) - (x[j+1,2] - x[j,2])
+        b = -k2[j+2-Nmid]*(x[j+1,1] - x[j,1]) + (x[j+1,2] - x[j,2])
+        for i = 2:n2
+            x2[i] = x2[i-1] + (1/sub)*(x[j+1,1] - x[j,1])
+            t = (x2[i] - x[j,1])/(x[j+1,1] - x[j,1])
+            y2[i] = (1 - t)*x[j,2] + t*x[j+1,2] + t*(1-t)*(a*(1-t) + b*t)
+            s2[i] = s2[i-1] + sqrt((x2[i]-x2[i-1])^2 + (y2[i]-y2[i-1])^2)
+            if (i-1) % sub == 0 && i != n2
+                j += 1
+                # redefine when moving onto another segment
+                a = k2[j+1-Nmid]*(x[j+1,1] - x[j,1]) - (x[j+1,2] - x[j,2])
+                b = -k2[j+2-Nmid]*(x[j+1,1] - x[j,1]) + (x[j+1,2] - x[j,2])
+            end
+        end
+        # Divide total arc length into equal segments
+        ls1 = zeros(Nmid)
+        ls2 = zeros(NG+2-Nmid)
+        for i = 1:Nmid
+            ls1[i] = (i-1)*s1[end]/(Nmid-1)
+        end
+        for i = 1:(NG+2-Nmid)
+            ls2[i] = (i-1)*s2[end]/(NG+1-Nmid)
+        end
+        # Find first index greater than a ls[i] for each i
+        inds1 = fill(0,Nmid)
+        j = 1
+        for i = 1:Nmid
+            higher = false
+            while higher == false
+                if s1[j] >= ls1[i] || j == n1
+                    inds1[i] = j
+                    higher = true
+                else
+                    j += 1
+                end
+            end
+        end
+        inds2 = fill(0,NG+2-Nmid)
+        j = 1
+        for i = 1:(NG+2-Nmid)
+            higher = false
+            while higher == false
+                if s2[j] >= ls2[i] || j == n2
+                    inds2[i] = j + n1 - 1
+                    higher = true
+                else
+                    j += 1
+                end
+            end
+        end
+        # First do mid points and end points as they should be fixed
+        disx = zeros(NG+1,2)
+        disx[1,:] = x[1,:]
+        disx[Nmid,:] = x[Nmid,:]
+        disx[NG+1,:] = x[NG+1,:]
+        # This is done to linear order, which is probably good enough
+        for i = 2:Nmid-1
+            one = inds1[i] - 1
+            two = inds1[i]
+            s₀ = s1[one]
+            s₁ = s1[two]
+            x₀ = x1[one]
+            x₁ = x1[two]
+            disx[i,1] = x₀ + (ls1[i] - s₀)*(x₁ - x₀)/(s₁ - s₀)
+            y₀ = y1[one]
+            y₁ = y1[two]
+            disx[i,2] = y₀ + (ls1[i] - s₀)*(y₁ - y₀)/(s₁ - s₀)
+        end
+
+        for i = Nmid+1:NG
+            one = inds2[i+1-Nmid] - 1
+            two = inds2[i+1-Nmid]
+            s₀ = s2[one+1-n1]
+            s₁ = s2[two+1-n1]
+            x₀ = x2[one+1-n1]
+            x₁ = x2[two+1-n1]
+            disx[i,1] = x₀ + (ls2[i+1-Nmid] - s₀)*(x₁ - x₀)/(s₁ - s₀)
+            y₀ = y2[one+1-n1]
+            y₁ = y2[two+1-n1]
+            disx[i,2] = y₀ + (ls2[i+1-Nmid] - s₀)*(y₁ - y₀)/(s₁ - s₀)
+        end
     end
     return(disx)
 end
 
 # Function to generate an initial path then run the alorithm until a MAP is obtained
 # This path is then returned for other functions
-function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,high2low::Bool)
+function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,high2low::Bool,spline::Bool)
     # generate symbolic forms for equations required for the simulation
     ϑ, λ, Hθ, Hθx, Hθθ, Hx, H = gensyms(ps)
     # First find the steady states and saddle point
@@ -544,14 +638,15 @@ function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,high2low:
     b = vcat(b1,b2[2:length(b2)])
     x = hcat(a,b)
     # Then appropriatly discretise the path such that it works with this algorithm
-    x = discretise(x,NG,Nmid)
+    prec = 1000
+    x = discretise(x,NG,Nmid,spline,prec)
     # Set up method to tell if is converged
     convrg = false
     l = 0
     while convrg == false
         x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG,Nmid)
         newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG,Nmid,H)
-        xn = discretise(newx.zero,NG,Nmid)
+        xn = discretise(newx.zero,NG,Nmid,spline,prec)
         # delta is the sum of the differences of all the points in the path
         δ = 0
         for i = 1:NG+1
@@ -565,7 +660,7 @@ function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,high2low:
         end
         # Now overwrite old x
         x = xn
-        if δ <= 0.000005#0.00000000005
+        if δ <= 0.000000005#0.00000000005
             convrg = true
             print("$(l) steps to converge\n")
         end
@@ -643,8 +738,6 @@ function params(Ah::BigFloat,Al::BigFloat,Bh::BigFloat,Bl::BigFloat,F::BigFloat)
     Kmin = K*Al
     correct = false
     l = 0
-    # this is a way to ensure the same random number are generated each time
-    srand(1234)
     while correct == false
         r = 10000*rand()
         f = 10000*rand()
@@ -682,10 +775,11 @@ function main()
     NM = 600 # number of segments to discretise MAP onto
     NG = 600 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
+    Δτ = 0.01#0.001 # I've made this choice arbitarily, too large and the algorithm breaks
     high2low = false
+    spline = false
 
-    path, λ, ϑ = gMAP(ps,NG,Nmid,Δτ,high2low)
+    path, λ, ϑ = gMAP(ps,NG,Nmid,Δτ,high2low,spline)
     x, xprim, λs, ϑs, λprim = genvars(path,λ,ϑ,NG,Nmid)
     # use function Ŝ to find the action associated with this path
     λs[1] = λs[2]
@@ -693,26 +787,52 @@ function main()
     λs[end] = λs[end-1]
     S = Ŝ(x,xprim,λs,ϑs,λprim,NG)
     print("Associated Action = $(sum(S))\n")
-    tims = times(x,xprim,λs,ϑs,λprim,NG)
-    print("Time of path = $(tims[end])\n")
-    path = timdis(tims,x,NG,NM)
-    plot(ϑs)
-    savefig("../Results/Graph1.png")
-    plot(λs)
-    savefig("../Results/DetSpeed.png")
+    tims1 = times(x,xprim,λs,ϑs,λprim,NG)
+    print("Time of path = $(tims1[end])\n")
+    path1 = timdis(tims1,x,NG,NM)
+    # now run reverse path
+    path, λ, ϑ = gMAP(ps,NG,Nmid,Δτ,~high2low,spline)
+    x, xprim, λs, ϑs, λprim = genvars(path,λ,ϑ,NG,Nmid)
+    # use function Ŝ to find the action associated with this path
+    λs[1] = λs[2]
+    λs[Nmid] = (λs[Nmid+1] + λs[Nmid-1])/2
+    λs[end] = λs[end-1]
+    S = Ŝ(x,xprim,λs,ϑs,λprim,NG)
+    print("Associated Action = $(sum(S))\n")
+    tims2 = times(x,xprim,λs,ϑs,λprim,NG)
+    print("Time of path = $(tims2[end])\n")
+    path2 = timdis(tims2,x,NG,NM)
+
     # Block of code to write all this data to a file so I can go through it
     if length(ARGS) >= 1
-        output_file = "../Results/$(ARGS[1]).csv"
-        out_file = open(output_file, "w")
+        output_file1 = "../Results/0208/$(ARGS[1])1.csv"
+        out_file1 = open(output_file1, "w")
         # open file for writing
-        for i = 1:size(path,1)
-            line = "$(path[i,1]),$(path[i,2])\n"
-            write(out_file, line)
+        for i = 1:size(path1,1)
+            line = "$(path1[i,1]),$(path1[i,2])\n"
+            write(out_file1, line)
         end
-        # final line written as time and action of gMAP
-        line = "$(tims[end]),$(sum(S))\n"
-        write(out_file, line)
-        close(out_file)
+        close(out_file1)
+        output_file2 = "../Results/0208/$(ARGS[1])2.csv"
+        out_file2 = open(output_file2, "w")
+        # open file for writing
+        for i = 1:size(path2,1)
+            line = "$(path2[i,1]),$(path2[i,2])\n"
+            write(out_file2, line)
+        end
+        close(out_file2)
+        output_filep = "../Results/0208/$(ARGS[1])p.csv"
+        out_filep = open(output_filep, "w")
+        # open file for writing
+        for i = 1:size(ps,1)
+            line = "$(ps[i])\n"
+            write(out_filep, line)
+        end
+        line = "$(tims1[end])\n"
+        write(out_filep, line)
+        line = "$(tims2[end])\n"
+        write(out_filep, line)
+        close(out_filep)
     end
 end
 

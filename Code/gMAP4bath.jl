@@ -353,7 +353,7 @@ function discretise(x::AbstractArray,NG::Int,Nmid::Int)
 end
 
 # function to generate the variables needed for a given algoritm iteration
-function genvars(x::AbstractArray, λ::SymEngine.Basic, ϑ::Array{SymEngine.Basic,1}, NG::Int, Nmid::Int)
+function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,1},NG::Int,Nmid::Int)
     # define neccesary symbols
     A, B, S, W, y1, y2, y3, y4 = symbols("A B S W y1 y2 y3 y4")
     # calculate velocities
@@ -397,7 +397,7 @@ function genvars(x::AbstractArray, λ::SymEngine.Basic, ϑ::Array{SymEngine.Basi
 end
 
 # function to be solved by NLsolve
-function g!(F::AbstractArray, x::AbstractArray, C::AbstractVector, K::AbstractArray, xi::AbstractArray, NG::Int, Nmid::Int)
+function g!(F::AbstractArray,x::AbstractArray,C::AbstractVector,K::AbstractArray,xi::AbstractArray,NG::Int,Nmid::Int)
     for j = 1:4
         # Start point
         F[1,j] = x[1,j] - xi[1,j]

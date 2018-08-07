@@ -18,7 +18,6 @@ function nullcline(ps::Array{Float64,1},high2low::Bool)
     # gonna use SymPy here
     # A1(x) = sqrt.((r/f)*(q./((qmin+Q).*x-Qmin) - 1))
     # A2(x) = (1/(kmin+K))*((k*r)./(r+f*x.^2) + Kmin)
-    # A2 fine A1 definetly wrong somehow
     A1(x) = real(sqrt(complex((ps[10]/ps[9])*(ps[4]/((ps[3]+ps[7])*x - ps[8]) - 1))))
     A2(x) = (1/(ps[5]+ps[1]))*((ps[2]*ps[10])/(ps[10]+ps[9]*x^2) + ps[6])
     g(x) = A1(x) - A2(x)

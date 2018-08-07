@@ -39,6 +39,75 @@ function nullcline(ps::Array{Float64,1},high2low::Bool)
     end
     return (ss1,sad,ss2)
 end
+# function to construct the rates
+function rates(A::Int64,B::Int64,k::Float64,K::Float64,q::Float64,Q::Float64,kmin::Float64,
+                Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64,diffs::Bool=false)
+    rates = [ r*k/(r + f*B*(B-1)), kmin*A, K*A, Kmin, r*q/(r + f*A*(A-1)), qmin*B, Q*B, Qmin ]
+    if diffs == false
+        return(rates)
+    else
+        dA = [ 1, -1, -1, 1, 0, 0, 0, 0]
+        dB = [ 0, 0, 0, 0, 1, -1, -1, 1]
+        return(rates,dA,dB)
+    end
+end
+
+# function to calculate the time step
+function timstep(rates::Array{Float64,1})
+    r = rand()
+    τ = -log(r)/sum(rates)
+    return(τ)
+end
+
+# function to advance gillespie one step
+function step(rates::Array{Float64,1},vars::Array{Int64,1})
+    r = rand()
+    rs = rates/sum(rates)
+    if r < rs[1]
+        vars[1] += 1 # A produced
+    elseif r < rs[1] + rs[2]
+        vars[1] -= 1 # A unravels
+    elseif r < rs[1] + rs[2] + rs[3]
+        vars[1] -= 1 # A decays
+    elseif r < rs[1] + rs[2] + rs[3] + rs[4]
+        vars[1] += 1 # A regenerated
+    elseif r < rs[1] + rs[2] + rs[3] + rs[4] + rs[5]
+        vars[2] += 1 # B produced
+    elseif r < rs[1] + rs[2] + rs[3] + rs[4] + rs[5] + rs[6]
+        vars[2] -= 1 # B unravels
+    elseif r < rs[1] + rs[2] + rs[3] + rs[4] + rs[5] + rs[6] + rs[7]
+        vars[2] -= 1 # B decays
+    else
+        vars[2] += 1 # B regenerated
+    end
+    return(vars)
+end
+
+# function to actually run a gillepsie simulation
+function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmin::Float64,
+                    f::Float64,r::Float64,Kmin::Float64,Qmin::Float64,noits::Int64,star::Array{Int64,1},Ω::Int64)
+    # change this so that it uses less memory
+    times = zeros(2)
+    vars = fill(0,2,2)
+    vars[:,2] = star
+    hist = zeros(40*Ω,40*Ω)#(20*Ω,20*Ω)
+    for i = 1:noits
+        vars[:,1] = vars[:,2]
+        times[1] = times[2]
+        # calculate rates
+        rs = rates(vars[1,1],vars[2,1],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        # calculate timestep
+        τ = timstep(rs)
+        # update time
+        times[2] = times[1] + τ
+        # do gillepsie step
+        vars[:,2] = step(rs,vars[:,1])
+        # add to histogram
+        hist[vars[1,1]+1,vars[2,1]+1] += times[2] - times[1]
+    end
+    hist = hist/times[2]
+    return(hist)
+end
 
 # Vector of functions from MAP case
 # ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r ]
@@ -127,8 +196,10 @@ function shannon(point::Array{Float64,1},ps::Array{Float64,1})
     S2 = F2*A2
     S3 = F3*A3
     S4 = F4*A4
-    S = S1 + S2 + S3 + S4
-    return(S,F1,F2,F3,F4,A1,A2,A3,A4)
+    S12 = S1 + S2
+    S34 = S3 + S4
+    S = S12 + S34
+    return(S,S12,S34)
 end
 
 function main()
@@ -196,15 +267,54 @@ function main()
         println("Action2 = $(sum(acts2))")
         # Got actions so can infer stability, now want the steady state entropy productions
         ss1, sad, ss2 = nullcline(ps,false)
-        S1, F11, F12, F13, F14, A11, A12, A13, A14 = shannon(ss1,ps)
-        println("EntProd1 = $(S1)")
-        #println("Fluxes1 = ($(F11),$(F12),$(F13),$(F14))")
-        #println("Affinities1 = ($(A11),$(A12),$(A13),$(A14))")
-        S2, F21, F22, F23, F24, A21, A22, A23, A24 = shannon(ss2,ps)
-        println("EntProd2 = $(S2)")
-        #println("Fluxes2 = ($(F21),$(F22),$(F23),$(F24))")
-        #println("Affinities2 = ($(A21),$(A22),$(A23),$(A24))")
+        S1, S11, S21 = shannon(ss1,ps)
+        println("EntProd1 = $(S1),$(S11),$(S21)")
+        S2, S12, S22 = shannon(ss2,ps)
+        println("EntProd2 = $(S2),$(S12),$(S22)")
+        # now want to find Shannon entropy via Gillespie simulation
+        Ω = 200
+        # rescale parameters
+        ps[2] = ps[2]*Ω
+        ps[4] = ps[4]*Ω
+        ps[6] = ps[6]*Ω
+        ps[8] = ps[8]*Ω
+        ps[9] = ps[9]/(Ω^2)
+        noits = 250000000
+        high = fill(0,2)
+        sad2 = fill(0,2)
+        low = fill(0,2)
+        for i = 1:2
+            high[i] = round(Ω*ss1[i])
+            sad2[i] = round(Ω*sad[i])
+            low[i] = round(Ω*ss2[i])
+        end
+        # ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r ]
+        # ps = [ 1, 2, 3, 4,    5,    6,    7,    8, 9, 10]
+        hist1 = gillespie(ps[1],ps[2],ps[3],ps[4],ps[5],ps[7],ps[9],ps[10],ps[6],ps[8],noits,high,Ω)
+        # now find entropy from this histogram
+        Sh = 0
+        for j = 1:size(hist1,2)
+            for i = 1:size(hist1,1)
+                if hist1[i,j] != 0
+                    Sh -= hist1[i,j]*log(hist1[i,j])
+                end
+            end
+        end
+        println(Sh)
+        hist2 = gillespie(ps[1],ps[2],ps[3],ps[4],ps[5],ps[7],ps[9],ps[10],ps[6],ps[8],noits,low,Ω)
+        # now find entropy from this histogram
+        Sl = 0
+        for j = 1:size(hist2,2)
+            for i = 1:size(hist2,1)
+                if hist2[i,j] != 0
+                    Sl -= hist2[i,j]*log(hist2[i,j])
+                end
+            end
+        end
+        println(Sl)
+        scatter!([Sh,Sl],[S1,S2],legend=false)
     end
+    savefig("../Results/CleverName3.png")
     return(nothing)
 end
 

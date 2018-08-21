@@ -15,7 +15,6 @@ function nullcline(ps::Array{Float64,1},high2low::Bool)
     # gonna use SymPy here
     # A1(x) = sqrt.((r/f)*(q./((qmin+Q).*x-Qmin) - 1))
     # A2(x) = (1/(kmin+K))*((k*r)./(r+f*x.^2) + Kmin)
-    # A2 fine A1 definetly wrong somehow
     A1(x) = real(sqrt(complex((ps[10]/ps[9])*(ps[4]/((ps[3]+ps[7])*x - ps[8]) - 1))))
     A2(x) = (1/(ps[5]+ps[1]))*((ps[2]*ps[10])/(ps[10]+ps[9]*x^2) + ps[6])
     g(x) = A1(x) - A2(x)
@@ -25,6 +24,20 @@ function nullcline(ps::Array{Float64,1},high2low::Bool)
     while three == false
         bs = fzeros(g, 0, 15.0)
         n = length(bs)
+        gs = 0
+        bad = zeros(Int64,0)
+        for i = 1:n
+            # check if this is actual solution and not artifact of the numerical method
+            gs = g(bs[i])
+            tol = 1.0e-14
+            if gs >= 0 + tol || gs <= 0 - tol
+                bad = append!(bad,i)
+            end
+        end
+        if length(bad) != 0
+            n = n - length(bad)
+            bs = deleteat!(bs, bad)
+        end
         if n == 3
             three = true
         end
@@ -37,7 +50,10 @@ function nullcline(ps::Array{Float64,1},high2low::Bool)
         ss1 = [ A1(bs[3]), bs[3] ]
         ss2 = [ A1(bs[1]), bs[1] ]
     end
-    return (ss1,sad,ss2)
+    println(ss1)
+    println(sad)
+    println(ss2)
+    return(ss1,sad,ss2)
 end
 # function to construct the rates
 function rates(A::Int64,B::Int64,k::Float64,K::Float64,q::Float64,Q::Float64,kmin::Float64,
@@ -205,12 +221,12 @@ end
 function main()
     for i = 1:length(ARGS)
         # Assign the first command line argument to a variable called input_file
-        input_file1 = "../Results/0208/$(ARGS[i])1.csv"
-        input_file2 = "../Results/0208/$(ARGS[i])2.csv"
-        input_filep = "../Results/0208/$(ARGS[i])p.csv"
-        points1 = Array{Float64}(0,2)
-        points2 = Array{Float64}(0,2)
-        ps = Array{Float64,1}(0)
+        input_file1 = "../Results/0708/$(ARGS[i])1.csv"
+        input_file2 = "../Results/0708/$(ARGS[i])2.csv"
+        input_filep = "../Results/0708/$(ARGS[i])p.csv"
+        points1 = Array{Float64,2}(undef,0,2)
+        points2 = Array{Float64,2}(undef,0,2)
+        ps = Array{Float64,1}(undef,0)
 
         # Open the input file for reading and close automatically at end
         open(input_file1, "r") do in_file
@@ -219,9 +235,9 @@ function main()
                 # parse line by finding commas
                 comma = 0
                 L = length(line)
-                for i = 1:L
-                    if line[i] == ','
-                        comma = i
+                for j = 1:L
+                    if line[j] == ','
+                        comma = j
                     end
                 end
                 A = parse(Float64, line[1:(comma - 1)])
@@ -236,9 +252,9 @@ function main()
                 # parse line by finding commas
                 comma = 0
                 L = length(line)
-                for i = 1:L
-                    if line[i] == ','
-                        comma = i
+                for j = 1:L
+                    if line[j] == ','
+                        comma = j
                     end
                 end
                 A = parse(Float64, line[1:(comma - 1)])
@@ -283,20 +299,20 @@ function main()
         high = fill(0,2)
         sad2 = fill(0,2)
         low = fill(0,2)
-        for i = 1:2
-            high[i] = round(Ω*ss1[i])
-            sad2[i] = round(Ω*sad[i])
-            low[i] = round(Ω*ss2[i])
+        for j = 1:2
+            high[j] = round(Ω*ss1[j])
+            sad2[j] = round(Ω*sad[j])
+            low[j] = round(Ω*ss2[j])
         end
         # ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r ]
         # ps = [ 1, 2, 3, 4,    5,    6,    7,    8, 9, 10]
         hist1 = gillespie(ps[1],ps[2],ps[3],ps[4],ps[5],ps[7],ps[9],ps[10],ps[6],ps[8],noits,high,Ω)
         # now find entropy from this histogram
         Sh = 0
-        for j = 1:size(hist1,2)
-            for i = 1:size(hist1,1)
-                if hist1[i,j] != 0
-                    Sh -= hist1[i,j]*log(hist1[i,j])
+        for k = 1:size(hist1,2)
+            for j = 1:size(hist1,1)
+                if hist1[j,k] != 0
+                    Sh -= hist1[j,k]*log(hist1[j,k])
                 end
             end
         end
@@ -304,10 +320,10 @@ function main()
         hist2 = gillespie(ps[1],ps[2],ps[3],ps[4],ps[5],ps[7],ps[9],ps[10],ps[6],ps[8],noits,low,Ω)
         # now find entropy from this histogram
         Sl = 0
-        for j = 1:size(hist2,2)
-            for i = 1:size(hist2,1)
-                if hist2[i,j] != 0
-                    Sl -= hist2[i,j]*log(hist2[i,j])
+        for k = 1:size(hist2,2)
+            for j = 1:size(hist2,1)
+                if hist2[j,k] != 0
+                    Sl -= hist2[j,k]*log(hist2[j,k])
                 end
             end
         end

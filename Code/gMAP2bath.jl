@@ -27,6 +27,20 @@ function nullcline(ps::Array{Float64,1},high2low::Bool)
     while three == false
         bs = fzeros(g, 0, 15.0)
         n = length(bs)
+        gs = 0
+        bad = zeros(Int64,0)
+        for i = 1:n
+            # check if this is actual solution and not artifact of the numerical method
+            gs = g(bs[i])
+            tol = 1.0e-14
+            if gs >= 0 + tol || gs <= 0 - tol
+                bad = append!(bad,i)
+            end
+        end
+        if length(bad) != 0
+            n = n - length(bad)
+            bs = deleteat!(bs, bad)
+        end
         if n == 3
             three = true
         end
@@ -42,14 +56,14 @@ function nullcline(ps::Array{Float64,1},high2low::Bool)
     println(ss1)
     println(sad)
     println(ss2)
-    return (ss1,sad,ss2)
+    return(ss1,sad,ss2)
 end
 
 # make a symbolic diffusion matrix
 function Ds()
     A, B, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r = symbols("A B K k Q q kmin Kmin qmin Qmin f r")
     # Make a symbolic version of the matrix, needs no input in this case
-    e = Array{SymEngine.Basic,2}(2,2)
+    e = Array{SymEngine.Basic,2}(undef,2,2)
     e[1,2] = e[2,1] = 0
     e[1,1] = sqrt(k*r/(r + f*B^2) + kmin*A + K*A + Kmin)
     e[2,2] = sqrt(q*r/(r + f*A^2) + qmin*B + Q*B + Qmin)
@@ -74,7 +88,7 @@ end
 function bs()
     A, B, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r = symbols("A B K k Q q kmin Kmin qmin Qmin f r")
     # Make a symbolic version of the matrix, needs no input in this case
-    b = Array{SymEngine.Basic,1}(2)
+    b = Array{SymEngine.Basic,1}(undef,2)
     b[1] = k*r/(r + f*B^2) - kmin*A - K*A + Kmin
     b[2] = q*r/(r + f*A^2) - qmin*B - Q*B + Qmin
     return(b)
@@ -99,7 +113,7 @@ function Hxs()
     A, B = symbols("A B")
     # generate Hamiltonian
     H = Hs()
-    Hx = Array{SymEngine.Basic,1}(2)
+    Hx = Array{SymEngine.Basic,1}(undef,2)
     Hx[1] = diff(H, A)
     Hx[2] = diff(H, B)
     return(Hx)
@@ -110,7 +124,7 @@ function Hθs()
     the1, the2 = symbols("the1 the2")
     # generate Hamiltonian
     H = Hs()
-    Hθ = Array{SymEngine.Basic,1}(2)
+    Hθ = Array{SymEngine.Basic,1}(undef,2)
     Hθ[1] = diff(H, the1)
     Hθ[2] = diff(H, the2)
     return(Hθ)
@@ -121,7 +135,7 @@ function Hθθs()
     the1, the2 = symbols("the1 the2")
     # generate Hamiltonian
     Hθ = Hθs()
-    Hθθ = Array{SymEngine.Basic,2}(2,2)
+    Hθθ = Array{SymEngine.Basic,2}(undef,2,2)
     Hθθ[1,1] = diff(Hθ[1],the1)
     Hθθ[1,2] = diff(Hθ[1],the2)
     Hθθ[2,1] = diff(Hθ[2],the1)
@@ -134,7 +148,7 @@ function Hθxs()
     A, B = symbols("A B")
     # generate Hamiltonian
     Hθ = Hθs()
-    Hθx = Array{SymEngine.Basic,2}(2,2)
+    Hθx = Array{SymEngine.Basic,2}(undef,2,2)
     Hθx[1,1] = diff(Hθ[1],A)
     Hθx[1,2] = diff(Hθ[1],B)
     Hθx[2,1] = diff(Hθ[2],A)
@@ -165,10 +179,10 @@ function ϑs()
     λ = λs()
     Dmin = Dmins()
     b = bs()
-    c = Array{SymEngine.Basic,1}(2)
+    c = Array{SymEngine.Basic,1}(undef,2)
     c[1] = λ*y1 - b[1]
     c[2] = λ*y2 - b[2]
-    ϑ = Array{SymEngine.Basic,1}(2)
+    ϑ = Array{SymEngine.Basic,1}(undef,2)
     ϑ[1] = Dmin[1,1]*c[1] + Dmin[1,2]*c[2]
     ϑ[2] = Dmin[2,1]*c[1] + Dmin[2,2]*c[2]
     return(ϑ)
@@ -241,7 +255,7 @@ function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,
     λs[NG+1] = 0
     # now find ϑs
     ϑs = fill(NaN, NG+1, 2)
-    ϑt = Array{SymEngine.Basic,1}(2)
+    ϑt = Array{SymEngine.Basic,1}(undef,2)
     for j = 1:2
         for i = 2:NG
             ϑt[j] = subs(ϑ[j], A=>x[i,1], B=>x[i,2])
@@ -292,14 +306,14 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     xi = fill(NaN, 3, 2)
     # the fixed points are allowed to vary as both are at zeros
     # Start point
-    Hθt = Array{SymEngine.Basic,1}(2) # temporary hamiltonian so master isn't changed
-    Hxt = Array{SymEngine.Basic,1}(2)
+    Hθt = Array{SymEngine.Basic,1}(undef,2) # temporary hamiltonian so master isn't changed
+    Hxt = Array{SymEngine.Basic,1}(undef,2)
     for i = 1:2
         Hθt[i] = subs(Hθ[i], the1=>0.0, the2=>0.0)
         Hxt[i] = subs(Hx[i], the1=>0.0, the2=>0.0)
     end
-    Hθtt = Array{SymEngine.Basic,1}(2)
-    Hθttt = Array{SymEngine.Basic,1}(2)
+    Hθtt = Array{SymEngine.Basic,1}(undef,2)
+    Hθttt = Array{SymEngine.Basic,1}(undef,2)
     Ht = subs(H, the1=>0.0, the2=>0.0)
     Ht = subs(Ht, A=>x[Nmid,1], B=>x[Nmid,2]) |> float
     # loop to define fixed points
@@ -315,7 +329,7 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
         # End point
         xi[3,i] = Δτ*(Hθt[i]) + x[end,i]
     end
-    Hxθt = Array{SymEngine.Basic,2}(2,2)
+    Hxθt = Array{SymEngine.Basic,2}(undef,2,2)
     # loop to calculate Hxθ
     for j = 1:2
         for i = 1:2
@@ -339,9 +353,9 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     end
     # Make array to store constant vector K's
     K = fill(NaN, NG+1, 2)
-    Hxt = Array{SymEngine.Basic,1}(2)
-    Hθθt = Array{SymEngine.Basic,2}(2,2)
-    Hθxt = Array{SymEngine.Basic,2}(2,2)
+    Hxt = Array{SymEngine.Basic,1}(undef,2)
+    Hθθt = Array{SymEngine.Basic,2}(undef,2,2)
+    Hθxt = Array{SymEngine.Basic,2}(undef,2,2)
     # Put initial values for K in
     for j = 1:2
         for i = 2:NG
@@ -629,12 +643,13 @@ function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,high2low:
     ϑ, λ, Hθ, Hθx, Hθθ, Hx, H = gensyms(ps)
     # First find the steady states and saddle point
     ss1, sad, ss2 = nullcline(ps,high2low)
-    a1 = collect(linspace(ss1[1],sad[1],(NG/2)+1))
-    a2 = collect(linspace(sad[1],ss2[1],(NG/2)+1))
-    a = vcat(a1,a2[2:length(a2)])
-    b1 = collect(linspace(ss1[2],sad[2],(NG/2)+1))
-    b2 = collect(linspace(sad[2],ss2[2],(NG/2)+1))
-    b = vcat(b1,b2[2:length(b2)])
+    len = round(Int64,(NG/2)+1) # must be integer
+    a1 = collect(range(ss1[1],stop=sad[1],length=len))
+    a2 = collect(range(sad[1],stop=ss2[1],length=len))
+    a = vcat(a1,a2[2:end])
+    b1 = collect(range(ss1[2],stop=sad[2],length=len))
+    b2 = collect(range(sad[2],stop=ss2[2],length=len))
+    b = vcat(b1,b2[2:end])
     x = hcat(a,b)
     # Then appropriatly discretise the path such that it works with this algorithm
     prec = 1000
@@ -761,9 +776,9 @@ function main()
     # define flux over high state
     F = convert(BigFloat,10.0)
     Ah = convert(BigFloat,10.0)
-    Al = convert(BigFloat,0.01)
+    Al = convert(BigFloat,1.0)
     Bh = convert(BigFloat,10.1)
-    Bl = convert(BigFloat,0.02)
+    Bl = convert(BigFloat,2.0)
 
     K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r = params(Ah,Al,Bh,Bl,F)
     # put in vector
@@ -774,7 +789,7 @@ function main()
     NM = 600 # number of segments to discretise MAP onto
     NG = 600 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.01#0.001 # I've made this choice arbitarily, too large and the algorithm breaks
+    Δτ = 0.005#0.001 # I've made this choice arbitarily, too large and the algorithm breaks
     high2low = false
     spline = false
 
@@ -804,7 +819,7 @@ function main()
 
     # Block of code to write all this data to a file so I can go through it
     if length(ARGS) >= 1
-        output_file1 = "../Results/0208/$(ARGS[1])1.csv"
+        output_file1 = "../Results/0708/$(ARGS[1])1.csv"
         out_file1 = open(output_file1, "w")
         # open file for writing
         for i = 1:size(path1,1)
@@ -812,7 +827,7 @@ function main()
             write(out_file1, line)
         end
         close(out_file1)
-        output_file2 = "../Results/0208/$(ARGS[1])2.csv"
+        output_file2 = "../Results/0708/$(ARGS[1])2.csv"
         out_file2 = open(output_file2, "w")
         # open file for writing
         for i = 1:size(path2,1)
@@ -820,7 +835,7 @@ function main()
             write(out_file2, line)
         end
         close(out_file2)
-        output_filep = "../Results/0208/$(ARGS[1])p.csv"
+        output_filep = "../Results/0708/$(ARGS[1])p.csv"
         out_filep = open(output_filep, "w")
         # open file for writing
         for i = 1:size(ps,1)

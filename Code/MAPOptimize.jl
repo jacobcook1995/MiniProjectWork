@@ -466,11 +466,12 @@ const inflex = saddle
 const fin = finish
 
 # find saddle points
-const pa1 = collect(linspace(star[1],inflex[1],(N/2)+1))
-const pa2 = collect(linspace(inflex[1],fin[1],(N/2)+1))
+const len = round(Int64,(N/2)+1)
+const pa1 = collect(range(star[1],stop=inflex[1],length=len))
+const pa2 = collect(range(inflex[1],stop=fin[1],length=len))
 const pa = vcat(pa1,pa2[2:length(pa2)])
-const pb1 = collect(linspace(star[2],inflex[2],(N/2)+1))
-const pb2 = collect(linspace(inflex[2],fin[2],(N/2)+1))
+const pb1 = collect(range(star[2],stop=inflex[2],length=len))
+const pb2 = collect(range(inflex[2],stop=fin[2],length=len))
 const pb = vcat(pb1,pb2[2:length(pb2)])
 
 

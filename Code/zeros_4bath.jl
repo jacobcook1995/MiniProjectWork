@@ -32,7 +32,7 @@ function Wdot(x)
 end
 
 function Zeros()
-    g(x) = F./(1 + ((r + f*x.^2)./(ϕ*r + (f/ϕ)*((F/K - x).^2)))) + K.*x - F
+    g(x) = F./(1 .+ ((r .+ f*x.^2)./(ϕ*r .+ (f/ϕ)*((F/K .- x).^2)))) .+ K*x .- F
     three = false
     n = 0
     As = []
@@ -52,10 +52,10 @@ function Zeros()
         Ws[i] = N - As[i] - Bs[i] - Ss[i]
     end
     print("$As,$Bs,$Ws,$Ss\n")
-    vars = [ As Bs Ws Ss]
+    vars = [ As Bs Ws Ss ]
     gr()
     A = 0:0.1:200
-    gs = zeros(N + 1)
+    gs = zeros(round(Int64,N+1))
     gs = g(A)
     plot(A,gs)
     savefig("../Results/GraphZeros.png")

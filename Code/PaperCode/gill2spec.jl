@@ -189,6 +189,24 @@ function main()
     k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f = paras(Ω)
     # use these parameters to generate the steady states
     ss1, sad, ss2 = states(k,kmin,q,qmin,K,Kmin,Q,Qmin,r,f,Ω)
+    # scale starting posisition by volume
+    star = [ 0, 0, 1, 0 ]
+    fin = [ 0, 0, 0, 1 ]
+    for i = 1:2
+        star[i] = round(Int64,ss1[i]*Ω)
+        fin[i] = round(Int64,ss2[i]*Ω)
+    end
+    # Now ready to set the gillespie simulation running
+    noits = 100000000
+    hist = gillespie(K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,star,Ω)
+    hist = dropdims(sum(hist,dims=4),dims=4)
+    hist = dropdims(sum(hist,dims=3),dims=3)
+    histA = dropdims(sum(hist,dims=2),dims=2)
+    bar(histA)
+    savefig("../../Results/SmartName.png")
+    histB = dropdims(sum(hist,dims=1),dims=1)
+    bar(histB)
+    savefig("../../Results/SmartName2.png")
     return(nothing)
 end
 

@@ -35,8 +35,8 @@ end
 
 # Produce nullcline functions to be plotted
 function nullclines(B)
-    A1 = k*r/K./(r+f*B.^a)
-    A2 = (r/f*(q./(Q*B)-1)).^(1/b)
+    A1 = k*r/K./(r.+f*B.^a)
+    A2 = (r/f*(q./(Q*B).-1)).^(1/b)
     return(A1, A2)
 end
 
@@ -82,8 +82,8 @@ function main()
 
     # Set plotting back end
     gr()
-    Aticks = collect(linspace(0,LA,sA))
-    Bticks = collect(linspace(0,LB,sB))
+    Aticks = collect(range(0,stop=LA,length=sA))
+    Bticks = collect(range(0,stop=LB,length=sB))
     # Make heatmap of change in A
     heatmap(Bticks, Aticks, δA, xlabel = "B", ylabel = "A")#, xticks = Bticks, yticks = Aticks)
     plot!(A12, B2, xlim = (0,LA), ylim = (0,LB), legend = false)

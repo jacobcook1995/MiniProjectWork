@@ -18,8 +18,8 @@ import GR # Need this to stop world age plotting error?
 function Ds()
     A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
     # Make a symbolic version of the matrix, needs no input in this case
-    e = Array{SymEngine.Basic,2}(4,4)
-    e[1,2:4] = e[2,1] = e[2,3:4] = e[3,4] = e[4,3] = 0
+    e = Array{SymEngine.Basic,2}(undef,4,4)
+    e[1,2:4] .= e[2,1] = e[2,3] = e[2,4] = e[3,4] = e[4,3] = 0
     e[1,1] = sqrt(k*S*r/(r + f*B^2) + kmin*A + K*A + Kmin*W)
     e[2,2] = sqrt(q*S*r/(r + f*A^2) + qmin*B + Q*B + Qmin*W)
     e[3,1] = -sqrt(k*S*r/(r + f*B^2) + kmin*A)
@@ -50,7 +50,7 @@ end
 function bs()
     A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
     # Make a symbolic version of the matrix, needs no input in this case
-    b = Array{SymEngine.Basic,1}(4)
+    b = Array{SymEngine.Basic,1}(undef,4)
     b[1] = k*S*r/(r + f*B^2) - kmin*A - K*A + Kmin*W
     b[2] = q*S*r/(r + f*A^2) - qmin*B - Q*B + Qmin*W
     b[3] = -k*S*r/(r + f*B^2) - q*S*r/(r + f*A^2) + kmin*A + qmin*B + F
@@ -79,7 +79,7 @@ function Hxs()
     A, B, S, W = symbols("A B S W")
     # generate Hamiltonian
     H = Hs()
-    Hx = Array{SymEngine.Basic,1}(4)
+    Hx = Array{SymEngine.Basic,1}(undef,4)
     Hx[1] = diff(H, A)
     Hx[2] = diff(H, B)
     Hx[3] = diff(H, S)
@@ -92,7 +92,7 @@ function Hθs()
     the1, the2, the3, the4 = symbols("the1 the2 the3 the4")
     # generate Hamiltonian
     H = Hs()
-    Hθ = Array{SymEngine.Basic,1}(4)
+    Hθ = Array{SymEngine.Basic,1}(undef,4)
     Hθ[1] = diff(H, the1)
     Hθ[2] = diff(H, the2)
     Hθ[3] = diff(H, the3)
@@ -105,7 +105,7 @@ function Hθθs()
     the1, the2, the3, the4 = symbols("the1 the2 the3 the4")
     # generate Hamiltonian
     Hθ = Hθs()
-    Hθθ = Array{SymEngine.Basic,2}(4,4)
+    Hθθ = Array{SymEngine.Basic,2}(undef,4,4)
     Hθθ[1,1] = diff(Hθ[1],the1)
     Hθθ[1,2] = diff(Hθ[1],the2)
     Hθθ[1,3] = diff(Hθ[1],the3)
@@ -130,7 +130,7 @@ function Hθxs()
     A, B, S, W = symbols("A B S W")
     # generate Hamiltonian
     Hθ = Hθs()
-    Hθx = Array{SymEngine.Basic,2}(4,4)
+    Hθx = Array{SymEngine.Basic,2}(undef,4,4)
     Hθx[1,1] = diff(Hθ[1],A)
     Hθx[1,2] = diff(Hθ[1],B)
     Hθx[1,3] = diff(Hθ[1],S)
@@ -177,12 +177,12 @@ function ϑs()
     λ = λs()
     Dmin = Dmins()
     b = bs()
-    c = Array{SymEngine.Basic,1}(4)
+    c = Array{SymEngine.Basic,1}(undef,4)
     c[1] = λ*y1 - b[1]
     c[2] = λ*y2 - b[2]
     c[3] = λ*y3 - b[3]
     c[4] = λ*y4 - b[4]
-    ϑ = Array{SymEngine.Basic,1}(4)
+    ϑ = Array{SymEngine.Basic,1}(undef,4)
     ϑ[1] = Dmin[1,1]*c[1] + Dmin[1,2]*c[2] + Dmin[1,3]*c[3] + Dmin[1,4]*c[4]
     ϑ[2] = Dmin[2,1]*c[1] + Dmin[2,2]*c[2] + Dmin[2,3]*c[3] + Dmin[2,4]*c[4]
     ϑ[3] = Dmin[3,1]*c[1] + Dmin[3,2]*c[2] + Dmin[3,3]*c[3] + Dmin[3,4]*c[4]
@@ -381,7 +381,7 @@ function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,
     λs[NG+1] = 0
     # now find ϑs
     ϑs = fill(NaN, NG+1, 4)
-    ϑt = Array{SymEngine.Basic,1}(4)
+    ϑt = Array{SymEngine.Basic,1}(undef,4)
     for j = 1:4
         for i = 2:NG
             ϑt[j] = subs(ϑ[j], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
@@ -432,14 +432,14 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     xi = fill(NaN, 3, 4)
     # the fixed points are allowed to vary as both are at zeros
     # Start point
-    Hθt = Array{SymEngine.Basic,1}(4) # temporary hamiltonian so master isn't changed
-    Hxt = Array{SymEngine.Basic,1}(4)
+    Hθt = Array{SymEngine.Basic,1}(undef,4) # temporary hamiltonian so master isn't changed
+    Hxt = Array{SymEngine.Basic,1}(undef,4)
     for i = 1:4
         Hθt[i] = subs(Hθ[i], the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
         Hxt[i] = subs(Hx[i], the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
     end
-    Hθtt = Array{SymEngine.Basic,1}(4)
-    Hθttt = Array{SymEngine.Basic,1}(4)
+    Hθtt = Array{SymEngine.Basic,1}(undef,4)
+    Hθttt = Array{SymEngine.Basic,1}(undef,4)
     Ht = subs(H, the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
     Ht = subs(Ht, A=>x[Nmid,1], B=>x[Nmid,2], S=>x[Nmid,3], W=>x[Nmid,4]) |> float
     # loop to define fixed points
@@ -455,7 +455,7 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
         # End point
         xi[3,i] = Δτ*(Hθt[i]) + x[end,i]
     end
-    Hxθt = Array{SymEngine.Basic,2}(4,4)
+    Hxθt = Array{SymEngine.Basic,2}(undef,4,4)
     # loop to calculate Hxθ
     for j = 1:4
         for i = 1:4
@@ -479,9 +479,9 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     end
     # Make array to store constant vector K's
     K = fill(NaN, NG+1, 4)
-    Hxt = Array{SymEngine.Basic,1}(4)
-    Hθθt = Array{SymEngine.Basic,2}(4,4)
-    Hθxt = Array{SymEngine.Basic,2}(4,4)
+    Hxt = Array{SymEngine.Basic,1}(undef,4)
+    Hθθt = Array{SymEngine.Basic,2}(undef,4,4)
+    Hθxt = Array{SymEngine.Basic,2}(undef,4,4)
     # Put initial values for K in
     for j = 1:4
         for i = 2:NG
@@ -523,17 +523,17 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int,NG::Int,Nmid::Int,Δ�
 
     # Now generate an initial path to optimize over
     ss1, sad, ss2 = nullcline(F,r,f,K,Q,k,q,kmin,qmin,high2low,Ne)
-    a1 = collect(linspace(ss1[1],sad[1],Nmid))
-    a2 = collect(linspace(sad[1],ss2[1],NG+2-Nmid))
+    a1 = collect(range(ss1[1],stop=sad[1],length=Nmid))
+    a2 = collect(range(sad[1],stop=ss2[1],length=NG+2-Nmid))
     a = vcat(a1,a2[2:length(a2)])
-    b1 = collect(linspace(ss1[2],sad[2],Nmid))
-    b2 = collect(linspace(sad[2],ss2[2],NG+2-Nmid))
+    b1 = collect(range(ss1[2],stop=sad[2],length=Nmid))
+    b2 = collect(range(sad[2],stop=ss2[2],length=NG+2-Nmid))
     b = vcat(b1,b2[2:length(b2)])
-    s1 = collect(linspace(ss1[3],sad[3],Nmid))
-    s2 = collect(linspace(sad[3],ss2[3],NG+2-Nmid))
+    s1 = collect(range(ss1[3],stop=sad[3],length=Nmid))
+    s2 = collect(range(sad[3],stop=ss2[3],length=NG+2-Nmid))
     s = vcat(s1,s2[2:length(s2)])
-    w1 = collect(linspace(ss1[4],sad[4],Nmid))
-    w2 = collect(linspace(sad[4],ss2[4],NG+2-Nmid))
+    w1 = collect(range(ss1[4],stop=sad[4],length=Nmid))
+    w2 = collect(range(sad[4],stop=ss2[4],length=NG+2-Nmid))
     w = vcat(w1,w2[2:length(w2)])
     x = hcat(a,b,s,w)
 
@@ -543,11 +543,10 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int,NG::Int,Nmid::Int,Δ�
     # Set up method to tell if is converged
     convrg = false
     l = 0
-    gr()
     xold = x
     while convrg == false
-        @time x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG,Nmid)
-        @time newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG,Nmid,H)
+        x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG,Nmid)
+        newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG,Nmid,H)
         xn = discretise(newx.zero,NG,Nmid)
         S = Ŝ(xn,xprim,λs,ϑs,λprim,NG)
         print("$(sum(S))\n")

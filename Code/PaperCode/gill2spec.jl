@@ -130,24 +130,37 @@ function step!(rates::Array{Float64,1},vars::Array{Int64,1})
         vars[2] += 1 # B regenerated
     elseif r < sum(rs[1:9])
         vars[3] += 1 # promotor a unbinds
+        vars[2] += 2 # relasing 2 B
     elseif r < sum(rs[1:10])
         vars[4] += 1 # promotor b unbinds
+        vars[1] += 2 # releasing two A
     elseif r < sum(rs[1:11])
         vars[3] -= 1 # promotor a binds
+        vars[2] -= 2 # bound by 2 B
     else
         vars[4] -= 1 # promotor b binds
+        vars[1] -= 2 # bound by 2 A
     end
     return(vars) # there's always the potential of inverting this to speed the code up
 end
 
 # function to actually run a gillepsie simulation
 function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmin::Float64,
-                    f::Float64,r::Float64,Kmin::Float64,Qmin::Float64,noits::Int64,star::Array{Int64,1},Ω::Int64)
-    # change this so that it uses less memory
+                    f::Float64,r::Float64,Kmin::Float64,Qmin::Float64,noits::Int64,star::Array{Int64,1},
+                    Ω::Int64,fin::Array{Int64,1})
+    # define high A and high B states for comparison
+    hA = star[1]
+    hB = fin[2]
+    # set bool as being in high A state initially
+    highA = true
+    # make vector to store waiting times
+    wA = Array{Float64,1}(undef,0)
+    wB = Array{Float64,1}(undef,0)
+    tp = 0 # prior time
     times = zeros(2)
     vars = fill(0,4,2)
     vars[:,2] = star
-    hist = zeros(40*Ω,40*Ω,2,2)#(20*Ω,20*Ω)
+    hist = zeros(25*Ω,25*Ω,2,2)
     for i = 1:noits
         vars[:,1] = vars[:,2]
         times[1] = times[2]
@@ -161,9 +174,175 @@ function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmi
         vars[:,2] = step!(rs,vars[:,1])
         # add to histogram
         hist[vars[1,1]+1,vars[2,1]+1,vars[3,1]+1,vars[4,1]+1] += times[2] - times[1]
+        # now step to check if transistion has occurred
+        if vars[1,2] >= hA && highA == false
+            highA = true
+            wB = vcat(wB,times[2]-tp)
+            tp = times[2]
+        elseif vars[2,2] >= hB && highA == true # inefficent
+            highA = false
+            wA = vcat(wA,times[2]-tp)
+            tp = times[2]
+        end
     end
     hist = hist/times[2]
-    return(hist)
+    return(hist,wA,wB,times[2])
+end
+
+# function to printout my data
+function printout(hist::Array{Float64,4},wA::Array{Float64,1},wB::Array{Float64,1},Time::Float64)
+    if isfile("../Results/wA$(ARGS[1])V$(ARGS[2]).csv")
+        # if file already exists should add to bottom of it
+        output_file = "../Results/wA$(ARGS[1])V$(ARGS[2]).csv"
+        out_file = open(output_file, "a")
+        for i = 1:size(wA,1)
+            line = "$(wA[i])\n"
+            write(out_file,line)
+        end
+        close(out_file)
+    else
+        # if file doesn't exist should make it
+        output_file = "../Results/wA$(ARGS[1])V$(ARGS[2]).csv"
+        out_file = open(output_file, "w")
+        for i = 1:size(wA,1)
+            line = "$(wA[i])\n"
+            write(out_file,line)
+        end
+        close(out_file)
+    end
+    if isfile("../Results/wB$(ARGS[1])V$(ARGS[2]).csv")
+        # if file already exists should add to bottom of it
+        output_file = "../Results/wB$(ARGS[1])V$(ARGS[2]).csv"
+        out_file = open(output_file, "a")
+        for i = 1:size(wB,1)
+            line = "$(wB[i])\n"
+            write(out_file,line)
+        end
+        close(out_file)
+    else
+        # if file doesn't exist should make it
+        output_file = "../Results/wB$(ARGS[1])V$(ARGS[2]).csv"
+        out_file = open(output_file, "w")
+        for i = 1:size(wB,1)
+            line = "$(wB[i])\n"
+            write(out_file,line)
+        end
+        close(out_file)
+    end
+    # histogram is more tricky as have to represent 4D array as a 2D text file
+    if isfile("../Results/hist$(ARGS[1])V$(ARGS[2]).csv")
+        # need to read in old file and then add new histogram to it and then output
+        input_file = "../Results/hist$(ARGS[1])V$(ARGS[2]).csv"
+        vol = convert(Int64,(countlines(input_file)/4) - 1.5)
+        histr = Array{Float64,4}(undef,vol,vol,2,2)
+        a = 0
+        i = 1
+        j = 1
+        k = 1
+        l = 1
+        T = 0
+        open(input_file, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            for line in eachline(in_file)
+                # parse line by finding commas
+                if line[1] == '#'
+                    a += 1
+                    i = 1
+                    j = 1
+                    if l == 1 && a != 1
+                        l = 2
+                    elseif a != 1
+                        l = 1
+                        k = 2
+                    end
+                else
+                    if a == 5
+                        T = parse(Float64,line)
+                    else
+                        # need to think about how to do the parsing here
+                        L = length(line)
+                        comma = fill(0,vol+1)
+                        j = 1
+                        for i = 1:L
+                            if line[i] == ','
+                                j += 1
+                                comma[j] = i
+                            end
+                        end
+                        comma[end] = L+1
+                        for j = 1:vol
+                            histr[i,j,k,l] = parse(Float64,line[(comma[j]+1):(comma[j+1]-1)])
+                        end
+                        i += 1
+                    end
+                end
+            end
+        end
+        hist = (Time*hist .+ T*histr)/(T + Time)
+        # update time to include time of new run
+        Time += T
+    end
+    # if file doesn't exist should make it
+    output_file = "../Results/hist$(ARGS[1])V$(ARGS[2]).csv"
+    out_file = open(output_file, "w")
+    line = "# (0-0) #\n"
+    write(out_file,line)
+    for i = 1:size(hist,1)
+        line = ""
+        for j = 1:size(hist,2)
+            line *= "$(hist[i,j,1,1]),"
+        end
+        # remove surplus ,
+        line = line[1:end-1]
+        # add a new line
+        line *= "\n"
+        write(out_file,line)
+    end
+    line = "# (0-1) #\n"
+    write(out_file,line)
+    for i = 1:size(hist,1)
+        line = ""
+        for j = 1:size(hist,2)
+            line *= "$(hist[i,j,1,2]),"
+        end
+        # remove surplus ,
+        line = line[1:end-1]
+        # add a new line
+        line *= "\n"
+        write(out_file,line)
+    end
+    line = "# (1-0) #\n"
+    write(out_file,line)
+    for i = 1:size(hist,1)
+        line = ""
+        for j = 1:size(hist,2)
+            line *= "$(hist[i,j,2,1]),"
+        end
+        # remove surplus ,
+        line = line[1:end-1]
+        # add a new line
+        line *= "\n"
+        write(out_file,line)
+    end
+    line = "# (1-1) #\n"
+    write(out_file,line)
+    for i = 1:size(hist,1)
+        line = ""
+        for j = 1:size(hist,2)
+            line *= "$(hist[i,j,2,2]),"
+        end
+        # remove surplus ,
+        line = line[1:end-1]
+        # add a new line
+        line *= "\n"
+        write(out_file,line)
+    end
+    line = "# Time #\n"
+    write(out_file,line)
+    line = "$(Time)\n"
+    write(out_file,line)
+    close(out_file)
+    return(nothing)
 end
 
 function main()
@@ -197,16 +376,18 @@ function main()
         fin[i] = round(Int64,ss2[i]*Ω)
     end
     # Now ready to set the gillespie simulation running
-    noits = 100000000
-    hist = gillespie(K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,star,Ω)
-    hist = dropdims(sum(hist,dims=4),dims=4)
-    hist = dropdims(sum(hist,dims=3),dims=3)
-    histA = dropdims(sum(hist,dims=2),dims=2)
-    bar(histA)
-    savefig("../../Results/SmartName.png")
-    histB = dropdims(sum(hist,dims=1),dims=1)
-    bar(histB)
-    savefig("../../Results/SmartName2.png")
+    noits = 1000000000#0
+    hist, wA, wB, T = gillespie(K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,star,Ω,fin)
+    # now printout
+    printout(hist,wA,wB,T)
+    ps = [ k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f, Ω ]
+    output_file = "../Results/ps$(ARGS[1])V$(ARGS[2]).csv"
+    out_file = open(output_file, "w")
+    for i = 1:length(ps)
+        line = "$(ps[i])\n"
+        write(out_file,line)
+    end
+    close(out_file)
     return(nothing)
 end
 

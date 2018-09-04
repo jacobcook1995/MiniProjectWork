@@ -346,6 +346,7 @@ function printout(hist::Array{Float64,4},wA::Array{Float64,1},wB::Array{Float64,
 end
 
 function main()
+    println("Compiled, Starting script.")
     # First check that an argument for naming has been provided
     if length(ARGS) == 0
         println("Error: Need to provide an argument to name output with.")
@@ -376,7 +377,7 @@ function main()
         fin[i] = round(Int64,ss2[i]*Ω)
     end
     # Now ready to set the gillespie simulation running
-    noits = 1000000000#0
+    noits = 50000000000
     hist, wA, wB, T = gillespie(K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,star,Ω,fin)
     # now printout
     printout(hist,wA,wB,T)

@@ -51,6 +51,11 @@ function main()
             wB[i] = parse(Float64,line)
         end
     end
+    # histogram(wA)
+    # savefig("../Results/wA.png")
+    # histogram(wB)
+    # savefig("../Results/wB.png")
+    println(length(wA))
     return(nothing)
 end
 

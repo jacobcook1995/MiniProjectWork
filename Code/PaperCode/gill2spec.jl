@@ -82,6 +82,7 @@ function states(k::Float64,kmin::Float64,q::Float64,qmin::Float64,K::Float64,Kmi
     println(ss1)
     println(sad)
     println(ss2)
+    flush(stdout) # needed to ensure output prints when using nohup
     return(ss1,sad,ss2)
 end
 
@@ -347,6 +348,7 @@ end
 
 function main()
     println("Compiled, Starting script.")
+    flush(stdout)
     # First check that an argument for naming has been provided
     if length(ARGS) == 0
         println("Error: Need to provide an argument to name output with.")
@@ -377,7 +379,7 @@ function main()
         fin[i] = round(Int64,ss2[i]*Ω)
     end
     # Now ready to set the gillespie simulation running
-    noits = 50000000000
+    noits = 10000000000
     hist, wA, wB, T = gillespie(K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,noits,star,Ω,fin)
     # now printout
     printout(hist,wA,wB,T)

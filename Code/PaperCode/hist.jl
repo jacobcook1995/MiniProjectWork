@@ -9,6 +9,56 @@
 using Plots
 import GR # this is necessary to avoid a world age error when using GR in function
 
+# function to open my 4D histogram
+function openhist(input_file::String)
+    vol = convert(Int64,(countlines(input_file)/4) - 1.5)
+    hist = Array{Float64,4}(undef,vol,vol,2,2)
+    a = 0
+    i = 1
+    j = 1
+    k = 1
+    l = 1
+    T = 0
+    open(input_file, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        for line in eachline(in_file)
+            # parse line by finding commas
+            if line[1] == '#'
+                a += 1
+                i = 1
+                j = 1
+                if l == 1 && a != 1
+                    l = 2
+                elseif a != 1
+                    l = 1
+                    k = 2
+                end
+            else
+                if a == 5
+                    T = parse(Float64,line)
+                else
+                    # need to think about how to do the parsing here
+                    L = length(line)
+                    comma = fill(0,vol+1)
+                    j = 1
+                    for i = 1:L
+                        if line[i] == ','
+                            j += 1
+                            comma[j] = i
+                        end
+                    end
+                    comma[end] = L+1
+                    for j = 1:vol
+                        hist[i,j,k,l] = parse(Float64,line[(comma[j]+1):(comma[j+1]-1)])
+                    end
+                    i += 1
+                end
+            end
+        end
+    end
+    return(hist)
+end
+
 function main()
     # First check that an argument for naming has been provided
     if length(ARGS) == 0
@@ -29,10 +79,10 @@ function main()
         end
     end
     # define file names to read in
-    input_wA = "../Results/wA$(ARGS[1])V$(ARGS[2]).csv"
-    input_wB = "../Results/wB$(ARGS[1])V$(ARGS[2]).csv"
-    input_ps = "../Results/ps$(ARGS[1])V$(ARGS[2]).csv"
-    input_hist = "../Results/hist$(ARGS[1])V$(ARGS[2]).csv"
+    input_wA = "../Data/wA$(ARGS[1])V$(ARGS[2]).csv"
+    input_wB = "../Data/wB$(ARGS[1])V$(ARGS[2]).csv"
+    input_ps = "../Data/ps$(ARGS[1])V$(ARGS[2]).csv"
+    input_hist = "../Data/hist$(ARGS[1])V$(ARGS[2]).csv"
     lwA = countlines(input_wA)
     wA = zeros(lwA)
     i = 0
@@ -51,11 +101,18 @@ function main()
             wB[i] = parse(Float64,line)
         end
     end
-    # histogram(wA)
-    # savefig("../Results/wA.png")
-    # histogram(wB)
-    # savefig("../Results/wB.png")
+    histogram(wA,nbins=250)
+    savefig("../Results/wA.png")
+    histogram(wB,nbins=250)
+    savefig("../Results/wB.png")
     println(length(wA))
+    # read in histogram
+    hist = openhist(input_hist)
+    # sum over promotor dimensions
+    hist = dropdims(sum(hist,dims=4),dims=4)
+    hist = dropdims(sum(hist,dims=3),dims=3)
+    heatmap(hist)
+    savefig("../Results/HeatMap.png")
     return(nothing)
 end
 

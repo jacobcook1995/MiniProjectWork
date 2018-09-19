@@ -13,7 +13,8 @@ import GR
 
 # function to find nullclines
 # ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, N ]
-function nullcline()
+# maxr = range to look over, δ step size in this range
+function nullcline(ps::Array{Float64,1},maxr::Float64,δ::Float64)
     # define symbols
     A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, N = symbols("A,B,S,W,K k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,N")
     # equation for S
@@ -37,29 +38,11 @@ function nullcline()
     dA = (k*S*r)/(r + f*B^2) - kmin*A - K*A + Kmin*W
     # sub in B, S and W expressions
     dA = subs(dA,B=>Be,S=>Se,W=>We)
-    # [1.12702, 8.87298, 15.0, 125.0]
-    # [5.0, 5.0, 26.25, 113.75]
-    # [8.87298, 1.12702, 15.0, 125.0]
-    # now sub all parameters into dA
-    Ω = 60 # system size, this is just a fudge to get my Euler-Maruyama algorithm (later) to work
-    Ki = 1
-    ki = 1
-    Qi = 1
-    qi = 11/15
-    kmini = 0.5 # now reverse creation is an important process
-    qmini = 0.1
-    fi = 1000/((Ω/60)^2) # Promoter switching
-    ri = 10000
-    Fi = 10*(Ω/60)
-    Kmini = 10.0^-3 # remains neligible though
-    Qmini = 10.0^-3
-    Ni = 150*(Ω/60)
-    ps = [ Ki, ki, Qi, qi, kmini, Kmini, qmini, Qmini, fi, ri, Fi, Ni ]
+    # then sub in parameters
     dA = subs(dA,K=>ps[1],k=>ps[2],Q=>ps[3],q=>ps[4],kmin=>ps[5],Kmin=>ps[6],qmin=>ps[7])
     dA = subs(dA,Qmin=>ps[8],f=>ps[9],r=>ps[10],F=>ps[11],N=>ps[12])
     # now find three stationary points in A
     guess = 0
-    δ = 0.1
     three = false
     As = Array{Float64,1}(undef,0)
     n = 0
@@ -74,7 +57,7 @@ function nullcline()
             three = true
         end
         guess += δ
-        if guess >= 10.0
+        if guess >= maxr
             println("Could not find three stationary points in range (0,$(guess)) with step $(δ)")
             println(As)
             error()
@@ -106,4 +89,24 @@ function nullcline()
     return(ss1,sad,ss2)
 end
 
-@time nullcline()
+function main()
+    # General parameters
+    Ω = 60 # system size, this is just a fudge to get my Euler-Maruyama algorithm (later) to work
+    K = 1.0
+    k = 1.0
+    Q = 1.0
+    q = 11.0/15
+    kmin = 0.5 # now reverse creation is an important process
+    qmin = 0.1
+    f = 1.0/((Ω/60)^2) # Promoter switching
+    r = 10.0
+    F = 10.0*(Ω/60)
+    Kmin = 10.0^-10 # remains neligable though
+    Qmin = 10.0^-10
+    N = 150.0*(Ω/60)
+    ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, N ]
+    nullcline(ps,10.0,0.1)
+    return(nothing)
+end
+
+@time main()

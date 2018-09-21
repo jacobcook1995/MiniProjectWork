@@ -24,8 +24,13 @@ function nullcline(ps::Array{Float64,1},high2low::Bool)
     three = false
     n = 0
     bs = []
+    q = ps[4]
+    Q = ps[3]
     while three == false
-        bs = fzeros(g, 0, 15.0)
+        bs1 = fzeros(g, 0.0, 0.1) # catches zeros about the origin
+        bs2 = fzeros(g, 0.1, 2*q/Q) # the upper bound here is potentially problematic
+        bs = vcat(bs1,bs2)
+        # bs = fzeros(g, 0, 15.0)
         n = length(bs)
         gs = 0
         bad = zeros(Int64,0)
@@ -745,29 +750,43 @@ function timdis(ts::AbstractVector,x::AbstractArray,NG::Int64,NM::Int64)
 end
 
 function params(Ah::BigFloat,Al::BigFloat,Bh::BigFloat,Bl::BigFloat,F::BigFloat)
-    Q = Qmin = K = Kmin = k = kmin = qmin = q = r = f = convert(BigFloat,0.0)
-    Q = F/(Bh - Bl)
-    Qmin = Q*Bl
-    K = F/(Ah - Al)
-    Kmin = K*Al
-    correct = false
-    l = 0
-    while correct == false
-        r = 10000*rand()
-        f = 10000*rand()
-        r1 = ((1/(r + f*Bl^2))-(1/(r + f*Bh^2)))/((1/(r + f*Bl^2))+(1/(r + f*Bh^2)))
-        kmin = F*(1-r1)/((Ah+Al)*r1 - Ah + Al)
-        k = (F + kmin*(Ah+Al))/(r*(1/(r + f*Bl^2) + 1/(r + f*Bh^2)))
-        r2 = ((1/(r + f*Al^2))-(1/(r + f*Ah^2)))/((1/(r + f*Al^2))+(1/(r + f*Ah^2)))
-        qmin = F*(1-r2)/((Bh+Bl)*r2 - Bh + Bl)
-        q = (F + qmin*(Bh+Bl))/(r*(1/(r + f*Al^2) + 1/(r + f*Ah^2)))
-        if kmin > 0 && k > 0 && qmin > 0 && q > 0
-            correct = true
-            println("$(l+1) attempts to generate parameters")
-        else
-            l += 1
-        end
-    end
+    # just gonna hard code some in for the moment
+    # EDIT EDIT EDIT EDIT EDIT EDIT EDIT EDIT EDIT EDIT EDIT EDIT EDIT EDIT
+    Ω = 2
+    k = 10.0
+    kmin = 0.1
+    q = 5.0
+    qmin = 0.1
+    K = 1.0
+    Kmin = 0.01
+    Q = 0.5
+    Qmin = 0.01
+    r = 1000.0
+    f = 10000.0
+
+    # Q = Qmin = K = Kmin = k = kmin = qmin = q = r = f = convert(BigFloat,0.0)
+    # Q = F/(Bh - Bl)
+    # Qmin = Q*Bl
+    # K = F/(Ah - Al)
+    # Kmin = K*Al
+    # correct = false
+    # l = 0
+    # while correct == false
+    #     r = 10000*rand()
+    #     f = 10000*rand()
+    #     r1 = ((1/(r + f*Bl^2))-(1/(r + f*Bh^2)))/((1/(r + f*Bl^2))+(1/(r + f*Bh^2)))
+    #     kmin = F*(1-r1)/((Ah+Al)*r1 - Ah + Al)
+    #     k = (F + kmin*(Ah+Al))/(r*(1/(r + f*Bl^2) + 1/(r + f*Bh^2)))
+    #     r2 = ((1/(r + f*Al^2))-(1/(r + f*Ah^2)))/((1/(r + f*Al^2))+(1/(r + f*Ah^2)))
+    #     qmin = F*(1-r2)/((Bh+Bl)*r2 - Bh + Bl)
+    #     q = (F + qmin*(Bh+Bl))/(r*(1/(r + f*Al^2) + 1/(r + f*Ah^2)))
+    #     if kmin > 0 && k > 0 && qmin > 0 && q > 0
+    #         correct = true
+    #         println("$(l+1) attempts to generate parameters")
+    #     else
+    #         l += 1
+    #     end
+    # end
     return(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r)
 end
 
@@ -819,7 +838,7 @@ function main()
 
     # Block of code to write all this data to a file so I can go through it
     if length(ARGS) >= 1
-        output_file1 = "../Results/0708/$(ARGS[1])1.csv"
+        output_file1 = "../Results/1809/$(ARGS[1])1.csv"
         out_file1 = open(output_file1, "w")
         # open file for writing
         for i = 1:size(path1,1)
@@ -827,7 +846,7 @@ function main()
             write(out_file1, line)
         end
         close(out_file1)
-        output_file2 = "../Results/0708/$(ARGS[1])2.csv"
+        output_file2 = "../Results/1809/$(ARGS[1])2.csv"
         out_file2 = open(output_file2, "w")
         # open file for writing
         for i = 1:size(path2,1)
@@ -835,7 +854,7 @@ function main()
             write(out_file2, line)
         end
         close(out_file2)
-        output_filep = "../Results/0708/$(ARGS[1])p.csv"
+        output_filep = "../Results/1809/$(ARGS[1])p.csv"
         out_filep = open(output_filep, "w")
         # open file for writing
         for i = 1:size(ps,1)

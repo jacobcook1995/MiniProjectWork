@@ -16,7 +16,7 @@ const k2 = 1.0 # k_{+2}
 const K2 = 1.0 # k_{-2}
 const B = 4.0
 const V = 20
-const high2low = true # Set if starting from high state or low state
+# const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
 const N = 150 # number of segments optimised over
@@ -83,17 +83,24 @@ function Pathdiv(path)
 end
 
 # function to recombine paths into a plotable form
-function Pathmerge(nonfixed)
+function Pathmerge(nonfixed,high2low::Bool)
     # Should now try to reconstruct the paths
+    if high2low == true
+        star = start
+        fin = fint
+    else
+        star = starf
+        fin = finf
+    end
     apath = nonfixed[1:N-1]
     push!(apath,fin) # This should all go in a function if it's repeated
-    unshift!(apath,star)
+    pushfirst!(apath,star)
     return(apath)
 end
 
 # A function to find the crossing points of the nullclines so they can be used
 # as start, end and saddle points
-function nullcline()
+function nullcline(high2low::Bool)
     # write out equation to be solved
     f(x) = k1 - K1*x - k2*(x^3) + K2*B*(x^2)
     three = false
@@ -119,63 +126,79 @@ function nullcline()
     return(ss1,sad,ss2)
 end
 
-function AP(thi, tau) # function to calculate action of a given path
+function AP(thi,tau,high2low::Bool) # function to calculate action of a given path
+    if high2low == true
+        star1 = start
+        fin1 = fint
+    else
+        star1 = starf
+        fin1 = finf
+    end
     deltat = tau/N # N segements making up the path, each of equal time
     S = 0 # initialise as zero
 
     # make an initial d and f
     d = 0.0
     h = 0.0
-
     for i = 1:N
         if i == 1
-            posX = (thi[1] + star)/2
+            posX = (thi[1] + star1)/2
         elseif i == N
-            posX = (fin + thi[N-1])/2
+            posX = (fin1 + thi[N-1])/2
         else
             posX = (thi[i] + thi[i-1])/2
         end
         h = f!(h, posX)
         d = D!(d, posX)
-        # Here Here Here Here Here Here Here Here Here Here Here Here Here Here Here
         if i == 1
-            thiv = (thi[1] - star)/deltat
+            thiv = (thi[1] - star1)/deltat
         elseif i == N
-            thiv = (fin - thi[(N-1)])/deltat
+            thiv = (fin1 - thi[(N-1)])/deltat
         else
             thiv = (thi[i] - thi[i-1])/deltat
         end
         S += (0.5*deltat/d)*((thiv-h)^2)
+        # crude way of disfavouring negative region
+        if i != N && thi[i] < 0.0
+            S += 100000000000000000000
+        end
     end
     return(S)
 end
 
 # Should now write a function for the gradient to be used for the iteration
-function g!(grads, thi, tau)
+function g!(grads,thi,tau,high2low::Bool)
+    if high2low == true
+        star1 = start
+        fin1 = fint
+    else
+        star1 = starf
+        fin1 = finf
+    end
     deltat = tau/N
     # probably best to pre-calculate the all the f vectors and D matrices
-    fu = zeros(1,N)
-    fux = zeros(1,N)
-    d = zeros(1,1,N)
-    d2 = zeros(1,1,N)
-    dx = zeros(1,1,N)
-    thidot = zeros(1,N)
+    fu = zeros(N)
+    fux = zeros(N)
+    d = zeros(N)
+    d2 = zeros(N)
+    dx = zeros(N)
+    thidot = zeros(N)
     for i = 1:N
         if i == 1
-            posX = (thi[1] + star)/2
-            thidot[i] = (thi[i] - star)/deltat
+            posX = (thi[1] + star1)/2
+            thidot[i] = (thi[i] - star1)/deltat
         elseif i == N
-            posX = (fin + thi[N-1])/2
-            thidot[i] = (fin - thi[N-1])/deltat
+            posX = (fin1 + thi[N-1])/2
+            thidot[i] = (fin1 - thi[N-1])/deltat
         else
             posX = (thi[i] + thi[i-1])/2
             thidot[i] = (thi[i] - thi[i-1])/deltat
         end
-        fu[:,i] = f!(fu[:,i], posX)
-        fux[:,i] = fX!(fux[:,i], posX)
-        d[:,:,i] = D!(d[:,:,i], posX)
-        d2[:,:,i] = D2!(d2[:,:,i], posX)
-        dx[:,:,i] = DX!(dx[:,:,i], posX)
+        fu[i] = f!(fu[i], posX)
+        fux[i] = fX!(fux[i], posX)
+        d[i] = D!(d[i], posX)
+        d2[i] = D2!(d2[i], posX)
+        dx[i] = DX!(dx[i], posX)
     end
 
     for i = 1:N-1
@@ -192,13 +215,9 @@ function g!(grads, thi, tau)
 end
 
 # function to actually perform the optimisation
-function optSt(nonfixed,tau)
-    lower = zeros(N-1) # No species can drop below zero
-    upper = 1000.0*ones(N-1) # No species can have more than the total amount in the system
+function optSt(nonfixed,tau,high2low::Bool)
     initial_x = nonfixed
-    od = OnceDifferentiable(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), initial_x)
-    results = optimize(od, initial_x, lower, upper, Fminbox{LBFGS}(), allow_f_increases = true,
-                        iterations = 10000, g_tol = 0.0, f_tol = 0.0, x_tol = 0.0)
+    results = optimize(f -> AP(f,tau,high2low), (grads, f) -> g!(grads,f,tau,high2low), initial_x, LBFGS())
     # Get results out of optimiser
     result = Optim.minimizer(results)
     S = Optim.minimum(results)
@@ -206,18 +225,22 @@ function optSt(nonfixed,tau)
 end
 
 # This function runs the optimisation multiple times in the hope of reducing the ruggedness of the action landscape
-function optSt2(tau,noit)
-    notfixed = Pathdiv(thi1)
-    result, S = optSt(notfixed, tau) # generate standard path
-    for i = 2:noit
-        result, S = optSt(result, tau)
+function optSt2(tau,noit,high2low::Bool)
+    if high2low == true
+        notfixed = Pathdiv(thi1t)
+    else
+        notfixed = Pathdiv(thi1f)
     end
-    pathfin = Pathmerge(result)
+    result, S = optSt(notfixed,tau,high2low) # generate standard path
+    for i = 2:noit
+        result, S = optSt(result,tau,high2low)
+    end
+    pathfin = Pathmerge(result,high2low)
     return(pathfin, S)
 end
 
 # A function to run a linesearch
-function linesear(tau,noit)
+function linesear(tau,noit,high2low)
     k = 0 # initialise counter
     t = tau
     α = 4.0
@@ -225,9 +248,9 @@ function linesear(tau,noit)
     while true
         h = 1/10000
         # first proper step of the algorithm is to calculate the direction vector
-        _, f = optSt2(t,noit)
-        _, fh = optSt2(t+h,noit)
-        _, fminh = optSt2(t-h,noit)
+        _, f = optSt2(t,noit,high2low)
+        _, fh = optSt2(t+h,noit,high2low)
+        _, fminh = optSt2(t-h,noit,high2low)
         dplus = - (fh-f)/h
         dminus = - (fminh-f)/h
         d = max(dplus,dminus)
@@ -251,7 +274,7 @@ function linesear(tau,noit)
             else
                 t1 = t - α
             end
-            _, fa = optSt2(t1,noit)
+            _, fa = optSt2(t1,noit,high2low)
             if fa <= f - α*β*d
                 t = t1
                 appstep = true
@@ -264,6 +287,7 @@ function linesear(tau,noit)
 end
 
 # function to find the entropy production of a path that takes a certain time tau
+# Need to add a line that checks if high2low == true so fin = fint or fin = finf
 function EntProd(pathmin,tau)
     # probably easiest to calculate the entropy production at each point in the path
     ents = zeros(N+1)
@@ -320,86 +344,124 @@ end
 
 # function to run a full optimization
 # takes a starting path for each simulation thi, and an initial guess for tau, h is step size
-function run(tau,noit)
-    t = linesear(tau,noit)
-    print(t)
-    print("\n")
-    pathmin, S = optSt2(t,noit)
-    print(S)
-    print("\n")
-    gr()
-    times = collect(linspace(0.0,t,N+1))
-    tmid = 0
-    midi = 0
-    for i = 1:N+1
-        if pathmin[i] >= mid && high2low == false
-            tmid = times[i]
-            midi = i
-            break
-        elseif pathmin[i] <= mid && high2low == true
-            tmid = times[i]
-            midi = i
-            break
-        end
-    end
-    pone = plot(pathmin[:,1], times, lab = "MAP", xaxis = "X", yaxis = "T")
-    pone = scatter!(pone, [star], [0.0], lab = "Start", seriescolor = :green) # put start point in
-    pone = scatter!(pone, [mid], [tmid], lab = "Saddle", seriescolor = :orange)
-    pone = scatter!(pone, [fin], [t], lab = "Finish", seriescolor = :red) # put end point in
-    ents, kins, pots, acts, prod, flow =  EntProd(pathmin,t)
-    println("Change of entropy = $(sum(ents))")
-    println("Change of entropy first half = $(sum(ents[1:midi]))")
-    println("Change of entropy second half = $(sum(ents[(midi+1):end]))")
-    # Block of code to write all this data to a file so I can go through it
-    if length(ARGS) >= 1
-        output_file = "../Results/$(ARGS[1]).csv"
-        out_file = open(output_file, "w")
-        # open file for writing
-        for i = 1:size(pathmin,1)
-            line = "$(pathmin[i,1]),$(pathmin[i,2])\n"
-            write(out_file, line)
-        end
-        # final line written as time and action of MAP
-        line = "$(t),$(S)\n"
-        write(out_file, line)
-        close(out_file)
-    end
+function run(noit)#run(tau,noit)
+    tau1 = 11.43509551198466
+    t1 = linesear(tau1,noit,true)
+    path1, S1 = optSt2(t1,noit,true)
+    tau2 = 17.05838652760966
+    t2 = linesear(tau2,noit,false)
+    path2, S2 = optSt2(t2,noit,false)
+    # gr()
+    # times = collect(linspace(0.0,t1,N+1))
+    # tmid = 0
+    # midi = 0
+    # for i = 1:N+1
+    #     if pathmin[i] >= mid && high2low == false
+    #         tmid = times[i]
+    #         midi = i
+    #         break
+    #     elseif pathmin[i] <= mid && high2low == true
+    #         tmid = times[i]
+    #         midi = i
+    #         break
+    #     end
+    # end
+    # pone = plot(pathmin[:,1], times, lab = "MAP", xaxis = "X", yaxis = "T")
+    # pone = scatter!(pone, [star], [0.0], lab = "Start", seriescolor = :green) # put start point in
+    # pone = scatter!(pone, [mid], [tmid], lab = "Saddle", seriescolor = :orange)
+    # pone = scatter!(pone, [fin], [t], lab = "Finish", seriescolor = :red) # put end point in
+    # ents, kins, pots, acts, prod, flow =  EntProd(pathmin,t)
+    # println("Change of entropy = $(sum(ents))")
+    # println("Change of entropy first half = $(sum(ents[1:midi]))")
+    # println("Change of entropy second half = $(sum(ents[(midi+1):end]))")
+    # # Block of code to write all this data to a file so I can go through it
+    # if length(ARGS) >= 1
+    #     output_file = "../Results/$(ARGS[1]).csv"
+    #     out_file = open(output_file, "w")
+    #     # open file for writing
+    #     for i = 1:size(pathmin,1)
+    #         line = "$(pathmin[i,1]),$(pathmin[i,2])\n"
+    #         write(out_file, line)
+    #     end
+    #     # final line written as time and action of MAP
+    #     line = "$(t),$(S)\n"
+    #     write(out_file, line)
+    #     close(out_file)
+    # end
 
-    act = sum(acts)
-    points = [ ents, kins, pots, acts ]
+    # act = sum(acts)
+    # points = [ ents, kins, pots, acts ]
     # segcent = zeros(N,1)
     # for i = 1:N
     #     segcent[i] = (pathmin[i,1] + pathmin[i+1,1])/2
     # end
-    ptwo = plot(pathmin, points, xaxis = "A", yaxis = "Entropy Production", marker = :auto)
-    ptwo = scatter!(ptwo, [star], [0.0], seriescolor = :green)
-    ptwo = scatter!(ptwo, [mid], [0.0], seriescolor = :orange)
-    ptwo = scatter!(ptwo, [fin], [0.0], seriescolor = :red, leg = false)
-    plot(pone, ptwo, layout = (1,2))
-    savefig("../Results/Entropy$(high2low).png")
-    points2 = [ ents, prod, flow, (prod-flow)  ]
-    pthree = plot(pathmin, points2)
-    pthree = scatter!(pthree, [star], [0.0], seriescolor = :green)
-    pthree = scatter!(pthree, [mid], [0.0], seriescolor = :orange)
-    pthree = scatter!(pthree, [fin], [0.0], seriescolor = :red, leg = false)
-    savefig("../Results/$(high2low)Entropies.png")
-    println("steady state 1 = $(prod[1]*(N+1)/t)")
-    println("saddle = $(prod[midi]*(N+1)/t)")
-    println("steady state 2 = $(prod[end]*(N+1)/t)")
+    # ptwo = plot(pathmin, points, xaxis = "A", yaxis = "Entropy Production", marker = :auto)
+    # ptwo = scatter!(ptwo, [star], [0.0], seriescolor = :green)
+    # ptwo = scatter!(ptwo, [mid], [0.0], seriescolor = :orange)
+    # ptwo = scatter!(ptwo, [fin], [0.0], seriescolor = :red, leg = false)
+    # plot(pone, ptwo, layout = (1,2))
+    # savefig("../Results/Entropy$(high2low).png")
+    # points2 = [ ents, prod, flow, (prod-flow)  ]
+    # pthree = plot(pathmin, points2)
+    # pthree = scatter!(pthree, [star], [0.0], seriescolor = :green)
+    # pthree = scatter!(pthree, [mid], [0.0], seriescolor = :orange)
+    # pthree = scatter!(pthree, [fin], [0.0], seriescolor = :red, leg = false)
+    # savefig("../Results/$(high2low)Entropies.png")
+    # println("steady state 1 = $(prod[1]*(N+1)/t)")
+    # println("saddle = $(prod[midi]*(N+1)/t)")
+    # println("steady state 2 = $(prod[end]*(N+1)/t)")
+    # Block of code to write all this data to a file so I can go through it
+    if length(ARGS) >= 1
+        output_file1 = "../Results/1809/$(ARGS[1])1.csv"
+        out_file1 = open(output_file1, "w")
+        # open file for writing
+        for i = 1:size(path1,1)
+            line = "$(path1[i])\n"
+            write(out_file1, line)
+        end
+        close(out_file1)
+        output_file2 = "../Results/1809/$(ARGS[1])2.csv"
+        out_file2 = open(output_file2, "w")
+        # open file for writing
+        for i = 1:size(path2,1)
+            line = "$(path2[i])\n"
+            write(out_file2, line)
+        end
+        close(out_file2)
+        output_filep = "../Results/1809/$(ARGS[1])p.csv"
+        out_filep = open(output_filep, "w")
+        # # open file for writing
+        # for i = 1:size(ps,1)
+        #     line = "$(ps[i])\n"
+        #     write(out_filep, line)
+        # end
+        line = "$t1\n"
+        write(out_filep, line)
+        line = "$t2\n"
+        write(out_filep, line)
+        close(out_filep)
+    end
 end
 
 # Now define the paths
-start, sad, finish = nullcline()
-const star = start # These are then set constant to allow better optimisation
-const mid = sad
-const fin = finish
+star, sad, finish = nullcline(true)
+const start = star # These are then set constant to allow better optimisation
+const midt = sad
+const fint = finish
+
+star, sad, finish = nullcline(false)
+const starf = star # These are then set constant to allow better optimisation
+const midf = sad
+const finf = finish
 
 # find saddle points
-const thi1 = collect(linspace(star,fin,N+1))
-if high2low == true
-    @time run(11.43411894948466,5)
-else
-    @time run(17.05863066823466,5)
-end
+const thi1t = collect(range(start,stop=fint,length=N+1))
+const thi1f = collect(range(starf,stop=finf,length=N+1))
+@time run(5)
+# if high2low == true
+#     @time run(11.43411894948466,5)
+# else
+#     @time run(17.05863066823466,5)
+# end
 # From high X state: 11.43411894948466
 # From low X state: 17.05863066823466

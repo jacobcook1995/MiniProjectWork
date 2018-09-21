@@ -205,6 +205,16 @@ function main()
     t2 = ps[12]
     N1 = 600
     N2 = 600
+    segs1 = zeros(N1,2)
+    segs2 = zeros(N2,2)
+    for i = 1:N1
+        segs1[i,1] = (points1[i+1,1] + points1[i,1])/2
+        segs1[i,2] = (points1[i+1,2] + points1[i,2])/2
+    end
+    for i = 1:N2
+        segs2[i,1] = (points2[i+1,1] + points2[i,1])/2
+        segs2[i,2] = (points2[i+1,2] + points2[i,2])/2
+    end
     # Add velocities to array
     points1[1,3] = sqrt(((points1[2,1]-points1[1,1])/(t1))^2 + ((points1[2,2]-points1[1,2])/(t1))^2)
     for i = 2:N1
@@ -238,12 +248,15 @@ function main()
     scatter!([points2[1,1]], [points2[1,2]], seriescolor = :green)
     scatter!([points2[end,1]], [points2[end,2]], seriescolor = :red)
     savefig("../Results/PathB.png")
-    contrs1 = [ sum(ents1,dims=2), sum(kins1,dims=2), sum(pots1,dims=2), sum(acts1,dims=2)]
-    plot(segs1[:,1],contrs1)
-    savefig("../Results/Entropies1.png")
-    contrs4 = [ sum(ents4,dims=2), sum(kins4,dims=2), sum(pots4,dims=2), sum(acts4,dims=2)]
-    plot(segs1[:,1],contrs4)
-    savefig("../Results/Entropies4.png")
+    contrse1 = [ sum(ents1,dims=2), sum(ents4,dims=2)]
+    plot(segs1[:,1], contrse1)
+    savefig("../Results/Entropies14.png")
+    contrsa1 = [ sum(acts1,dims=2), sum(acts4,dims=2)]
+    plot(segs1[:,1], contrsa1)
+    savefig("../Results/Actions14.png")
+    contrskp1 = [ sum(pots1,dims=2), sum(kins1,dims=2), sum(pots4,dims=2), sum(kins4,dims=2)]
+    plot(segs1[:,1], contrskp1)
+    savefig("../Results/KinPots14.png")
     # Got actions so can infer stability, now want the steady state entropy productions
     ss1, sad, ss2 = nullcline(ps,false)
     S1, S11, S21 = shannon(ss1,ps)

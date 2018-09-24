@@ -351,6 +351,8 @@ function run(noit)#run(tau,noit)
     tau2 = 17.05838652760966
     t2 = linesear(tau2,noit,false)
     path2, S2 = optSt2(t2,noit,false)
+    # ps = [k1, K1, k2, K2, B, V ]
+    ps = [ 0.5, 3.0, 1.0, 1.0, 4.0, 20.0 ]
     # gr()
     # times = collect(linspace(0.0,t1,N+1))
     # tmid = 0
@@ -430,11 +432,11 @@ function run(noit)#run(tau,noit)
         close(out_file2)
         output_filep = "../Results/1809/$(ARGS[1])p.csv"
         out_filep = open(output_filep, "w")
-        # # open file for writing
-        # for i = 1:size(ps,1)
-        #     line = "$(ps[i])\n"
-        #     write(out_filep, line)
-        # end
+        # open file for writing
+        for i = 1:size(ps,1)
+            line = "$(ps[i])\n"
+            write(out_filep, line)
+        end
         line = "$t1\n"
         write(out_filep, line)
         line = "$t2\n"

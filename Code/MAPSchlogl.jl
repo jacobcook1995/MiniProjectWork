@@ -19,7 +19,7 @@ const V = 20
 # const high2low = true # Set if starting from high state or low state
 
 # Then set parameters of the optimization
-const N = 150 # number of segments optimised over
+const N = 600 # number of segments optimised over
 
 # Multiplicative Guassian noise matrix
 function e!(E, x)
@@ -348,7 +348,7 @@ function run(noit)#run(tau,noit)
     tau1 = 11.43509551198466
     t1 = linesear(tau1,noit,true)
     path1, S1 = optSt2(t1,noit,true)
-    tau2 = 17.05838652760966
+    tau2 = 17.05850859792216
     t2 = linesear(tau2,noit,false)
     path2, S2 = optSt2(t2,noit,false)
     # ps = [k1, K1, k2, K2, B, V ]

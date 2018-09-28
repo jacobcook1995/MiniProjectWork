@@ -22,7 +22,9 @@ function nullcline(ps::Array{Float64,1},high2low::Bool)
     n = 0
     bs = []
     while three == false
-        bs = fzeros(g, 0, 15.0)
+        bs1 = fzeros(g, 0.0, 0.1) # catches zeros about the origin
+        bs2 = fzeros(g, 0.1, 2*ps[4]/ps[3]) # the upper bound here is potentially problematic
+        bs = vcat(bs1,bs2)
         n = length(bs)
         gs = 0
         bad = zeros(Int64,0)
@@ -62,6 +64,18 @@ end
 function f!(F::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
     F[1] = ps[2]*ps[10]/(ps[10] + ps[9]*x[2]^2) - ps[5]*x[1] - ps[1]*x[1] + ps[6]
     F[2] = ps[4]*ps[10]/(ps[10] + ps[9]*x[1]^2) - ps[7]*x[2] - ps[3]*x[2] + ps[8]
+    return F
+end
+
+function f1!(F::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
+    F[1] = ps[2]*ps[10]/(ps[10] + ps[9]*x[2]^2) - ps[5]*x[1]
+    F[2] = ps[4]*ps[10]/(ps[10] + ps[9]*x[1]^2) - ps[7]*x[2]
+    return F
+end
+
+function f2!(F::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
+    F[1] = ps[1]*x[1] - ps[6]
+    F[2] = ps[3]*x[2] - ps[8]
     return F
 end
 
@@ -194,10 +208,11 @@ function shannon(point::Array{Float64,1},ps::Array{Float64,1})
     S12 = S1 + S2
     S34 = S3 + S4
     S = S12 + S34
-    return(S,S12,S34)
+    #return(S,S12,S34)
+    return(S,S1,S2,S3,S4)
 end
 
-function main()
+function graphs1()
     # Assign the first command line argument to a variable called input_file
     input_file1 = "../Results/1809/$(ARGS[1])1.csv"
     input_file2 = "../Results/1809/$(ARGS[1])2.csv"
@@ -357,15 +372,28 @@ function main()
     scatter!([points2[1,1]], [points2[1,2]], seriescolor = :green)
     scatter!([points2[end,1]], [points2[end,2]], seriescolor = :red)
     savefig("../Results/PathB.png")
+    segs = [ segs1[:,1], segs2[end:-1:1,1]]
     contrse1 = [ sum(ents1,dims=2), sum(ents4,dims=2)]
-    plot(segs1[:,1], contrse1)
+    plot(segs, contrse1)
     savefig("../Results/Entropies14.png")
     contrsa1 = [ sum(acts1,dims=2), sum(acts4,dims=2)]
-    plot(segs1[:,1], contrsa1)
+    plot(segs, contrsa1)
     savefig("../Results/Actions14.png")
+    segs = [ segs1[:,1], segs1[:,1], segs2[end:-1:1,1], segs2[end:-1:1,1]]
     contrskp1 = [ sum(pots1,dims=2), sum(kins1,dims=2), sum(pots4,dims=2), sum(kins4,dims=2)]
-    plot(segs1[:,1], contrskp1)
+    plot(segs, contrskp1)
     savefig("../Results/KinPots14.png")
+    segs = [ segs2[:,1], segs1[end:-1:1,1]]
+    contrse1 = [ sum(ents2,dims=2), sum(ents3,dims=2)]
+    plot(segs, contrse1)
+    savefig("../Results/Entropies23.png")
+    contrsa1 = [ sum(acts2,dims=2), sum(acts3,dims=2)]
+    plot(segs, contrsa1)
+    savefig("../Results/Actions23.png")
+    segs = [ segs2[:,1], segs2[:,1], segs1[end:-1:1,1], segs1[end:-1:1,1]]
+    contrskp1 = [ sum(pots2,dims=2), sum(kins2,dims=2), sum(pots3,dims=2), sum(kins3,dims=2)]
+    plot(segs,contrskp1)
+    savefig("../Results/KinPots23.png")
     # now for Schlögl model
     ents1S, kins1S, pots1S, acts1S = EntProdS(points1S[:,1],t1S,N1S,psS)
     ents2S, kins2S, pots2S, acts2S = EntProdS(points2S[:,1],t2S,N2S,psS)
@@ -389,34 +417,160 @@ function main()
     scatter!([0], [points2S[1,1]], seriescolor = :green)
     scatter!([t2S,t1S], [points2S[end,1],points3S[end,1]], seriescolor = :red)
     savefig("../Results/SPathB.png")
+    segs = [ segs1S, segs2S[end:-1:1]]
     contrse1S = [ ents1S, ents4S]
-    plot(segs1S, contrse1S)
+    plot(segs, contrse1S)
     savefig("../Results/SEntropies14.png")
     contrsa1S = [ acts1S, acts4S]
-    plot(segs1S, contrsa1S)
+    plot(segs, contrsa1S)
     savefig("../Results/SActions14.png")
+    segs = [ segs1S, segs1S, segs2S[end:-1:1], segs2S[end:-1:1]]
     contrskp1S = [ pots1S, kins1S, pots4S, kins4S]
-    plot(segs1S, contrskp1S)
+    plot(segs, contrskp1S)
     savefig("../Results/SKinPots14.png")
+    segs = [ segs2S, segs1S[end:-1:1]]
     contrse2S = [ ents2S, ents3S]
-    plot(segs2S, contrse2S)
+    plot(segs, contrse2S)
     savefig("../Results/SEntropies23.png")
     contrsa2S = [ acts2S, acts3S]
-    plot(segs2S, contrsa2S)
+    plot(segs, contrsa2S)
     savefig("../Results/SActions23.png")
+    segs = [ segs2S, segs2S, segs1S[end:-1:1], segs1S[end:-1:1]]
     contrskp2S = [ pots2S, kins2S, pots3S, kins3S]
-    plot(segs2S, contrskp2S)
+    plot(segs, contrskp2S)
     savefig("../Results/SKinPots23.png")
-    return(nothing)
     # Got actions so can infer stability, now want the steady state entropy productions
     ss1, sad, ss2 = nullcline(ps,false)
     S1, S11, S21 = shannon(ss1,ps)
     println("EntProd1 = $(S1),$(S11),$(S21)")
     S2, S12, S22 = shannon(ss2,ps)
     println("EntProd2 = $(S2),$(S12),$(S22)")
-
-
     return(nothing)
 end
 
-@time main()
+function graphs2()
+    input_file1 = "../Results/1809/$(ARGS[1])1.csv"
+    input_file2 = "../Results/1809/$(ARGS[1])2.csv"
+    input_filep = "../Results/1809/$(ARGS[1])p.csv"
+    points1 = Array{Float64,2}(undef,0,2)
+    points2 = Array{Float64,2}(undef,0,2)
+    ps = Array{Float64,1}(undef,0)
+    open(input_filep, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        for line in eachline(in_file)
+            # parse line by finding commas
+            p = parse(Float64, line)
+            ps = vcat(ps, p)
+        end
+    end
+    # Open the input file for reading and close automatically at end
+    open(input_file1, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        for line in eachline(in_file)
+            # parse line by finding commas
+            comma = 0
+            L = length(line)
+            for j = 1:L
+                if line[j] == ','
+                    comma = j
+                end
+            end
+            A = parse(Float64, line[1:(comma - 1)])
+            B = parse(Float64, line[(comma + 1):L])
+            points1 = vcat(points1, [ A B ])
+        end
+    end
+    # now do second file
+    open(input_file2, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        for line in eachline(in_file)
+            # parse line by finding commas
+            comma = 0
+            L = length(line)
+            for j = 1:L
+                if line[j] == ','
+                    comma = j
+                end
+            end
+            A = parse(Float64, line[1:(comma - 1)])
+            B = parse(Float64, line[(comma + 1):L])
+            points2 = vcat(points2, [ A B ])
+        end
+    end
+    # make array to store magnitude of D
+    L = 2000
+    X = 9.25
+    dx = X/L
+    Dmag = zeros(L,L)
+    DA = zeros(L,L)
+    DB = zeros(L,L)
+    fmag = zeros(L,L)
+    fA = zeros(L,L)
+    fB = zeros(L,L)
+    d = zeros(2,2)
+    h = zeros(2)
+    for j = 1:L
+        for i = 1:L
+            h = f!(h,[(i-1)*dx,(j-1)*dx],ps)
+            fmag[i,j] = sum(h)
+            fA[i,j] = h[1]
+            fB[i,j] = h[2]
+            d = D!(d,[(i-1)*dx,(j-1)*dx],ps)
+            Dmag[i,j] = sum(d)
+            DA[i,j] = d[1,1]
+            DB[i,j] = d[2,2]
+        end
+    end
+    xs = 0:dx:(X-dx)
+    # heatmap(xs,xs,fmag,xlabel="B",ylabel="A")
+    # plot!(points1[:,2],points1[:,1],label="B to A")
+    # plot!(points2[:,2],points2[:,1],label="A to B")
+    # savefig("../Results/Heatmapf.png")
+    # heatmap(xs,xs,fA,xlabel="B",ylabel="A")
+    # plot!(points1[:,2],points1[:,1],label="B to A")
+    # plot!(points2[:,2],points2[:,1],label="A to B")
+    # savefig("../Results/HeatmapfA.png")
+    # heatmap(xs,xs,fB,xlabel="B",ylabel="A")
+    # plot!(points1[:,2],points1[:,1],label="B to A")
+    # plot!(points2[:,2],points2[:,1],label="A to B")
+    # savefig("../Results/HeatmapfB.png")
+    # heatmap(xs,xs,Dmag,xlabel="B",ylabel="A")
+    # plot!(points1[:,2],points1[:,1],label="B to A")
+    # plot!(points2[:,2],points2[:,1],label="A to B")
+    # savefig("../Results/Heatmap.png")
+    # heatmap(xs,xs,DA,xlabel="B",ylabel="A")
+    # plot!(points1[:,2],points1[:,1],label="B to A")
+    # plot!(points2[:,2],points2[:,1],label="A to B")
+    # savefig("../Results/HeatmapA.png")
+    # heatmap(xs,xs,DB,xlabel="B",ylabel="A")
+    # plot!(points1[:,2],points1[:,1],label="B to A")
+    # plot!(points2[:,2],points2[:,1],label="A to B")
+    # savefig("../Results/HeatmapB.png")
+    # Got actions so can infer stability, now want the steady state entropy production
+    ss1, sad, ss2 = nullcline(ps,false)
+    S, S1, S2, S3, S4 = shannon(ss1,ps)
+    println("EntProd1 = $(S)")#,$(S1),$(S2),$(S3),$(S4)")
+    d = D!(d,ss1,ps)
+    # println("DiffMatr = $(sum(d)),$(d[1,1]),$(d[2,2])")
+    # h = f!(h,ss1,ps)
+    # println("h = $(sum(h)),$(h[1]*h[1]/d[1,1]),$(h[2]*h[2]/d[2,2])")
+    h = f1!(h,ss1,ps)
+    println("$(2*h[1]*h[1]/d[1,1] + 2*h[2]*h[2]/d[2,2])")
+    # println("h = $(sum(h)),$(h[1]*h[1]/d[1,1]),$(h[2]*h[2]/d[2,2])")
+    # h = f2!(h,ss1,ps)
+    # println("h = $(sum(h)),$(h[1]*h[1]/d[1,1]),$(h[2]*h[2]/d[2,2])")
+    S, S1, S2, S3, S4 = shannon(ss2,ps)
+    println("EntProd1 = $(S)")#,$(S1),$(S2),$(S3),$(S4)")
+    d = D!(d,ss2,ps)
+    # println("DiffMatr = $(sum(d)),$(d[1,1]),$(d[2,2])")
+    # h = f!(h,ss2,ps)
+    # println("h = $(sum(h)),$(h[1]*h[1]/d[1,1]),$(h[2]*h[2]/d[2,2])")
+    h = f1!(h,ss2,ps)
+    println("$(2*h[1]*h[1]/d[1,1] + 2*h[2]*h[2]/d[2,2])")
+    # println("h = $(sum(h)),$(h[1]*h[1]/d[1,1]),$(h[2]*h[2]/d[2,2])")
+    # h = f2!(h,ss2,ps)
+    # println("h = $(sum(h)),$(h[1]*h[1]/d[1,1]),$(h[2]*h[2]/d[2,2])")
+    return(nothing)
+end
+
+@time graphs2()

@@ -5,7 +5,6 @@
 # and find forward and backwards actions of path
 using Plots
 using Roots
-import GR
 
 # A function to find the crossing points of the nullclines so they can be used
 # as start, end and saddle points
@@ -109,7 +108,11 @@ function EntProd(pathmin::Array{Float64,2},tau::Float64,NM::Int64,ps::Array{Floa
     KE = zeros(NM, 2)
     PE = zeros(NM, 2)
     acts = zeros(NM, 2)
+    prod = zeros(NM, 2)
+    flow = zeros(NM, 2)
     h = [0.0; 0.0]
+    h1 = [0.0; 0.0]
+    h2 = [0.0; 0.0]
     d = [0.0 0.0; 0.0 0.0]
     deltat = tau/NM
     # Remove fixed points from path
@@ -127,6 +130,8 @@ function EntProd(pathmin::Array{Float64,2},tau::Float64,NM::Int64,ps::Array{Floa
         end
         h = f!(h,[posA,posB],ps)
         d = D!(d,[posA,posB],ps)
+        h1 = f1!(h1,[posA,posB],ps)
+        h2 = f2!(h2,[posA,posB],ps)
         for j = 1:2
             if i == 1
                 thiv = (path[i,j] - pathmin[1,j])/deltat
@@ -135,13 +140,20 @@ function EntProd(pathmin::Array{Float64,2},tau::Float64,NM::Int64,ps::Array{Floa
             else
                 thiv = (path[i,j] - path[i-1,j])/(deltat)
             end
-            ents[i,j] = h[j]*thiv*deltat/d[j,j]
-            KE[i,j] = thiv*thiv*deltat/(2*d[j,j])
-            PE[i,j] = h[j]*h[j]*deltat/(2*d[j,j])
+            # ents[i,j] = h[j]*thiv*deltat/d[j,j]
+            # KE[i,j] = thiv*thiv*deltat/(2*d[j,j])
+            # PE[i,j] = h[j]*h[j]*deltat/(2*d[j,j])
+            # prod[i,j] = (h1[j]^2 + h2[j]^2)*deltat/d[j,j]
+            # flow[i,j] = 2*h1[j]*h2[j]*deltat/d[j,j]
+            ents[i,j] = h[j]*thiv/d[j,j]
+            KE[i,j] = thiv*thiv/(2*d[j,j])
+            PE[i,j] = h[j]*h[j]/(2*d[j,j])
+            prod[i,j] = (h1[j]^2 + h2[j]^2)/d[j,j]
+            flow[i,j] = 2*h1[j]*h2[j]/d[j,j]
         end
     end
     acts = KE + PE - ents
-    return(ents,KE,PE,acts)
+    return(ents,KE,PE,acts,prod,flow)
 end
 
 # Function to calculate the action of the discretised Schlögl path in the MAP formulation
@@ -208,8 +220,7 @@ function shannon(point::Array{Float64,1},ps::Array{Float64,1})
     S12 = S1 + S2
     S34 = S3 + S4
     S = S12 + S34
-    #return(S,S12,S34)
-    return(S,S1,S2,S3,S4)
+    return(S)
 end
 
 function graphs1()
@@ -548,28 +559,46 @@ function graphs2()
     # savefig("../Results/HeatmapB.png")
     # Got actions so can infer stability, now want the steady state entropy production
     ss1, sad, ss2 = nullcline(ps,false)
-    S, S1, S2, S3, S4 = shannon(ss1,ps)
-    println("EntProd1 = $(S)")#,$(S1),$(S2),$(S3),$(S4)")
-    d = D!(d,ss1,ps)
-    # println("DiffMatr = $(sum(d)),$(d[1,1]),$(d[2,2])")
-    # h = f!(h,ss1,ps)
-    # println("h = $(sum(h)),$(h[1]*h[1]/d[1,1]),$(h[2]*h[2]/d[2,2])")
-    h = f1!(h,ss1,ps)
-    println("$(2*h[1]*h[1]/d[1,1] + 2*h[2]*h[2]/d[2,2])")
-    # println("h = $(sum(h)),$(h[1]*h[1]/d[1,1]),$(h[2]*h[2]/d[2,2])")
-    # h = f2!(h,ss1,ps)
-    # println("h = $(sum(h)),$(h[1]*h[1]/d[1,1]),$(h[2]*h[2]/d[2,2])")
-    S, S1, S2, S3, S4 = shannon(ss2,ps)
-    println("EntProd1 = $(S)")#,$(S1),$(S2),$(S3),$(S4)")
-    d = D!(d,ss2,ps)
-    # println("DiffMatr = $(sum(d)),$(d[1,1]),$(d[2,2])")
-    # h = f!(h,ss2,ps)
-    # println("h = $(sum(h)),$(h[1]*h[1]/d[1,1]),$(h[2]*h[2]/d[2,2])")
-    h = f1!(h,ss2,ps)
-    println("$(2*h[1]*h[1]/d[1,1] + 2*h[2]*h[2]/d[2,2])")
-    # println("h = $(sum(h)),$(h[1]*h[1]/d[1,1]),$(h[2]*h[2]/d[2,2])")
-    # h = f2!(h,ss2,ps)
-    # println("h = $(sum(h)),$(h[1]*h[1]/d[1,1]),$(h[2]*h[2]/d[2,2])")
+    SB = shannon(ss1,ps)
+    SA = shannon(ss2,ps)
+    # extract times and N's
+    t1 = ps[end-1]
+    t2 = ps[end]
+    N1 = size(points1,1) - 1
+    N2 = size(points2,1) - 1
+    # find entropies along path
+    ents1, kins1, pots1, acts1, prod1, flow1 = EntProd(points1[:,1:2],t1,N1,ps)
+    ents2, kins2, pots2, acts2, prod2, flow2 = EntProd(points2[:,1:2],t2,N2,ps)
+    # find segcents to plot entropies against
+    segcent1 = zeros(N1)
+    segcent2 = zeros(N2)
+    for i = 1:length(segcent1)
+        segcent1[i] = (points1[i,1] + points1[i+1,1])/2
+    end
+    for i = 1:length(segcent2)
+        segcent2[i] = (points2[i,1] + points2[i+1,1])/2
+    end
+    # now have these and should try and plot as two lines
+    plot(segcent1,ents1[:,1]+ents1[:,2],title="B => A",label="Entropy Production",xlabel="A",ylabel="\\Delta S")
+    plot!(segcent1,flow1[:,1]+flow1[:,2],label="''Entropy Flow''")
+    plot!(segcent1,prod1[:,1]+prod1[:,2],label="''Entropy Production''")
+    plot!(segcent1,prod1[:,1]+prod1[:,2]-flow1[:,1]-flow1[:,2],label="Production-Flow")
+    scatter!([segcent1[1]], [0.0], seriescolor = :green, label="")
+    scatter!([segcent1[end]], [0.0], seriescolor = :red, label="")
+    savefig("../Results/EntsB.png")
+    hline!([SA],label="high A Shannon")
+    hline!([SB],label="high B Shannon")
+    savefig("../Results/EntsBShannon.png")
+    plot(segcent2,ents2[:,1]+ents2[:,2],title="A => B",label="Entropy Production",xlabel="A",ylabel="\\Delta S")
+    plot!(segcent2,flow2[:,1]+flow2[:,2],label="''Entropy Flow''")
+    plot!(segcent2,prod2[:,1]+prod2[:,2],label="''Entropy Production''")
+    plot!(segcent2,prod2[:,1]+prod2[:,2]-flow2[:,1]-flow2[:,2],label="Production-Flow")
+    scatter!([segcent2[1]], [0.0], seriescolor = :green, label="")
+    scatter!([segcent2[end]], [0.0], seriescolor = :red, label="")
+    savefig("../Results/EntsA.png")
+    hline!([SA],label="high A Shannon")
+    hline!([SB],label="high B Shannon")
+    savefig("../Results/EntsAShannon.png")
     return(nothing)
 end
 

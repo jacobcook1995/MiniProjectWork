@@ -447,6 +447,95 @@ function EntProd(pathmin,tau,NM,ps)
     return(Acts,Ents,Kins,Pots)
 end
 
+# function to discretise a path in a way that makes it compatable with the algorithm
+function discretise(x::AbstractArray,NG::Int,Nmid::Int)
+    # need to interpolate the data from x onto disx, preserving |x'| = const,
+    # i.e equal distance between points
+    s1 = zeros(Nmid)
+    s2 = zeros(NG+2-Nmid)
+    s1[1] = 0
+    s2[1] = 0
+    for i = 2:Nmid
+        dA = x[i,1] - x[i-1,1]
+        dB = x[i,2] - x[i-1,2]
+        dS = x[i,3] - x[i-1,3]
+        dW = x[i,4] - x[i-1,4]
+        s1[i] = s1[i-1] + sqrt(dA^2 + dB^2 + dS^2 + dW^2) # Could probably drop the sqrts to speed up the code
+    end
+    for i = 2:(NG+2-Nmid)
+        dA = x[i+Nmid-1,1] - x[i+Nmid-2,1]
+        dB = x[i+Nmid-1,2] - x[i+Nmid-2,2]
+        dS = x[i+Nmid-1,3] - x[i+Nmid-2,3]
+        dW = x[i+Nmid-1,4] - x[i+Nmid-2,4]
+        s2[i] = s2[i-1] + sqrt(dA^2 + dB^2 + dS^2 + dW^2) # Could probably drop the sqrts to speed up the code
+    end
+    # Divide total arc length into equal segments
+    ls1 = zeros(Nmid)
+    ls2 = zeros(NG+2-Nmid)
+    for i = 1:Nmid
+        ls1[i] = (i-1)*s1[end]/(Nmid-1)
+    end
+    for i = 1:(NG+2-Nmid)
+        ls2[i] = (i-1)*s2[end]/(NG+1-Nmid)
+    end
+    # Find first index greater than a ls[i] for each i
+    inds1 = fill(0,Nmid)
+    j = 1
+    for i = 1:Nmid
+        higher = false
+        while higher == false
+            if s1[j] >= ls1[i] || j == Nmid
+                inds1[i] = j
+                higher = true
+            else
+                j += 1
+            end
+        end
+    end
+    inds2 = fill(0,NG+2-Nmid)
+    j = 1
+    for i = 1:(NG+2-Nmid)
+        higher = false
+        while higher == false
+            if s2[j] >= ls2[i] || j == NG + 2 - Nmid
+                inds2[i] = j + Nmid - 1
+                higher = true
+            else
+                j += 1
+            end
+        end
+    end
+    # First do mid points and end points as they should be fixed
+    disx = zeros(NG+1,4)
+    disx[1,:] = x[1,:]
+    disx[Nmid,:] = x[Nmid,:]
+    disx[NG+1,:] = x[NG+1,:]
+    # This is done to linear order, which is probably good enough
+    for i = 2:Nmid-1
+        one = inds1[i] - 1
+        two = inds1[i]
+        s₀ = s1[one]
+        s₁ = s1[two]
+        for j = 1:4
+            x₀ = x[one,j]
+            x₁ = x[two,j]
+            disx[i,j] = x₀ + (ls1[i] - s₀)*(x₁ - x₀)/(s₁ - s₀)
+        end
+    end
+
+    for i = Nmid+1:NG
+        one = inds2[i+1-Nmid] - 1
+        two = inds2[i+1-Nmid]
+        s₀ = s2[one+1-Nmid]
+        s₁ = s2[two+1-Nmid]
+        for j = 1:4
+            x₀ = x[one,j]
+            x₁ = x[two,j]
+            disx[i,j] = x₀ + (ls2[i+1-Nmid] - s₀)*(x₁ - x₀)/(s₁ - s₀)
+        end
+    end
+    return(disx)
+end
 
 function main()
     # create array to hold read in data
@@ -676,4 +765,93 @@ function main()
     # savefig("../Results/SvsW2.png")
 end
 
-@time main()
+# function to do the same as graphs2 but for 4 species case
+function graphs3()
+    input_file1 = "../Results/1809/$(ARGS[1])1.csv"
+    input_file2 = "../Results/1809/$(ARGS[1])2.csv"
+    input_filep = "../Results/1809/$(ARGS[1])p.csv"
+    points1 = Array{Float64,2}(undef,0,4)
+    points2 = Array{Float64,2}(undef,0,4)
+    ps = Array{Float64,1}(undef,0)
+    # ps = [ K, k, Q, q, Kmin, kmin, Qmin, qmin, r, f, F, Ne]
+    open(input_filep, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        for line in eachline(in_file)
+            # parse line by finding commas
+            p = parse(Float64, line)
+            ps = vcat(ps, p)
+        end
+    end
+    # Open the input file for reading and close automatically at end
+    open(input_file1, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        for line in eachline(in_file)
+            # parse line by finding commas
+            comma = fill(0,3)
+            L = length(line)
+            i = 1
+            for j = 1:L
+                if line[j] == ','
+                    comma[i] = j
+                    i += 1
+                end
+            end
+            A = parse(Float64, line[1:(comma[1] - 1)])
+            B = parse(Float64, line[(comma[1] + 1):(comma[2] - 1)])
+            S = parse(Float64, line[(comma[2] + 1):(comma[3] - 1)])
+            W = parse(Float64, line[(comma[3] + 1):L])
+            points1 = vcat(points1, [ A B S W ])
+        end
+    end
+    # now do second file
+    open(input_file2, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        for line in eachline(in_file)
+            # parse line by finding commas
+            comma = fill(0,3)
+            L = length(line)
+            i = 1
+            for j = 1:L
+                if line[j] == ','
+                    comma[i] = j
+                    i += 1
+                end
+            end
+            A = parse(Float64, line[1:(comma[1] - 1)])
+            B = parse(Float64, line[(comma[1] + 1):(comma[2] - 1)])
+            S = parse(Float64, line[(comma[2] + 1):(comma[3] - 1)])
+            W = parse(Float64, line[(comma[3] + 1):L])
+            points2 = vcat(points2, [ A B S W ])
+        end
+    end
+    N1 = size(points1,1) - 1
+    N2 = size(points2,1) - 1
+    # # find velocities
+    # v = zeros(N1)
+    # v[1] = 2*sqrt((points1[2,1]-points1[1,1])^2 + (points1[2,2]-points1[1,2])^2 + (points1[2,3]-points1[1,3])^2 + (points1[2,4]-points1[1,4])^2)
+    # for i = 2:N1-1
+    #     v[i] = sqrt((points1[i+1,1]-points1[i-1,1])^2 + (points1[i+1,2]-points1[i-1,2])^2 + (points1[i+1,3]-points1[i-1,3])^2 + (points1[i+1,4]-points1[i-1,4])^2)
+    # end
+    # v[N1] = 2*sqrt((points1[N1,1]-points1[N1-1,1])^2 + (points1[N1,2]-points1[N1-1,2])^2 + (points1[N1,3]-points1[N1-1,3])^2 + (points1[N1,4]-points1[N1-1,4])^2)
+    # println(v)
+    v = zeros(N2)
+    v[1] = 2*sqrt((points2[2,1]-points2[1,1])^2 + (points2[2,2]-points2[1,2])^2 + (points2[2,3]-points2[1,3])^2 + (points2[2,4]-points2[1,4])^2)
+    for i = 2:N2-1
+        v[i] = sqrt((points2[i+1,1]-points2[i-1,1])^2 + (points2[i+1,2]-points2[i-1,2])^2 + (points2[i+1,3]-points2[i-1,3])^2 + (points2[i+1,4]-points2[i-1,4])^2)
+    end
+    v[N2] = 2*sqrt((points2[N2,1]-points2[N2-1,1])^2 + (points2[N2,2]-points2[N2-1,2])^2 + (points2[N2,3]-points2[N2-1,3])^2 + (points2[N2,4]-points2[N2-1,4])^2)
+    plot(v)
+    savefig("../Results/v.png")
+    plot(points2[:,1])
+    savefig("../Results/A.png")
+    plot(points2[:,2])
+    savefig("../Results/B.png")
+    plot(points2[:,3])
+    savefig("../Results/S.png")
+    plot(points2[:,4])
+    savefig("../Results/W.png")
+    return(nothing)
+end
+
+#@time main()
+@time graphs3()

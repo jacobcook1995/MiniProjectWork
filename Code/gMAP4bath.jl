@@ -8,6 +8,8 @@ using Plots
 using Roots
 using NLsolve
 using SymEngine # Trying alternative substitution method to see if this is faster
+using SymPy
+ENV["GKSwstype"]="png" # ????????? this might stop the GKSterm error
 import GR # Need this to stop world age plotting error?
 
 # first should make generic functions that take in a full set of parameters, that
@@ -16,7 +18,7 @@ import GR # Need this to stop world age plotting error?
 
 # make a symbolic diffusion matrix
 function Ds()
-    A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
+    A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = SymEngine.symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
     # Make a symbolic version of the matrix, needs no input in this case
     e = Array{SymEngine.Basic,2}(undef,4,4)
     e[1,2:4] .= e[2,1] = e[2,3] = e[2,4] = e[3,4] = e[4,3] = 0
@@ -40,7 +42,7 @@ function Dmins()
     Dmin = inv(D)
     for j = 1:4
         for i = 1:4
-            Dmin[i,j] = expand(Dmin[i,j])
+            Dmin[i,j] = SymEngine.expand(Dmin[i,j])
         end
     end
     return(Dmin)
@@ -48,7 +50,7 @@ end
 
 # function to make a symbolic equation vector
 function bs()
-    A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
+    A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = SymEngine.symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
     # Make a symbolic version of the matrix, needs no input in this case
     b = Array{SymEngine.Basic,1}(undef,4)
     b[1] = k*S*r/(r + f*B^2) - kmin*A - K*A + Kmin*W
@@ -60,7 +62,7 @@ end
 
 # function to generate a symbolic equation for the Hamiltonian at point (X, θ)
 function Hs()
-    the1, the2, the3, the4 = symbols("the1 the2 the3 the4")
+    the1, the2, the3, the4 = SymEngine.symbols("the1 the2 the3 the4")
     # generate symbolic arrays for b and D
     b = bs()
     D = Ds()
@@ -70,13 +72,13 @@ function Hs()
     H += 0.5*the2*(D[2,1]*the1 + D[2,2]*the2 + D[2,3]*the3 + D[2,4]*the4)
     H += 0.5*the3*(D[3,1]*the1 + D[3,2]*the2 + D[3,3]*the3 + D[3,4]*the4)
     H += 0.5*the4*(D[4,1]*the1 + D[4,2]*the2 + D[4,3]*the3 + D[4,4]*the4)
-    H = expand(H)
+    H = SymEngine.expand(H)
     return(H)
 end
 
 # function to generate first differential of the symbolic hamiltonian in x
 function Hxs()
-    A, B, S, W = symbols("A B S W")
+    A, B, S, W = SymEngine.symbols("A B S W")
     # generate Hamiltonian
     H = Hs()
     Hx = Array{SymEngine.Basic,1}(undef,4)
@@ -89,7 +91,7 @@ end
 
 # function to generate first differential of the symbolic hamiltonian in θ
 function Hθs()
-    the1, the2, the3, the4 = symbols("the1 the2 the3 the4")
+    the1, the2, the3, the4 = SymEngine.symbols("the1 the2 the3 the4")
     # generate Hamiltonian
     H = Hs()
     Hθ = Array{SymEngine.Basic,1}(undef,4)
@@ -102,7 +104,7 @@ end
 
 # function to generate the second differential of the symbolic hamiltonian in θ
 function Hθθs()
-    the1, the2, the3, the4 = symbols("the1 the2 the3 the4")
+    the1, the2, the3, the4 = SymEngine.symbols("the1 the2 the3 the4")
     # generate Hamiltonian
     Hθ = Hθs()
     Hθθ = Array{SymEngine.Basic,2}(undef,4,4)
@@ -127,7 +129,7 @@ end
 
 # function to generate the second differential of the symbolic hamiltonian in θ follwed by X
 function Hθxs()
-    A, B, S, W = symbols("A B S W")
+    A, B, S, W = SymEngine.symbols("A B S W")
     # generate Hamiltonian
     Hθ = Hθs()
     Hθx = Array{SymEngine.Basic,2}(undef,4,4)
@@ -152,7 +154,7 @@ end
 
 # function to find a symbolic equation for λ the determenistic speed
 function λs()
-    y1, y2, y3, y4 = symbols("y1 y2 y3 y4")
+    y1, y2, y3, y4 = SymEngine.symbols("y1 y2 y3 y4")
     b = bs()
     Dmin = Dmins()
     num = 0
@@ -173,7 +175,7 @@ end
 # hamiltonian value of zero for a given point x
 function ϑs()
     # create necessary symbols and and symbolic expressions
-    y1, y2, y3, y4 = symbols("y1 y2 y3 y4")
+    y1, y2, y3, y4 = SymEngine.symbols("y1 y2 y3 y4")
     λ = λs()
     Dmin = Dmins()
     b = bs()
@@ -202,64 +204,108 @@ function gensyms(ps::AbstractVector)
     Hx = Hxs()
     H = Hs()
     # specify symbols that will be substituted for
-    K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = symbols("K k Q q kmin Kmin qmin Qmin f r F")
+    K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = SymEngine.symbols("K k Q q kmin Kmin qmin Qmin f r F")
     # now perform substitutions
-    λ = subs(λ, K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
-    λ = subs(λ, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
-    H = subs(H, K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
-    H = subs(H, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
+    λ = SymEngine.subs(λ, K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
+    λ = SymEngine.subs(λ, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
+    H = SymEngine.subs(H, K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
+    H = SymEngine.subs(H, qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
     for i = 1:4
-        ϑ[i] = subs(ϑ[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
-        ϑ[i] = subs(ϑ[i], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
-        Hθ[i] = subs(Hθ[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
-        Hθ[i] = subs(Hθ[i], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
-        Hx[i] = subs(Hx[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
-        Hx[i] = subs(Hx[i], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
+        ϑ[i] = SymEngine.subs(ϑ[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
+        ϑ[i] = SymEngine.subs(ϑ[i], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
+        Hθ[i] = SymEngine.subs(Hθ[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
+        Hθ[i] = SymEngine.subs(Hθ[i], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
+        Hx[i] = SymEngine.subs(Hx[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
+        Hx[i] = SymEngine.subs(Hx[i], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
     end
     for j = 1:4
         for i = 1:4
-            Hθx[i,j] = subs(Hθx[i,j], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
-            Hθx[i,j] = subs(Hθx[i,j], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
-            Hθθ[i,j] = subs(Hθθ[i,j], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
-            Hθθ[i,j] = subs(Hθθ[i,j], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
+            Hθx[i,j] = SymEngine.subs(Hθx[i,j], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
+            Hθx[i,j] = SymEngine.subs(Hθx[i,j], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
+            Hθθ[i,j] = SymEngine.subs(Hθθ[i,j], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], Kmin=>ps[6])
+            Hθθ[i,j] = SymEngine.subs(Hθθ[i,j], qmin=>ps[7], Qmin=>ps[8], f=>ps[9], r=>ps[10], F=>ps[11])
         end
     end
     return(ϑ,λ,Hθ,Hθx,Hθθ,Hx,H)
 end
 
-# function to find the zeros of the function
-function nullcline(F::Number,r::Number,f::Number,K::Number,Q::Number,k::Number,q::Number,kmin::Number,qmin::Number,high2low::Bool,Ne)
-    g(x) = (K + kmin)*(q/k)*((r + f*((F - K*x)/Q)^2)/(r + f*x^2))*x - (qmin + Q)*(F - K*x)/Q
+# function to find nullclines
+# ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, N ]
+# maxr = range to look over, δ step size in this range
+function nullcline(ps::Array{Float64,1},maxr::Float64,δ::Float64)
+    # define symbols
+    A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, N = SymPy.symbols("A,B,S,W,K k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,N")
+    # equation for S
+    Se = N - W - A - B
+    # equation for W
+    We = (K*A + Q*B - F)/(Qmin + Kmin)
+    # eliminate W from equation for S
+    Se = SymPy.subs(Se,W=>We)
+    # equation for dB/dt
+    dB = (q*S*r)/(r + f*A^2) - qmin*B - Q*B + Qmin*W
+    # sub in S and W expressions
+    dB = SymPy.subs(dB,S=>Se,W=>We)
+    # solve this expression for B
+    Bear = solve(dB,B)
+    # remove from being in array form
+    Be = Bear[1]
+    # now sub this into Se and We
+    Se = SymPy.subs(Se,B=>Be)
+    We = SymPy.subs(We,B=>Be)
+    # equation for dA/dt
+    dA = (k*S*r)/(r + f*B^2) - kmin*A - K*A + Kmin*W
+    # sub in B, S and W expressions
+    dA = SymPy.subs(dA,B=>Be,S=>Se,W=>We)
+    # then sub in parameters
+    dA = SymPy.subs(dA,K=>ps[1],k=>ps[2],Q=>ps[3],q=>ps[4],kmin=>ps[5],Kmin=>ps[6],qmin=>ps[7])
+    dA = SymPy.subs(dA,Qmin=>ps[8],f=>ps[9],r=>ps[10],F=>ps[11],N=>ps[12])
+    # now find three stationary points in A
+    guess = 0
     three = false
+    As = Array{Float64,1}(undef,0)
     n = 0
-    As = []
     while three == false
-        As = fzeros(g, 0, 2*F/K, order = 1)
-        n = length(As)
+        a = convert(Float64,nsolve(dA,guess))
+        # add to vector if not already found
+        if (a in As) == false
+            As = vcat(As,a)
+            n += 1
+        end
         if n == 3
             three = true
         end
+        guess += δ
+        if guess >= maxr
+            println("Could not find three stationary points in range (0,$(guess)) with step $(δ)")
+            println(As)
+            error()
+        end
     end
-    Bs = zeros(n)
-    Ss = zeros(n)
-    Ws = zeros(n)
-    for i = 1:n
-        Bs[i] = (F - K*As[i])/Q
-        Ss[i] = (1/(k*r))*(r + f*((F - K*As[i])/Q)^2)*(K + kmin)*As[i]
-        Ws[i] = Ne - As[i] - Bs[i] - Ss[i]
+    # sub parameters into Be, Se, We
+    Be = SymPy.subs(Be,K=>ps[1],k=>ps[2],Q=>ps[3],q=>ps[4],kmin=>ps[5],Kmin=>ps[6],qmin=>ps[7])
+    Be = SymPy.subs(Be,Qmin=>ps[8],f=>ps[9],r=>ps[10],F=>ps[11],N=>ps[12])
+    Se = SymPy.subs(Se,K=>ps[1],k=>ps[2],Q=>ps[3],q=>ps[4],kmin=>ps[5],Kmin=>ps[6],qmin=>ps[7])
+    Se = SymPy.subs(Se,Qmin=>ps[8],f=>ps[9],r=>ps[10],F=>ps[11],N=>ps[12])
+    We = SymPy.subs(We,K=>ps[1],k=>ps[2],Q=>ps[3],q=>ps[4],kmin=>ps[5],Kmin=>ps[6],qmin=>ps[7])
+    We = SymPy.subs(We,Qmin=>ps[8],f=>ps[9],r=>ps[10],F=>ps[11],N=>ps[12])
+    # then sub the various As values to get final values
+    Bs = zeros(3)
+    Ss = zeros(3)
+    Ws = zeros(3)
+    for i = 1:3
+        Bs[i] = SymPy.subs(Be,A=>As[i]) |> float
+        Ss[i] = SymPy.subs(Se,A=>As[i]) |> float
+        Ws[i] = SymPy.subs(We,A=>As[i]) |> float
     end
-    sad = [ As[2]; Bs[2]; Ss[2]; Ws[2] ]
-    if high2low == true
-        ss1 = [ As[1]; Bs[1]; Ss[1]; Ws[1] ]
-        ss2 = [ As[3]; Bs[3]; Ss[3]; Ws[3] ]
-    else
-        ss1 = [ As[3]; Bs[3]; Ss[3]; Ws[3] ]
-        ss2 = [ As[1]; Bs[1]; Ss[1]; Ws[1] ]
-    end
-    print("$(ss1)\n")
-    print("$(sad)\n")
-    print("$(ss2)\n")
-    return (ss1,sad,ss2)
+    # finally put into states
+    ss1 = [As[1],Bs[1],Ss[1],Ws[1]]
+    sad = [As[2],Bs[2],Ss[2],Ws[2]]
+    ss2 = [As[3],Bs[3],Ss[3],Ws[3]]
+    println(ss1)
+    println(sad)
+    println(ss2)
+    flush(stdout)
+    return(ss1,sad,ss2)
 end
 
 # function to discretise a path in a way that makes it compatable with the algorithm
@@ -355,7 +401,7 @@ end
 # function to generate the variables needed for a given algoritm iteration
 function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,1},NG::Int,Nmid::Int)
     # define neccesary symbols
-    A, B, S, W, y1, y2, y3, y4 = symbols("A B S W y1 y2 y3 y4")
+    A, B, S, W, y1, y2, y3, y4 = SymEngine.symbols("A B S W y1 y2 y3 y4")
     # calculate velocities
     xprim = fill(NaN, NG+1, 4)
     for i = 2:NG
@@ -367,14 +413,14 @@ function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,
     λs = fill(NaN, NG+1)
     for i = 2:Nmid-1
         λt = λ # temporary λ to avoid changing the master one
-        λt = subs(λt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
-        λs[i] = subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
+        λt = SymEngine.subs(λt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
+        λs[i] = SymEngine.subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
     end
     λs[Nmid] = 0 # midpoint should be a saddle point
     for i = Nmid+1:NG
         λt = λ # temporary λ to avoid changing the master one
-        λt = subs(λt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
-        λs[i] = subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
+        λt = SymEngine.subs(λt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
+        λs[i] = SymEngine.subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
     end
     # Critical points so expect both to be zero
     λs[1] = 0
@@ -384,8 +430,8 @@ function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,
     ϑt = Array{SymEngine.Basic,1}(undef,4)
     for j = 1:4
         for i = 2:NG
-            ϑt[j] = subs(ϑ[j], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
-            ϑs[i,j] = subs(ϑt[j], y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
+            ϑt[j] = SymEngine.subs(ϑ[j], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
+            ϑs[i,j] = SymEngine.subs(ϑt[j], y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
         end
     end
     # Now find λprim
@@ -427,7 +473,7 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
                 Hx::Array{SymEngine.Basic,1},Hθ::Array{SymEngine.Basic,1},Hθθ::Array{SymEngine.Basic,2},
                 Hθx::Array{SymEngine.Basic,2},Δτ::Number,NG::Int,Nmid::Int,H::SymEngine.Basic)
     # define relevant symbols
-    A, B, S, W, the1, the2, the3, the4 = symbols("A B S W the1 the2 the3 the4")
+    A, B, S, W, the1, the2, the3, the4 = SymEngine.symbols("A B S W the1 the2 the3 the4")
     # Make array to store fixed points
     xi = fill(NaN, 3, 4)
     # the fixed points are allowed to vary as both are at zeros
@@ -435,19 +481,19 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     Hθt = Array{SymEngine.Basic,1}(undef,4) # temporary hamiltonian so master isn't changed
     Hxt = Array{SymEngine.Basic,1}(undef,4)
     for i = 1:4
-        Hθt[i] = subs(Hθ[i], the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
-        Hxt[i] = subs(Hx[i], the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
+        Hθt[i] = SymEngine.subs(Hθ[i], the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
+        Hxt[i] = SymEngine.subs(Hx[i], the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
     end
     Hθtt = Array{SymEngine.Basic,1}(undef,4)
     Hθttt = Array{SymEngine.Basic,1}(undef,4)
-    Ht = subs(H, the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
-    Ht = subs(Ht, A=>x[Nmid,1], B=>x[Nmid,2], S=>x[Nmid,3], W=>x[Nmid,4]) |> float
+    Ht = SymEngine.subs(H, the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
+    Ht = SymEngine.subs(Ht, A=>x[Nmid,1], B=>x[Nmid,2], S=>x[Nmid,3], W=>x[Nmid,4]) |> float
     # loop to define fixed points
     for i = 1:4
-        Hxt[i] = subs(Hxt[i], A=>x[Nmid,1], B=>x[Nmid,2], S=>x[Nmid,3], W=>x[Nmid,4]) |> float
-        Hθttt[i] = subs(Hθt[i], A=>x[Nmid,1], B=>x[Nmid,2], S=>x[Nmid,3], W=>x[Nmid,4]) |> float
-        Hθtt[i] = subs(Hθt[i], A=>x[1,1], B=>x[1,2], S=>x[1,3], W=>x[1,4]) |> float
-        Hθt[i] = subs(Hθt[i], A=>x[end,1], B=>x[end,2], S=>x[end,3], W=>x[end,4]) |> float
+        Hxt[i] = SymEngine.subs(Hxt[i], A=>x[Nmid,1], B=>x[Nmid,2], S=>x[Nmid,3], W=>x[Nmid,4]) |> float
+        Hθttt[i] = SymEngine.subs(Hθt[i], A=>x[Nmid,1], B=>x[Nmid,2], S=>x[Nmid,3], W=>x[Nmid,4]) |> float
+        Hθtt[i] = SymEngine.subs(Hθt[i], A=>x[1,1], B=>x[1,2], S=>x[1,3], W=>x[1,4]) |> float
+        Hθt[i] = SymEngine.subs(Hθt[i], A=>x[end,1], B=>x[end,2], S=>x[end,3], W=>x[end,4]) |> float
         # start point
         xi[1,i] = Δτ*(Hθtt[i]) + x[1,i]
         # midpoint
@@ -459,8 +505,8 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     # loop to calculate Hxθ
     for j = 1:4
         for i = 1:4
-            Hxθt[i,j] = subs(Hθx[i,j], the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
-            Hxθt[i,j] = subs(Hxθt[i,j], A=>x[Nmid,1], B=>x[Nmid,2], S=>x[Nmid,3], W=>x[Nmid,4]) |> float
+            Hxθt[i,j] = SymEngine.subs(Hθx[i,j], the1=>0.0, the2=>0.0, the3=>0.0, the4=>0.0)
+            Hxθt[i,j] = SymEngine.subs(Hxθt[i,j], A=>x[Nmid,1], B=>x[Nmid,2], S=>x[Nmid,3], W=>x[Nmid,4]) |> float
         end
     end
     # now transpose to get right form
@@ -492,13 +538,13 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     for l = 1:4
         for i = 2:NG
             # Save temporary Hamiltonians so that the substitution doesn't overwrite orginal
-            Hxt[l] = subs(Hx[l], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
-            Hxt[l] = subs(Hxt[l], the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
+            Hxt[l] = SymEngine.subs(Hx[l], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
+            Hxt[l] = SymEngine.subs(Hxt[l], the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
             for m = 1:4
-                Hθθt[m,l] = subs(Hθθ[m,l], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
-                Hθθt[m,l] = subs(Hθθt[m,l], the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
-                Hθxt[m,l] = subs(Hθx[m,l], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
-                Hθxt[m,l] = subs(Hθxt[m,l], the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
+                Hθθt[m,l] = SymEngine.subs(Hθθ[m,l], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
+                Hθθt[m,l] = SymEngine.subs(Hθθt[m,l], the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
+                Hθxt[m,l] = SymEngine.subs(Hθx[m,l], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
+                Hθxt[m,l] = SymEngine.subs(Hθxt[m,l], the1=>ϑs[i,1], the2=>ϑs[i,2], the3=>ϑs[i,3], the4=>ϑs[i,4]) |> float
                 # Update K's with new contributions from Hamiltonians
                 K[i,m] -= Δτ*λs[i]*(Hθxt[m,l]*xprim[i,l])
                 K[i,m] += Δτ*(Hθθt[m,l]*Hxt[l])
@@ -515,14 +561,15 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
 end
 
 # main function generates symbolic matrices that the 4 variables can be subbed into
-function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int,NG::Int,Nmid::Int,Δτ,high2low::Bool)
+function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int64,NG::Int64,Nmid::Int64,Δτ::Float64,high2low::Bool)
     # make vector of these optimisation parameters
-    paras = [ K; k; Q; q; kmin; Kmin; qmin; Qmin; f; r; F ]
+    paras = [ K; k; Q; q; kmin; Kmin; qmin; Qmin; f; r; F; Ne ]
+    # confusingly paras is different to ps, this is something I should probably fix but can't be bothered currently
     # generate symbolic forms for equations required for the simulation
     ϑ, λ, Hθ, Hθx, Hθθ, Hx, H = gensyms(paras)
 
     # Now generate an initial path to optimize over
-    ss1, sad, ss2 = nullcline(F,r,f,K,Q,k,q,kmin,qmin,high2low,Ne)
+    ss1, sad, ss2 = nullcline(paras,10.0,0.1)
     a1 = collect(range(ss1[1],stop=sad[1],length=Nmid))
     a2 = collect(range(sad[1],stop=ss2[1],length=NG+2-Nmid))
     a = vcat(a1,a2[2:length(a2)])
@@ -536,6 +583,10 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int,NG::Int,Nmid::Int,Δ�
     w2 = collect(range(sad[4],stop=ss2[4],length=NG+2-Nmid))
     w = vcat(w1,w2[2:length(w2)])
     x = hcat(a,b,s,w)
+    # reverse direction of x if high2low is false
+    if high2low == false
+        x = x[end:-1:1,:]
+    end
 
     # Then appropriatly discretise the path such that it works with this algorithm
     x = discretise(x,NG,Nmid)
@@ -549,7 +600,14 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int,NG::Int,Nmid::Int,Δ�
         newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG,Nmid,H)
         xn = discretise(newx.zero,NG,Nmid)
         S = Ŝ(xn,xprim,λs,ϑs,λprim,NG)
-        print("$(sum(S))\n")
+        δ = 0
+        for i = 1:NG+1
+            for j = 1:4
+                δ += abs(x[i,j] - xn[i,j])
+            end
+        end
+        println("$(sum(S)),$(δ)")
+        flush(stdout) # needed to get output in log file
         if l % 500 == 0
             plot(x[:,1],x[:,2])
             savefig("../Results/GraphAB$(l).png")
@@ -562,7 +620,7 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int,NG::Int,Nmid::Int,Δ�
         end
         # Now overwrite old x
         x = xn
-        if l == 10000
+        if l == 1000#0
             convrg = true
         end
         l += 1
@@ -640,16 +698,17 @@ function main()
     K = 1.0
     k = 1.0
     Q = 1.0
-    q = 11/15
+    q = 11.0/15
     kmin = 0.5 # now reverse creation is an important process
     qmin = 0.1
     f = 1.0/((Ω/60)^2) # Promoter switching
     r = 10.0
     F = 10.0*(Ω/60)
-    Kmin = 10.0^-20 # remains neligable though
-    Qmin = 10.0^-20
+    Kmin = 10.0^-10 # remains neligable though
+    Qmin = 10.0^-10
     Ne = 150.0*(Ω/60) # number of elements in the system
-
+    # make vector to write out
+    ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, Ne ]
     # Optimisation parameters
     NM = 300 # number of segments to discretise MAP onto
     NG = 600 # number of segments to optimize gMAP over
@@ -674,6 +733,14 @@ function main()
         end
         # then close file
         close(out_file)
+        output_filep = "../Results/$(ARGS[1])p.csv"
+        out_filep = open(output_filep, "w")
+        for i = 1:length(ps)
+            line = "$(ps[i])\n"
+            write(out_filep,line)
+        end
+        # then close file
+        close(out_filep)
     end
 end
 

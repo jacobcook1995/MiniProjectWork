@@ -342,7 +342,7 @@ function f1!(G, x, ps)
     sym = Array{SymEngine.Basic}(undef,4)
     sym[1] = k*x[3]*r/(r+f*x[2]^2) - kmin*x[1]
     sym[2] = q*x[3]*r/(r+f*x[1]^2) - qmin*x[2]
-    sym[3] = -k*x[3]*r/(r + f*x[2]^2) - q*x[3]*r/(r + f*x[1]^2) + kmin*x[1] + qmin*x[2]
+    sym[3] = F#-k*x[3]*r/(r + f*x[2]^2) - q*x[3]*r/(r + f*x[1]^2) + kmin*x[1] + qmin*x[2]
     sym[4] = K*x[1] + Q*x[2] - Kmin*x[4] - Qmin*x[4]
     for i = 1:4
         sym[i] = subs(sym[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], qmin=>ps[6], f=>ps[7])
@@ -354,10 +354,10 @@ end
 function f2!(G, x, ps)
     K, k, Q, q, kmin, qmin, f, r, F, Kmin, Qmin = symbols("K k Q q kmin qmin f r F Kmin Qmin")
     sym = Array{SymEngine.Basic}(undef,4)
-    sym[1] = -kmin*x[1] + Kmin*x[4]
-    sym[2] = -qmin*x[2] + Qmin*x[4]
-    sym[3] = 0#-F
-    sym[4] = 0#F
+    sym[1] = K*x[1] - Kmin*x[4]
+    sym[2] = Q*x[2] - Qmin*x[4]
+    sym[3] = k*x[3]*r/(r + f*x[2]^2) + q*x[3]*r/(r + f*x[1]^2) - kmin*x[1] - qmin*x[2]#-F
+    sym[4] = F
     for i = 1:4
         sym[i] = subs(sym[i], K=>ps[1], k=>ps[2], Q=>ps[3], q=>ps[4], kmin=>ps[5], qmin=>ps[6], f=>ps[7])
         G[i] = subs(sym[i], r=>ps[8], F=>ps[9], Kmin=>ps[10], Qmin=>ps[11]) |> float
@@ -979,7 +979,6 @@ function graphs3()
     acts2, ents2, kins2, pots2, prod2, flow2, entsF2 = EntProd(path2,t2[end],NM2,ps2)
     println(sum(acts1))
     println(sum(acts2))
-    return(nothing)
     # find segment centers to plot against
     segcent1 = zeros(NM1)
     segcent2 = zeros(NM2)
@@ -991,24 +990,29 @@ function graphs3()
     end
     S1 = shannon(points1[1,:],ps) # high B
     S2 = shannon(points2[1,:],ps) # high A
-    plot(segcent1,ents1,title="B => A",label="Entropy Production",xlabel="A",ylabel="\\Delta S")
-    plot!(segcent1,flow1,label="''Entropy Flow''")
-    plot!(segcent1,prod1,label="''Entropy Production''")
-    plot!(segcent1,prod1-flow1,label="Production-Flow")
-    plot!(segcent1,entsF1,label="placeholder")
+    # factor 2 exists to account for difference between entropy and entropic contribution to action
+    plot(segcent1,2*NM1*ents1/t1[end],title="B => A",label="Entropy Production",xlabel="A",ylabel="\\Delta S")
+    plot!(segcent1,2*NM1*flow1/t1[end],label="''Entropy Flow''")
+    plot!(segcent1,2*NM1*prod1/t1[end],label="''Entropy Production''")
+    plot!(segcent1,2*NM1*(prod1-flow1)/t1[end],label="Production-Flow")
+    plot!(segcent1,2*NM1*entsF1/t1[end],label="Ent Prod Reverse F")
+    scatter!([segcent1[1]], [0.0], seriescolor = :green, label="")
+    scatter!([segcent1[end]], [0.0], seriescolor = :red, label="")
     savefig("../Results/ents1.png")
-    hline!([S1],label="high B Shannon")
-    hline!([S2],label="high A Shannon")
-    savefig("../Results/ents1sh.png")
-    plot(segcent2,ents2,title="A => B",label="Entropy Production",xlabel="A",ylabel="\\Delta S")
-    plot!(segcent2,flow2,label="''Entropy Flow''")
-    plot!(segcent2,prod2,label="''Entropy Production''")
-    plot!(segcent2,prod2-flow2,label="Production-Flow")
-    plot!(segcent2,entsF2,label="placeholder")
+    hline!([S1],label="high B Schnakenberg")
+    hline!([S2],label="high A Schnakenberg")
+    savefig("../Results/ents1sch.png")
+    plot(segcent2,2*NM2*ents2/t2[end],title="A => B",label="Entropy Production",xlabel="A",ylabel="\\Delta S")
+    plot!(segcent2,2*NM2*flow2/t2[end],label="''Entropy Flow''")
+    plot!(segcent2,2*NM2*prod2/t2[end],label="''Entropy Production''")
+    plot!(segcent2,2*NM2*(prod2-flow2)/t2[end],label="Production-Flow")
+    plot!(segcent2,2*NM2*entsF2/t2[end],label="Ent Prod Reverse F")
+    scatter!([segcent2[1]], [0.0], seriescolor = :green, label="")
+    scatter!([segcent2[end]], [0.0], seriescolor = :red, label="")
     savefig("../Results/ents2.png")
-    hline!([S1],label="high B Shannon")
-    hline!([S2],label="high A Shannon")
-    savefig("../Results/ents2sh.png")
+    hline!([S1],label="high B Schnakenberg")
+    hline!([S2],label="high A Schnakenberg")
+    savefig("../Results/ents2sch.png")
     return(nothing)
 end
 

@@ -140,16 +140,16 @@ function EntProd(pathmin::Array{Float64,2},tau::Float64,NM::Int64,ps::Array{Floa
             else
                 thiv = (path[i,j] - path[i-1,j])/(deltat)
             end
-            # ents[i,j] = h[j]*thiv*deltat/d[j,j]
-            # KE[i,j] = thiv*thiv*deltat/(2*d[j,j])
-            # PE[i,j] = h[j]*h[j]*deltat/(2*d[j,j])
-            # prod[i,j] = (h1[j]^2 + h2[j]^2)*deltat/d[j,j]
-            # flow[i,j] = 2*h1[j]*h2[j]*deltat/d[j,j]
-            ents[i,j] = h[j]*thiv/d[j,j]
-            KE[i,j] = thiv*thiv/(2*d[j,j])
-            PE[i,j] = h[j]*h[j]/(2*d[j,j])
-            prod[i,j] = (h1[j]^2 + h2[j]^2)/d[j,j]
-            flow[i,j] = 2*h1[j]*h2[j]/d[j,j]
+            ents[i,j] = h[j]*thiv*deltat/d[j,j]
+            KE[i,j] = thiv*thiv*deltat/(2*d[j,j])
+            PE[i,j] = h[j]*h[j]*deltat/(2*d[j,j])
+            prod[i,j] = (h1[j]^2 + h2[j]^2)*deltat/d[j,j]
+            flow[i,j] = 2*h1[j]*h2[j]*deltat/d[j,j]
+            # ents[i,j] = h[j]*thiv/d[j,j]
+            # KE[i,j] = thiv*thiv/(2*d[j,j])
+            # PE[i,j] = h[j]*h[j]/(2*d[j,j])
+            # prod[i,j] = (h1[j]^2 + h2[j]^2)/d[j,j]
+            # flow[i,j] = 2*h1[j]*h2[j]/d[j,j]
         end
     end
     acts = KE + PE - ents
@@ -579,26 +579,26 @@ function graphs2()
         segcent2[i] = (points2[i,1] + points2[i+1,1])/2
     end
     # now have these and should try and plot as two lines
-    plot(segcent1,ents1[:,1]+ents1[:,2],title="B => A",label="Entropy Production",xlabel="A",ylabel="\\Delta S")
-    plot!(segcent1,flow1[:,1]+flow1[:,2],label="''Entropy Flow''")
-    plot!(segcent1,prod1[:,1]+prod1[:,2],label="''Entropy Production''")
-    plot!(segcent1,prod1[:,1]+prod1[:,2]-flow1[:,1]-flow1[:,2],label="Production-Flow")
+    plot(segcent1,2*N1*(ents1[:,1]+ents1[:,2])/t1,title="B => A",label="Entropy Production",xlabel="A",ylabel="\\Delta S")
+    plot!(segcent1,2*N1*(flow1[:,1]+flow1[:,2])/t1,label="''Entropy Flow''")
+    plot!(segcent1,2*N1*(prod1[:,1]+prod1[:,2])/t1,label="''Entropy Production''")
+    plot!(segcent1,2*N1*(prod1[:,1]+prod1[:,2]-flow1[:,1]-flow1[:,2])/t1,label="Production-Flow")
     scatter!([segcent1[1]], [0.0], seriescolor = :green, label="")
     scatter!([segcent1[end]], [0.0], seriescolor = :red, label="")
     savefig("../Results/EntsB.png")
-    hline!([SA],label="high A Shannon")
-    hline!([SB],label="high B Shannon")
-    savefig("../Results/EntsBShannon.png")
-    plot(segcent2,ents2[:,1]+ents2[:,2],title="A => B",label="Entropy Production",xlabel="A",ylabel="\\Delta S")
-    plot!(segcent2,flow2[:,1]+flow2[:,2],label="''Entropy Flow''")
-    plot!(segcent2,prod2[:,1]+prod2[:,2],label="''Entropy Production''")
-    plot!(segcent2,prod2[:,1]+prod2[:,2]-flow2[:,1]-flow2[:,2],label="Production-Flow")
+    hline!([SA],label="high A Schnakenberg")
+    hline!([SB],label="high B Schnakenberg")
+    savefig("../Results/EntsBSchnakenberg.png")
+    plot(segcent2,2*N2*(ents2[:,1]+ents2[:,2])/t2,title="A => B",label="Entropy Production",xlabel="A",ylabel="\\Delta S")
+    plot!(segcent2,2*N2*(flow2[:,1]+flow2[:,2])/t2,label="''Entropy Flow''")
+    plot!(segcent2,2*N2*(prod2[:,1]+prod2[:,2])/t2,label="''Entropy Production''")
+    plot!(segcent2,2*N2*(prod2[:,1]+prod2[:,2]-flow2[:,1]-flow2[:,2])/t2,label="Production-Flow")
     scatter!([segcent2[1]], [0.0], seriescolor = :green, label="")
     scatter!([segcent2[end]], [0.0], seriescolor = :red, label="")
     savefig("../Results/EntsA.png")
-    hline!([SA],label="high A Shannon")
-    hline!([SB],label="high B Shannon")
-    savefig("../Results/EntsAShannon.png")
+    hline!([SA],label="high A Schnakenberg")
+    hline!([SB],label="high B Schnakenberg")
+    savefig("../Results/EntsASchnakenberg.png")
     return(nothing)
 end
 

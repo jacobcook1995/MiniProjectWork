@@ -29,7 +29,10 @@ function Ds()
     e[3,3] = sqrt(F)
     e[4,1] = -sqrt(K*A + Kmin*W)
     e[4,2] = -sqrt(Q*B + Qmin*W)
-    e[4,4] = sqrt(F) # this is not as previously discussed, could be the error
+    e[4,4] = sqrt(F)
+    # new bit I'm adding
+    # e[3,4] = -sqrt(F)
+    # e[4,3] = -sqrt(F)
     # Now do the transformations required
     eT = transpose(e)
     D = e*eT
@@ -608,7 +611,7 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int64,NG::Int64,Nmid::Int
         end
         println("$(sum(S)),$(δ)")
         flush(stdout) # needed to get output in log file
-        if l % 500 == 0
+        if l % 50 == 0 # l % 500 == 0
             plot(x[:,1],x[:,2])
             savefig("../Results/GraphAB$(l).png")
             plot(x[:,3],x[:,4])
@@ -617,6 +620,8 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int64,NG::Int64,Nmid::Int
             savefig("../Results/S$(l).png")
             plot(ϑs)
             savefig("../Results/vartheta$(l).png")
+            plot(λs)
+            savefig("../Results/lambdas$(l).png")
         end
         # Now overwrite old x
         x = xn

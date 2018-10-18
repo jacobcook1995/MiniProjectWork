@@ -57,6 +57,28 @@ function nullcline(ps::Array{Float64,1},high2low::Bool)
     return(ss1,sad,ss2)
 end
 
+function nullclineS(ps::Array{Float64,1},high2low::Bool)
+    f(x) = ps[1] - ps[2]*x - ps[3]*(x^3) + ps[4]*ps[5]*(x^2)
+    three = false
+    Xs = [ 0.0, 0.0, 0.0 ]
+    while three == false
+        X = fzeros(f, 0, 10, no_pts = 1000)
+        if length(X) == 3
+            three = true
+            Xs = X
+        end
+    end
+    sad = Xs[2]
+    if high2low == true
+        ss1 = Xs[3]
+        ss2 = Xs[1]
+    else
+        ss1 = Xs[1]
+        ss2 = Xs[3]
+    end
+    return(ss1,sad,ss2)
+end
+
 # Vector of functions from MAP case
 # ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r ]
 # ps = [ 1, 2, 3, 4,    5,    6,    7,    8, 9, 10]
@@ -91,6 +113,18 @@ end
 function fS!(F::Float64,x::Float64,ps::Array{Float64,1})
     R = [ ps[1], ps[2]*x, ps[3]*x*x*x, ps[4]*ps[5]*x*x]
     F = R[1] - R[2] - (R[3] - R[4])
+    return F
+end
+# ps = [k1, K1, k2, K2, B, V ]
+function fS1!(F::Float64,x::Float64,ps::Array{Float64,1})
+    R = [ ps[1], ps[2]*x, ps[3]*x*x*x, ps[4]*ps[5]*x*x]
+    F = R[1] - R[2]
+    return F
+end
+# ps = [k1, K1, k2, K2, B, V ]
+function fS2!(F::Float64,x::Float64,ps::Array{Float64,1})
+    R = [ ps[1], ps[2]*x, ps[3]*x*x*x, ps[4]*ps[5]*x*x]
+    F = (R[3] - R[4])
     return F
 end
 
@@ -164,7 +198,11 @@ function EntProdS(pathmin::Array{Float64,1},tau::Float64,NM::Int64,ps::Array{Flo
     KE = zeros(NM)
     PE = zeros(NM)
     acts = zeros(NM)
+    flow = zeros(NM)
+    prod = zeros(NM)
     h = 0.0
+    f1 = 0.0
+    f2 = 0.0
     d = 0.0
     deltat = tau/NM
     # Remove fixed points from path
@@ -178,6 +216,8 @@ function EntProdS(pathmin::Array{Float64,1},tau::Float64,NM::Int64,ps::Array{Flo
             posX = (path[i-1] + path[i])/2
         end
         h = fS!(h,posX,ps)
+        f1 = fS1!(f1,posX,ps)
+        f2 = fS2!(f2,posX,ps)
         d = DS!(d,posX,ps)
         if i == 1
             thiv = (path[i] - pathmin[1])/deltat
@@ -189,9 +229,11 @@ function EntProdS(pathmin::Array{Float64,1},tau::Float64,NM::Int64,ps::Array{Flo
         ents[i] = h*thiv*deltat/d
         KE[i] = thiv*thiv*deltat/(2*d)
         PE[i] = h*h*deltat/(2*d)
+        prod[i] = 4*f1*f2/d
+        flow[i] = 2*(f1^2 + f2^2)/d
     end
     acts = KE + PE - ents
-    return(ents,KE,PE,acts)
+    return(ents,KE,PE,acts,prod,flow)
 end
 # function to compute the shannon entropy at a fixed point
 # ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r ]
@@ -221,6 +263,22 @@ function shannon(point::Array{Float64,1},ps::Array{Float64,1})
     S34 = S3 + S4
     S = S12 + S34
     return(S)
+end
+# function to compute the shannon entropy at a fixed point
+# ps = [k1, K1, k2, K2, B, V ]
+function shannonS(point::Float64,ps::Array{Float64,1})
+    pa = ps[1]
+    pamin = ps[2]*point
+    pb = ps[3]*point*point*point
+    pbmin = ps[4]*ps[5]*point*point
+    F1 = (pa - pamin)
+    F2 = (pb - pbmin)
+    A1 = log(pa/pamin)
+    A2 = log(pb/pbmin)
+    S1 = F1*A1
+    S2 = F2*A2
+    S = S1 + S2
+    return(S*ps[6])
 end
 
 function graphs1()
@@ -406,12 +464,12 @@ function graphs1()
     plot(segs,contrskp1)
     savefig("../Results/KinPots23.png")
     # now for Schlögl model
-    ents1S, kins1S, pots1S, acts1S = EntProdS(points1S[:,1],t1S,N1S,psS)
-    ents2S, kins2S, pots2S, acts2S = EntProdS(points2S[:,1],t2S,N2S,psS)
+    ents1S, kins1S, pots1S, acts1S, prod1S, flow1S = EntProdS(points1S[:,1],t1S,N1S,psS)
+    ents2S, kins2S, pots2S, acts2S, prod2S, flow2S = EntProdS(points2S[:,1],t2S,N2S,psS)
     points3S = points1S[N1S+1:-1:1,:]
     points4S = points2S[N2S+1:-1:1,:]
-    ents3S, kins3S, pots3S, acts3S = EntProdS(points3S[:,1],t1S,N1S,psS)
-    ents4S, kins4S, pots4S, acts4S = EntProdS(points4S[:,1],t2S,N2S,psS)
+    ents3S, kins3S, pots3S, acts3S, prod3S, flow3S = EntProdS(points3S[:,1],t1S,N1S,psS)
+    ents4S, kins4S, pots4S, acts4S, prod4S, flow4S = EntProdS(points4S[:,1],t2S,N2S,psS)
     plot([points1S[:,1],points4S[:,1]],[points1S[:,2],points4S[:,2]])
     scatter!([points1S[1,1]], [0.0], seriescolor = :green)
     scatter!([points1S[end,1]], [0.0], seriescolor = :red)
@@ -451,11 +509,22 @@ function graphs1()
     plot(segs, contrskp2S)
     savefig("../Results/SKinPots23.png")
     # Got actions so can infer stability, now want the steady state entropy productions
-    ss1, sad, ss2 = nullcline(ps,false)
-    S1, S11, S21 = shannon(ss1,ps)
-    println("EntProd1 = $(S1),$(S11),$(S21)")
-    S2, S12, S22 = shannon(ss2,ps)
-    println("EntProd2 = $(S2),$(S12),$(S22)")
+    ss1, sad, ss2 = nullclineS(psS,false)
+    S1 = shannonS(ss1,psS)
+    S2 = shannonS(ss2,psS)
+    println(S1)
+    println(S2)
+    plot(segs1S,2*N1S*ents1S/t1S,title="Schlögl",label="Entropy Production",xlabel="X",ylabel="\\Delta S")
+    plot!(segs1S,2*N1S*flow1S/t1S,label="''Entropy Flow''")
+    plot!(segs1S,2*N1S*prod1S/t1S,label="''Entropy Production''")
+    plot!(segs1S,2*N1S*(prod1S.-flow1S)/t1S,label="Production-Flow")
+    scatter!([segs1S[1]], [0.0], seriescolor = :green, label="")
+    scatter!([segs1S[end]], [0.0], seriescolor = :red, label="")
+    savefig("../Results/EntsB.png")
+    hline!([S1],label="high A Schnakenberg")
+    hline!([S2],label="high B Schnakenberg")
+    savefig("../Results/EntsBSchSch.png")
+    # now do plotting of the various entropies
     return(nothing)
 end
 
@@ -602,4 +671,4 @@ function graphs2()
     return(nothing)
 end
 
-@time graphs2()
+@time graphs1()

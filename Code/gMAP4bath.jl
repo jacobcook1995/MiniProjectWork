@@ -572,7 +572,7 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int64,NG::Int64,Nmid::Int
     ϑ, λ, Hθ, Hθx, Hθθ, Hx, H = gensyms(paras)
 
     # Now generate an initial path to optimize over
-    ss1, sad, ss2 = nullcline(paras,10.0,0.1)
+    ss1, sad, ss2 = nullcline(paras,15.0,0.1)
     a1 = collect(range(ss1[1],stop=sad[1],length=Nmid))
     a2 = collect(range(sad[1],stop=ss2[1],length=NG+2-Nmid))
     a = vcat(a1,a2[2:length(a2)])
@@ -625,7 +625,7 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int64,NG::Int64,Nmid::Int
         end
         # Now overwrite old x
         x = xn
-        if l == 1000#0
+        if l == 10000
             convrg = true
         end
         l += 1
@@ -700,25 +700,37 @@ end
 function main()
     # General parameters
     Ω = 60 # system size, this is just a fudge to get my Euler-Maruyama algorithm (later) to work
+    # K = 1.0
+    # k = 1.0
+    # Q = 1.0
+    # q = 11.0/15
+    # kmin = 0.5 # now reverse creation is an important process
+    # qmin = 0.1
+    # f = 1.0/((Ω/60)^2) # Promoter switching
+    # r = 10.0
+    # F = 10.0*(Ω/60)
+    # Kmin = 10.0^-10 # remains neligable though
+    # Qmin = 10.0^-10
+    # Ne = 150.0*(Ω/60) # number of elements in the system
     K = 1.0
-    k = 1.0
+    k = 2.0
     Q = 1.0
-    q = 11.0/15
-    kmin = 0.5 # now reverse creation is an important process
-    qmin = 0.1
-    f = 1.0/((Ω/60)^2) # Promoter switching
+    q = 22.0/15
+    kmin = 0.8 # now reverse creation is an important process
+    qmin = 0.3
+    f = 100.0/((Ω/60)^2) # Promoter switching
     r = 10.0
-    F = 10.0*(Ω/60)
+    F = 15.0*(Ω/60)
     Kmin = 10.0^-10 # remains neligable though
     Qmin = 10.0^-10
-    Ne = 150.0*(Ω/60) # number of elements in the system
+    Ne = 3800.0*(Ω/60) # number of elements in the system
     # make vector to write out
     ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, Ne ]
     # Optimisation parameters
     NM = 300 # number of segments to discretise MAP onto
     NG = 600 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.1 # I've made this choice arbitarily, too large and the algorithm breaks
+    Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
     high2low = true # Set if starting from high state or low state
     # Now call simulation function with these parameters
     path = gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2low)

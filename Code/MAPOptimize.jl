@@ -441,10 +441,10 @@ function run(tau,noit)
     for i = 1:N
         segcent[i] = (pathmin[i,1] + pathmin[i+1,1])/2
     end
-    ptwo = plot(segcent, points, xaxis = "A", yaxis = "Entropy Production", marker = :auto, legend = false)
-    ptwo = scatter!(ptwo, [star[1]], [0.0], seriescolor = :green)
-    ptwo = scatter!(ptwo, [inflex[1]], [0.0], seriescolor = :orange)
-    ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red)#, leg = false)
+    ptwo = plot(segcent, points, xaxis = "A", yaxis = "Entropy Production", marker = :auto, label = ["Entropy Prod","Kinetic","Potential","Action"])
+    ptwo = scatter!(ptwo, [star[1]], [0.0], seriescolor = :green,label="")
+    ptwo = scatter!(ptwo, [inflex[1]], [0.0], seriescolor = :orange,label="")
+    ptwo = scatter!(ptwo, [fin[1]], [0.0], seriescolor = :red,label="")
     #annotate!(inflex[1]+3, minimum(ents)+0.01, text("Action = $(act)\n", :left, font(5, "Courier")))
     plot(pone, ptwo, layout = (1,2))
     println("EntProd = $(sum(ents))")

@@ -1011,7 +1011,7 @@ function graphs3()
     scatter!([segcent2[end]], [0.0], seriescolor = :red, label="")
     savefig("../Results/ents2.png")
     hline!([S1],label="high B Schnakenberg")
-    hline!([S2],label="high A Schnakenberg")
+    hline!([S2],label="high A Schnakenberg",legend=false)
     savefig("../Results/ents2sch.png")
     return(nothing)
 end

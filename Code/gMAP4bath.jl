@@ -726,14 +726,28 @@ function main()
     savefig("../Results/Graph1.png")
     plot(path[:,3],path[:,4])
     savefig("../Results/Graph2.png")
+    path2 = gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,~high2low)
+    plot(path[:,1],path[:,2])
+    savefig("../Results/Graph12.png")
+    plot(path[:,3],path[:,4])
+    savefig("../Results/Graph22.png")
     # Now print out the path
     # Block of code to write all this data to a file so I can go through it
     if length(ARGS) >= 1
-        output_file = "../Results/$(ARGS[1]).csv"
+        output_file = "../Results/$(ARGS[1])1.csv"
         out_file = open(output_file, "w")
         # open file for writing
         for i = 1:size(path,1)
             line = "$(path[i,1]),$(path[i,2]),$(path[i,3]),$(path[i,4])\n"
+            write(out_file, line)
+        end
+        # then close file
+        close(out_file)
+        output_file2 = "../Results/$(ARGS[1])2.csv"
+        out_file = open(output_file2, "w")
+        # open file for writing
+        for i = 1:size(path2,1)
+            line = "$(path2[i,1]),$(path2[i,2]),$(path2[i,3]),$(path2[i,4])\n"
             write(out_file, line)
         end
         # then close file

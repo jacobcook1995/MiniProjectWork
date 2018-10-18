@@ -108,7 +108,7 @@ function main()
     # now run gillespie
     noits = 100000
     Xs, ts = gillespie(k1,K1,k2,K2,B,noits,star2,Ω)
-    plot(ts,Xs,xlabel="t",ylabel="X",title="1D Schlögl")
+    plot(ts,Xs,xlabel="t",ylabel="X",title="1D Schlögl",legend=false)
     savefig("../Results/SchSwitch.png")
     return(nothing)
 end

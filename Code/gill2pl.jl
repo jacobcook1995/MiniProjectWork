@@ -171,7 +171,7 @@ function main()
     plot!(ABsf[(intv-pos4):end,2],ABsf[(intv-pos4):end,1],label="to high B",xlabel="A",ylabel="B")
     scatter!([star2[2]], [star2[1]], seriescolor = :green, label="")
     scatter!([fin2[2]], [fin2[1]], seriescolor = :red, label="")
-    savefig("../Results/trial.png")
+    savefig("../Results/switch.png")
     return(nothing)
 end
 

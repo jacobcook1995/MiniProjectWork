@@ -122,8 +122,8 @@ function Pathmerge(nonfixed)
     bpath = nonfixed[N:2*(N-1)]
     push!(apath,fin[1]) # This should all go in a function if it's repeated
     push!(bpath,fin[2])
-    unshift!(apath,star[1])
-    unshift!(bpath,star[2])
+    pushfirst!(apath,star[1])
+    pushfirst!(bpath,star[2])
     path = hcat(apath,bpath)
     return(path)
 end
@@ -263,9 +263,10 @@ function optSt(nonfixed,tau)
     lower = zeros(2*(N-1)) # No species can drop below zero
     upper = 1000.0*ones(2*(N-1)) # No species can have more than the total amount in the system
     initial_x = nonfixed
-    od = OnceDifferentiable(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), initial_x)
-    results = optimize(od, initial_x, lower, upper, Fminbox{LBFGS}(), allow_f_increases = true,
-                        iterations = 10000, g_tol = 0.0, f_tol = 0.0, x_tol = 0.0)
+    results = optimize(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), initial_x, LBFGS())
+    # od = OnceDifferentiable(f -> AP(f,tau), (grads, f) -> g!(grads,f,tau), initial_x)
+    # results = optimize(od, initial_x, lower, upper, Fminbox{LBFGS}(), allow_f_increases = true,
+    #                     iterations = 10000, g_tol = 0.0, f_tol = 0.0, x_tol = 0.0)
     # Get results out of optimiser
     result = Optim.minimizer(results)
     S = Optim.minimum(results)
@@ -391,7 +392,7 @@ function run(tau,noit)
     print(S)
     print("\n")
     gr()
-    times = collect(linspace(0.0,t,N+1))
+    times = collect(range(0.0,stop=t,length=N+1))
     tmid = 0
     midi = 0
     for i = 1:N+1

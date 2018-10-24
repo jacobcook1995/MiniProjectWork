@@ -5,6 +5,7 @@
 #
 # Author: Jacob Cook
 # Date: October 2018
+using Plots
 
 function main()
     # first read in langevin trajectories
@@ -70,7 +71,7 @@ function main()
     T1 = ps[11]
     T2 = ps[12]
     Ωi = 2 # orginal volume here
-    Ω = 100 # new volume
+    Ω = 10000 # new volume
     # rescale rates appropriately
     k = k*(Ω/Ωi)
     Kmin = Kmin*(Ω/Ωi)
@@ -94,6 +95,7 @@ function main()
     # and add as start of path
     path = vcat(path,val)
     L = size(points1,1)
+    # want to find point where A/B crossed the 0.5 point
     for i = 2:L
         # first establish if there has been any change from the prior step
         if round(Int64,points1[i,1]) == path[end,1] && round(Int64,points1[i,2]) == path[end,2]
@@ -103,14 +105,14 @@ function main()
             dA = round(Int64,points1[i,1]) - path[end,1]
             dB = round(Int64,points1[i,2]) - path[end,2]
             th = (i-1)*T1/(L-1) # Time here
-            tp = (i-2)*T2/(L-1) # Time at prior step
+            tp = (i-2)*T1/(L-1) # Time at prior step
             vals = Array{Int64,2}(undef,0,2) # array to store values
             tempt = Array{Float64,1}(undef,0) # vector to temporaily store times
             if dA != 0
                 # find difference in A in interval
                 da = (points1[i,1] - points1[i-1,1])
                 # find first & potentially only point of change
-                ap = round(Int64,points1[i,1]) - 0.5
+                ap = round(Int64,points1[i,1]) - 0.5*sign(dA)
                 # find distance from point of point of change
                 deltaA = points1[i,1] - ap
                 # as a fraction of spacing
@@ -119,8 +121,9 @@ function main()
                 t = th - fracA*(th - tp)
                 tempt = vcat(tempt,t)
                 # find B and save point
+                B = points1[i,2] - fracA*(points1[i,2] - points1[i-1,2])
                 val[1] = round(Int64,points1[i,1])
-                val[2] = round(Int64,points1[i,2] - fracA*(points1[i,2] - points1[i-1,2]))
+                val[2] = round(Int64,B)
                 vals = vcat(vals,val)
                 n = 1 # first point done
                 # loop until all points are done
@@ -130,7 +133,16 @@ function main()
                         done = true
                         break
                     end
-
+                    deltaA = 1*sign(dA)
+                    fracA = deltaA/da
+                    # remove time of gap from time
+                    tn = fracA*(th - tp)
+                    t -= tn
+                    tempt = vcat(tempt,t)
+                    B -= fracA*(points1[i,2] - points1[i-1,2])
+                    val[1] = round(Int64,points1[i,1]) - n*sign(dA)
+                    val[2] = round(Int64,B)
+                    vals = vcat(vals,val)
                     n += 1 # another point completed
                 end
             end
@@ -138,7 +150,7 @@ function main()
                 # find difference in B in interval
                 db = (points1[i,2] - points1[i-1,2])
                 # find first & potentially only point of change
-                bp = round(Int64,points1[i,2]) - 0.5
+                bp = round(Int64,points1[i,2]) - 0.5*sign(dB)
                 # find distance from point of point of change
                 deltaB = points1[i,2] - bp
                 # as a fraction of spacing
@@ -147,7 +159,8 @@ function main()
                 t = th - fracB*(th - tp)
                 tempt = vcat(tempt,t)
                 # find A and save point
-                val[1] = round(Int64,points1[i,1] - fracB*(points1[i,1] - points1[i-1,1]))
+                A = points1[i,1] - fracB*(points1[i,1] - points1[i-1,1])
+                val[1] = round(Int64,A)
                 val[2] = round(Int64,points1[i,2])
                 vals = vcat(vals,val)
                 n = 1 # first point done
@@ -158,26 +171,33 @@ function main()
                         done = true
                         break
                     end
-                    println(n,dB)
-                    deltaB = 1
+                    deltaB = 1*sign(dB)
                     fracB = deltaB/db
                     # remove time of gap from time
-                    tn =  ### change!!!
+                    tn = fracB*(th - tp)
                     t -= tn
                     tempt = vcat(tempt,t)
-                    val[1] = round(Int64,) ### change!!!
+                    A -= fracB*(points1[i,1] - points1[i-1,1])
+                    val[1] = round(Int64,A)
                     val[2] = round(Int64,points1[i,2]) - n*sign(dB)
                     vals = vcat(vals,val)
                     n += 1 # another point completed
                 end
             end
-            println(vals)
+            # times are non-sensenscial for cases where A and B both run
             # Now reorder vals by the times
+            p = sortperm(tempt)
+            tempt = sort(tempt)
+            vals = vals[p,:]
             # then vcat to path
-            return(nothing)
-            # want to find point where A/B crossed the 0.5 point
+            ts = vcat(ts,tempt)
+            path = vcat(path,vals)
         end
     end
+    plot(path[:,1],path[:,2])
+    savefig("../Results/test1.png")
+    plot(ts)
+    savefig("../Results/test2.png")
     return(nothing)
 end
 

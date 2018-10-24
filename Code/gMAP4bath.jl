@@ -611,7 +611,7 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int64,NG::Int64,Nmid::Int
         end
         println("$(sum(S)),$(δ)")
         flush(stdout) # needed to get output in log file
-        if l % 50 == 0 # l % 500 == 0
+        if l % 1000 == 0
             plot(x[:,1],x[:,2])
             savefig("../Results/GraphAB$(l).png")
             plot(x[:,3],x[:,4])

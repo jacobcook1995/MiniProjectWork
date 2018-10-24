@@ -102,6 +102,19 @@ function rates(A::Int64,B::Int64,a::Int64,b::Int64,k::Float64,K::Float64,q::Floa
     end
 end
 
+# function to construct the rates for non-explicit switching case
+function rates(A::Int64,B::Int64,k::Float64,K::Float64,q::Float64,Q::Float64,kmin::Float64,Kmin::Float64,
+                qmin::Float64,Qmin::Float64,r::Float64,f::Float64,diffs::Bool=false)
+    rates = [ k*r/(r+f*B^2), kmin*A, K*A, Kmin, q*r/(r+f*A^2), qmin*B, Q*B, Qmin]
+    if diffs == false
+        return(rates)
+    else
+        dA = [ 1, -1, -1, 1, 0, 0, 0, 0 ]
+        dB = [ 0, 0, 0, 0, 1, -1, -1, 1 ]
+        return(rates,dA,dB)
+    end
+end
+
 # function to calculate the time step
 function timstep(rates::Array{Float64,1})
     r = rand()
@@ -109,7 +122,7 @@ function timstep(rates::Array{Float64,1})
     return(τ)
 end
 
-# function to advance gillespie one step
+# function to advance gillespie one step: explicit switching
 function step!(rates::Array{Float64,1},vars::Array{Int64,1})
     r = rand()
     rs = rates/sum(rates)
@@ -145,6 +158,30 @@ function step!(rates::Array{Float64,1},vars::Array{Int64,1})
     return(vars) # there's always the potential of inverting this to speed the code up
 end
 
+# function to advance gillespie one step: non-explicit switching
+function stepn!(rates::Array{Float64,1},vars::Array{Int64,1})
+    r = rand()
+    rs = rates/sum(rates)
+    if r < rs[1]
+        vars[1] += 1 # A produced
+    elseif r < rs[1] + rs[2]
+        vars[1] -= 1 # A unravels
+    elseif r < rs[1] + rs[2] + rs[3]
+        vars[1] -= 1 # A decays
+    elseif r < rs[1] + rs[2] + rs[3] + rs[4]
+        vars[1] += 1 # A regenerated
+    elseif r < sum(rs[1:5])
+        vars[2] += 1 # B produced
+    elseif r < sum(rs[1:6])
+        vars[2] -= 1 # B unravels
+    elseif r < sum(rs[1:7])
+        vars[2] -= 1 # B decays
+    else
+        vars[2] += 1 # B regenerated
+    end
+    return(vars) # there's always the potential of inverting this to speed the code up
+end
+
 # function to actually run a gillepsie simulation
 function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmin::Float64,
                     f::Float64,r::Float64,Kmin::Float64,Qmin::Float64,noits::Int64,star::Array{Int64,1},
@@ -159,22 +196,22 @@ function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmi
     wB = Array{Float64,1}(undef,0)
     tp = 0 # prior time
     times = zeros(2)
-    vars = fill(0,4,2)
+    vars = fill(0,2,2)
     vars[:,2] = star
-    hist = zeros(25*Ω,25*Ω,2,2)
+    hist = zeros(35*Ω,35*Ω)
     for i = 1:noits
         vars[:,1] = vars[:,2]
         times[1] = times[2]
         # calculate rates
-        rs = rates(vars[1,1],vars[2,1],vars[3,1],vars[4,1],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        rs = rates(vars[1,1],vars[2,1],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
         # calculate timestep
         τ = timstep(rs)
         # update time
         times[2] = times[1] + τ
         # do gillepsie step
-        vars[:,2] = step!(rs,vars[:,1])
+        vars[:,2] = stepn!(rs,vars[:,1])
         # add to histogram
-        hist[vars[1,1]+1,vars[2,1]+1,vars[3,1]+1,vars[4,1]+1] += times[2] - times[1]
+        hist[vars[1,1]+1,vars[2,1]+1] += times[2] - times[1]
         # now step to check if transistion has occurred
         if vars[1,2] >= hA && highA == false
             highA = true
@@ -346,6 +383,115 @@ function printout(hist::Array{Float64,4},wA::Array{Float64,1},wB::Array{Float64,
     return(nothing)
 end
 
+# function to printout my data
+function printout(hist::Array{Float64,2},wA::Array{Float64,1},wB::Array{Float64,1},Time::Float64)
+    if isfile("../Results/wA$(ARGS[1])V$(ARGS[2]).csv")
+        # if file already exists should add to bottom of it
+        output_file = "../Results/wA$(ARGS[1])V$(ARGS[2]).csv"
+        out_file = open(output_file, "a")
+        for i = 1:size(wA,1)
+            line = "$(wA[i])\n"
+            write(out_file,line)
+        end
+        close(out_file)
+    else
+        # if file doesn't exist should make it
+        output_file = "../Results/wA$(ARGS[1])V$(ARGS[2]).csv"
+        out_file = open(output_file, "w")
+        for i = 1:size(wA,1)
+            line = "$(wA[i])\n"
+            write(out_file,line)
+        end
+        close(out_file)
+    end
+    if isfile("../Results/wB$(ARGS[1])V$(ARGS[2]).csv")
+        # if file already exists should add to bottom of it
+        output_file = "../Results/wB$(ARGS[1])V$(ARGS[2]).csv"
+        out_file = open(output_file, "a")
+        for i = 1:size(wB,1)
+            line = "$(wB[i])\n"
+            write(out_file,line)
+        end
+        close(out_file)
+    else
+        # if file doesn't exist should make it
+        output_file = "../Results/wB$(ARGS[1])V$(ARGS[2]).csv"
+        out_file = open(output_file, "w")
+        for i = 1:size(wB,1)
+            line = "$(wB[i])\n"
+            write(out_file,line)
+        end
+        close(out_file)
+    end
+    # histogram in this case is two dimensional so not hard to represent
+    if isfile("../Results/hist$(ARGS[1])V$(ARGS[2]).csv")
+        # need to read in old file and then add new histogram to it and then output
+        input_file = "../Results/hist$(ARGS[1])V$(ARGS[2]).csv"
+        vol = convert(Int64,(countlines(input_file)) - 3)
+        histr = Array{Float64,2}(undef,vol,vol)
+        a = 0
+        i = 1
+        j = 1
+        T = 0
+        open(input_file, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            for line in eachline(in_file)
+                # parse line by finding commas
+                if line[1] == '#'
+                    a += 1
+                    i = 1
+                    j = 1
+                else
+                    if a == 2
+                        T = parse(Float64,line)
+                    else
+                        # need to think about how to do the parsing here
+                        L = length(line)
+                        comma = fill(0,vol+1)
+                        j = 1
+                        for i = 1:L
+                            if line[i] == ','
+                                j += 1
+                                comma[j] = i
+                            end
+                        end
+                        comma[end] = L+1
+                        for j = 1:vol
+                            histr[i,j] = parse(Float64,line[(comma[j]+1):(comma[j+1]-1)])
+                        end
+                        i += 1
+                    end
+                end
+            end
+        end
+        hist = (Time*hist .+ T*histr)/(T + Time)
+        # update time to include time of new run
+        Time += T
+    end
+    # if file doesn't exist should make it
+    output_file = "../Results/hist$(ARGS[1])V$(ARGS[2]).csv"
+    out_file = open(output_file, "w")
+    line = "# Start #\n"
+    write(out_file,line)
+    for i = 1:size(hist,1)
+        line = ""
+        for j = 1:size(hist,2)
+            line *= "$(hist[i,j,1,1]),"
+        end
+        # remove surplus ,
+        line = line[1:end-1]
+        # add a new line
+        line *= "\n"
+        write(out_file,line)
+    end
+    line = "# Time #\n"
+    write(out_file,line)
+    line = "$(Time)\n"
+    write(out_file,line)
+    close(out_file)
+    return(nothing)
+end
+
 function main()
     println("Compiled, Starting script.")
     flush(stdout)
@@ -372,8 +518,8 @@ function main()
     # use these parameters to generate the steady states
     ss1, sad, ss2 = states(k,kmin,q,qmin,K,Kmin,Q,Qmin,r,f,Ω)
     # scale starting posisition by volume
-    star = [ 0, 0, 1, 0 ]
-    fin = [ 0, 0, 0, 1 ]
+    star = fill(0,2)
+    fin = fill(0,2)
     for i = 1:2
         star[i] = round(Int64,ss1[i]*Ω)
         fin[i] = round(Int64,ss2[i]*Ω)

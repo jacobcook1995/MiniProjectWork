@@ -100,6 +100,24 @@ function f2!(F::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
     return F
 end
 
+function fC!(F::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
+    F[1] = -ps[1]*x[1] - ps[5]*x[1]
+    F[2] = -ps[3]*x[2] - ps[7]*x[2]
+    return F
+end
+
+function fD!(F::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
+    F[1] = ps[2]*ps[10]/(ps[10] + ps[9]*x[2]^2) + ps[6]
+    F[2] = ps[4]*ps[10]/(ps[10] + ps[9]*x[1]^2) + ps[8]
+    return F
+end
+
+function fii!(F::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
+    F[1] = -ps[5] - ps[1]
+    F[2] = -ps[7] - ps[3]
+    return F
+end
+
 # Diffusion matrix from MAP case
 function D!(D::Array{Float64,2},x::Array{Float64,1},ps::Array{Float64,1})
     D[1,1] = ps[2]*ps[10]/(ps[10] + ps[9]*x[2]^2) + ps[5]*x[1] + ps[1]*x[1] + ps[6]
@@ -144,9 +162,14 @@ function EntProd(pathmin::Array{Float64,2},tau::Float64,NM::Int64,ps::Array{Floa
     acts = zeros(NM, 2)
     prod = zeros(NM, 2)
     flow = zeros(NM, 2)
+    powC = zeros(NM, 2)
+    powD = zeros(NM, 2)
     h = [0.0; 0.0]
     h1 = [0.0; 0.0]
     h2 = [0.0; 0.0]
+    hC = [0.0; 0.0]
+    hD = [0.0; 0.0]
+    fii = [0.0; 0.0]
     d = [0.0 0.0; 0.0 0.0]
     deltat = tau/NM
     # Remove fixed points from path
@@ -166,6 +189,9 @@ function EntProd(pathmin::Array{Float64,2},tau::Float64,NM::Int64,ps::Array{Floa
         d = D!(d,[posA,posB],ps)
         h1 = f1!(h1,[posA,posB],ps)
         h2 = f2!(h2,[posA,posB],ps)
+        hC = fC!(hC,[posA,posB],ps)
+        hD = fD!(hD,[posA,posB],ps)
+        fii = fii!(fii,[posA,posB],ps)
         for j = 1:2
             if i == 1
                 thiv = (path[i,j] - pathmin[1,j])/deltat
@@ -179,6 +205,9 @@ function EntProd(pathmin::Array{Float64,2},tau::Float64,NM::Int64,ps::Array{Floa
             PE[i,j] = h[j]*h[j]*deltat/(2*d[j,j])
             prod[i,j] = (h1[j]^2 + h2[j]^2)*deltat/d[j,j]
             flow[i,j] = 2*h1[j]*h2[j]*deltat/d[j,j]
+            powC[i,j] = h[j]*thiv/d[j,j]
+            #powC[i,j] = (hC[j]*h[j])/(sqrt(2*d[j,j]))# + fii[j]
+            #powD[i,j] = hD[j]*h[j]/(sqrt(2*d[j,j]))
             # ents[i,j] = h[j]*thiv/d[j,j]
             # KE[i,j] = thiv*thiv/(2*d[j,j])
             # PE[i,j] = h[j]*h[j]/(2*d[j,j])
@@ -187,7 +216,7 @@ function EntProd(pathmin::Array{Float64,2},tau::Float64,NM::Int64,ps::Array{Floa
         end
     end
     acts = KE + PE - ents
-    return(ents,KE,PE,acts,prod,flow)
+    return(ents,KE,PE,acts,prod,flow,powD,powC)
 end
 
 # Function to calculate the action of the discretised Schlögl path in the MAP formulation
@@ -278,7 +307,7 @@ function shannonS(point::Float64,ps::Array{Float64,1})
     S1 = F1*A1
     S2 = F2*A2
     S = S1 + S2
-    return(S*ps[6])
+    return(S)
 end
 
 function graphs1()
@@ -601,31 +630,31 @@ function graphs2()
             DB[i,j] = d[2,2]
         end
     end
-    xs = 0:dx:(X-dx)
-    heatmap(xs,xs,fmag,xlabel="B",ylabel="A")
-    plot!(points1[:,2],points1[:,1],label="B to A")
-    plot!(points2[:,2],points2[:,1],label="A to B")
-    savefig("../Results/Heatmapf.png")
-    heatmap(xs,xs,fA,xlabel="B",ylabel="A")
-    plot!(points1[:,2],points1[:,1],label="B to A")
-    plot!(points2[:,2],points2[:,1],label="A to B")
-    savefig("../Results/HeatmapfA.png")
-    heatmap(xs,xs,fB,xlabel="B",ylabel="A")
-    plot!(points1[:,2],points1[:,1],label="B to A")
-    plot!(points2[:,2],points2[:,1],label="A to B")
-    savefig("../Results/HeatmapfB.png")
-    heatmap(xs,xs,Dmag,xlabel="B",ylabel="A")
-    plot!(points1[:,2],points1[:,1],label="B to A")
-    plot!(points2[:,2],points2[:,1],label="A to B")
-    savefig("../Results/Heatmap.png")
-    heatmap(xs,xs,DA,xlabel="B",ylabel="A")
-    plot!(points1[:,2],points1[:,1],label="B to A")
-    plot!(points2[:,2],points2[:,1],label="A to B")
-    savefig("../Results/HeatmapA.png")
-    heatmap(xs,xs,DB,xlabel="B",ylabel="A")
-    plot!(points1[:,2],points1[:,1],label="B to A")
-    plot!(points2[:,2],points2[:,1],label="A to B")
-    savefig("../Results/HeatmapB.png")
+    # xs = 0:dx:(X-dx)
+    # heatmap(xs,xs,fmag,xlabel="B",ylabel="A")
+    # plot!(points1[:,2],points1[:,1],label="B to A")
+    # plot!(points2[:,2],points2[:,1],label="A to B")
+    # savefig("../Results/Heatmapf.png")
+    # heatmap(xs,xs,fA,xlabel="B",ylabel="A")
+    # plot!(points1[:,2],points1[:,1],label="B to A")
+    # plot!(points2[:,2],points2[:,1],label="A to B")
+    # savefig("../Results/HeatmapfA.png")
+    # heatmap(xs,xs,fB,xlabel="B",ylabel="A")
+    # plot!(points1[:,2],points1[:,1],label="B to A")
+    # plot!(points2[:,2],points2[:,1],label="A to B")
+    # savefig("../Results/HeatmapfB.png")
+    # heatmap(xs,xs,Dmag,xlabel="B",ylabel="A")
+    # plot!(points1[:,2],points1[:,1],label="B to A")
+    # plot!(points2[:,2],points2[:,1],label="A to B")
+    # savefig("../Results/Heatmap.png")
+    # heatmap(xs,xs,DA,xlabel="B",ylabel="A")
+    # plot!(points1[:,2],points1[:,1],label="B to A")
+    # plot!(points2[:,2],points2[:,1],label="A to B")
+    # savefig("../Results/HeatmapA.png")
+    # heatmap(xs,xs,DB,xlabel="B",ylabel="A")
+    # plot!(points1[:,2],points1[:,1],label="B to A")
+    # plot!(points2[:,2],points2[:,1],label="A to B")
+    # savefig("../Results/HeatmapB.png")
     # Got actions so can infer stability, now want the steady state entropy production
     ss1, sad, ss2 = nullcline(ps,false)
     SB = shannon(ss1,ps)
@@ -636,8 +665,8 @@ function graphs2()
     N1 = size(points1,1) - 1
     N2 = size(points2,1) - 1
     # find entropies along path
-    ents1, kins1, pots1, acts1, prod1, flow1 = EntProd(points1[:,1:2],t1,N1,ps)
-    ents2, kins2, pots2, acts2, prod2, flow2 = EntProd(points2[:,1:2],t2,N2,ps)
+    ents1, kins1, pots1, acts1, prod1, flow1, powd1, powc1 = EntProd(points1[:,1:2],t1,N1,ps)
+    ents2, kins2, pots2, acts2, prod2, flow2, powd2, powc2 = EntProd(points2[:,1:2],t2,N2,ps)
     # find segcents to plot entropies against
     segcent1 = zeros(N1)
     segcent2 = zeros(N2)
@@ -649,9 +678,12 @@ function graphs2()
     end
     # now have these and should try and plot as two lines
     plot(segcent1,2*N1*(ents1[:,1]+ents1[:,2])/t1,title="B => A",label="Entropy Production",xlabel="A",ylabel="\\Delta S")
-    plot!(segcent1,2*N1*(flow1[:,1]+flow1[:,2])/t1,label="''Entropy Flow''")
-    plot!(segcent1,2*N1*(prod1[:,1]+prod1[:,2])/t1,label="''Entropy Production''")
-    plot!(segcent1,2*N1*(prod1[:,1]+prod1[:,2]-flow1[:,1]-flow1[:,2])/t1,label="Production-Flow")
+    # plot!(segcent1,2*N1*(flow1[:,1]+flow1[:,2])/t1,label="''Entropy Flow''")
+    # plot!(segcent1,2*N1*(prod1[:,1]+prod1[:,2])/t1,label="''Entropy Production''")
+    # plot!(segcent1,2*N1*(prod1[:,1]+prod1[:,2]-flow1[:,1]-flow1[:,2])/t1,label="Production-Flow")
+    plot!(segcent1,powc1[:,1]+powc1[:,2],label="''Entropy Flow''")
+    plot!(segcent1,powd1[:,1]+powd1[:,2],label="''Entropy Production''")
+    plot!(segcent1,powd1[:,1]+powd1[:,2]+powc1[:,1]+powc1[:,2],label="Production-Flow")
     scatter!([segcent1[1]], [0.0], seriescolor = :green, label="")
     scatter!([segcent1[end]], [0.0], seriescolor = :red, label="")
     savefig("../Results/EntsB.png")
@@ -659,9 +691,12 @@ function graphs2()
     hline!([SB],label="high B Schnakenberg")
     savefig("../Results/EntsBSchnakenberg.png")
     plot(segcent2,2*N2*(ents2[:,1]+ents2[:,2])/t2,title="A => B",label="Entropy Production",xlabel="A",ylabel="\\Delta S")
-    plot!(segcent2,2*N2*(flow2[:,1]+flow2[:,2])/t2,label="''Entropy Flow''")
-    plot!(segcent2,2*N2*(prod2[:,1]+prod2[:,2])/t2,label="''Entropy Production''")
-    plot!(segcent2,2*N2*(prod2[:,1]+prod2[:,2]-flow2[:,1]-flow2[:,2])/t2,label="Production-Flow")
+    # plot!(segcent2,2*N2*(flow2[:,1]+flow2[:,2])/t2,label="''Entropy Flow''")
+    # plot!(segcent2,2*N2*(prod2[:,1]+prod2[:,2])/t2,label="''Entropy Production''")
+    # plot!(segcent2,2*N2*(prod2[:,1]+prod2[:,2]-flow2[:,1]-flow2[:,2])/t2,label="Production-Flow")
+    plot!(segcent2,powc2[:,1]+powc2[:,2],label="''Entropy Flow''")
+    plot!(segcent2,powd2[:,1]+powd2[:,2],label="''Entropy Production''")
+    plot!(segcent2,powd2[:,1]+powd2[:,2]+powc2[:,1]+powc2[:,2],label="Production-Flow")
     scatter!([segcent2[1]], [0.0], seriescolor = :green, label="")
     scatter!([segcent2[end]], [0.0], seriescolor = :red, label="")
     savefig("../Results/EntsA.png")
@@ -671,4 +706,4 @@ function graphs2()
     return(nothing)
 end
 
-@time graphs1()
+@time graphs2()

@@ -7,10 +7,52 @@
 # Date: October 2018
 using Plots
 
+# function that takes in two points and finds the probability that the switch that generates them happens
+function probs(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q::Float64,Q::Float64,
+                kmin::Float64,Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64)
+    rates = [ k*r/(r+f*star[2]^2), kmin*star[1], K*star[1], Kmin, q*r/(r+f*star[1]^2), qmin*star[2], Q*star[2], Qmin]
+    # not actually possible to distinguish two processes, which will effect the probabilities
+    if fin[1] - star[1] == 0
+        if fin[2] - star[2] == 1
+            P = (rates[5] + rates[8])/sum(rates)
+        elseif fin[2] - star[2] == -1
+            P = (rates[6] + rates[7])/sum(rates)
+        else
+            error()
+        end
+    else
+        if fin[1] - star[1] == 1
+            P = (rates[1] + rates[4])/sum(rates)
+        elseif fin[1] - star[1] == -1
+            P = (rates[2] + rates[3])/sum(rates)
+        else
+            error()
+        end
+    end
+    return(P)
+end
+
+# Also need another function that calculates probability of waiting time t
+# function that takes in two points and finds the probability that the switch that generates them happens
+function probw(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q::Float64,Q::Float64,
+                kmin::Float64,Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64,t1::Float64,t2::Float64)
+    rates = [ k*r/(r+f*star[2]^2), kmin*star[1], K*star[1], Kmin, q*r/(r+f*star[1]^2), qmin*star[2], Q*star[2], Qmin]
+    t = convert(BigFloat,abs(t2 - t1)) # time waited
+    P1 = exp(-t*sum(rates)) # probability of survining to time t
+    ϵ = 10.0^-15
+    P2 = exp(-t*sum(rates)) - exp(-(t+ϵ)*sum(rates))
+    P = P1*P2
+    return(P)
+end
+
 function main()
     # first read in langevin trajectories
-    input_file1 = "../Results/1809/$(ARGS[1])1.csv"
-    input_file2 = "../Results/1809/$(ARGS[1])2.csv"
+    one = true
+    if one == true
+        input_file1 = "../Results/1809/$(ARGS[1])1.csv"
+    else
+        input_file1 = "../Results/1809/$(ARGS[1])2.csv"
+    end
     input_filep = "../Results/1809/$(ARGS[1])p.csv"
     points1 = Array{Float64,2}(undef,0,2)
     points2 = Array{Float64,2}(undef,0,2)
@@ -40,23 +82,6 @@ function main()
             points1 = vcat(points1, [ A B ])
         end
     end
-    # now do second file
-    open(input_file2, "r") do in_file
-        # Use a for loop to process the rows in the input file one-by-one
-        for line in eachline(in_file)
-            # parse line by finding commas
-            comma = 0
-            L = length(line)
-            for j = 1:L
-                if line[j] == ','
-                    comma = j
-                end
-            end
-            A = parse(Float64, line[1:(comma - 1)])
-            B = parse(Float64, line[(comma + 1):L])
-            points2 = vcat(points2, [ A B ])
-        end
-    end
     # the parameters will need volume rescaling
     K = ps[1]
     k = ps[2]
@@ -71,7 +96,7 @@ function main()
     T1 = ps[11]
     T2 = ps[12]
     Ωi = 2 # orginal volume here
-    Ω = 10000 # new volume
+    Ω = 25000 # new volume
     # rescale rates appropriately
     k = k*(Ω/Ωi)
     Kmin = Kmin*(Ω/Ωi)
@@ -194,10 +219,61 @@ function main()
             path = vcat(path,vals)
         end
     end
-    plot(path[:,1],path[:,2])
-    savefig("../Results/test1.png")
-    plot(ts)
-    savefig("../Results/test2.png")
+    # now need to think about how I use this new path
+    # need both forward and backward trajectories in order to establish entropy production
+    backp = path[end:-1:1,:]
+    backts = ts[end:-1:1]
+    len = length(ts)-1
+    Pf = zeros(len)
+    Pb = zeros(len)
+    Pwf = zeros(BigFloat,len)
+    Pwb = zeros(BigFloat,len)
+    Pwf1 = zeros(len)
+    Pwb1 = zeros(len)
+    Pwf2 = zeros(len)
+    Pwb2 = zeros(len)
+    for i = 2:len+1
+        Pf[i-1] = probs(path[i-1,:],path[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        Pb[i-1] = probs(backp[i-1,:],backp[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        Pwf[i-1] = probw(path[i-1,:],path[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f,ts[i-1],ts[i])
+        Pwb[i-1] = probw(backp[i-1,:],backp[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f,backts[i-1],backts[i])
+    end
+    ents = log.(Pf./Pb[end:-1:1])
+    ents2 = log.(Pwf./Pwb[end:-1:1])
+    # plot(ents)
+    # savefig("../Results/test1.png")
+    # plot(ents2)
+    # savefig("../Results/test2.png")
+    # average the entropy production
+    red = 250
+    len2 = floor(Int64,len/red)+1
+    entsr = zeros(len2)
+    ents2r = zeros(len2)
+    for i = 1:len2-1
+        entsr[i] = sum(ents[(1+(red*(i-1))):(red*i)])
+        ents2r[i] = sum(ents2[(1+(red*(i-1))):(red*i)])
+    end
+    entsr[end] = sum(ents[(red*(len2-1)+1):end])
+    ents2r[end] = sum(ents2[(red*(len2-1)+1):end])
+    # and make rate of entropy production
+    entsp = zeros(len2)
+    for i = 1:len2-1
+        entsp[i] = entsr[i]/(ts[1+red*i] - ts[1+(red*(i-1))])
+    end
+    entsp[end] = entsr[end]/(ts[end] - ts[1+(red*(len2-1))])
+    # should plot against A here
+    A = path[1:red:end,1]*(Ωi/Ω)
+    plot(A,entsp*(Ωi/Ω),label="Entropy Production")
+    scatter!([A[end]],[0],seriescolor=:red,label="")
+    scatter!([A[1]],[0],seriescolor=:green,label="")
+    plot!(title =  "$(sum(ents)*(Ωi/Ω))")
+    if one == true
+        savefig("../Results/MastEntsB.png")
+    else
+        savefig("../Results/MastEntsA.png")
+    end
+    println(sum(ents)*(Ωi/Ω))
+    println(sum(log.(Pwf./Pwb[end:-1:1]))*(Ωi/Ω))
     return(nothing)
 end
 

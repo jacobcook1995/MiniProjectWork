@@ -7,6 +7,8 @@
 # Date: September 2018
 
 using Plots
+using StatsBase
+using LsqFit
 import GR # this is necessary to avoid a world age error when using GR in function
 
 # function to open my 4D histogram
@@ -57,6 +59,75 @@ function openhist(input_file::String)
         end
     end
     return(hist)
+end
+# ps = [ k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f, Ω ]
+# total force
+function f!(ps::Array{Float64,1},f::Array{Float64,1},pos::Array{Float64,1})
+    f[1] = ps[1]*ps[9]/(ps[9]+ps[10]*pos[2]^2) + ps[6] - (ps[2]+ps[5])*pos[1]
+    f[2] = ps[3]*ps[9]/(ps[9]+ps[10]*pos[1]^2) + ps[8] - (ps[4]+ps[7])*pos[2]
+    return(f)
+end
+# Conservative force
+function fc!(ps::Array{Float64,1},f::Array{Float64,1},pos::Array{Float64,1})
+    f[1] = -(ps[2]+ps[5])*pos[1]
+    f[2] = -(ps[4]+ps[7])*pos[2]
+    return(f)
+end
+# Dissaptive force
+function fd!(ps::Array{Float64,1},f::Array{Float64,1},pos::Array{Float64,1})
+    f[1] = ps[1]*ps[9]/(ps[9]+ps[10]*pos[2]^2) + ps[6]
+    f[2] = ps[3]*ps[9]/(ps[9]+ps[10]*pos[1]^2) + ps[8]
+    return(f)
+end
+# noise
+function fii!(ps::Array{Float64,1},f::Array{Float64,1},pos::Array{Float64,1})
+    f[1] = -(ps[2]+ps[5])
+    f[2] = -(ps[4]+ps[7])
+    return(f)
+end
+# noise
+function D!(ps::Array{Float64,1},D::Array{Float64,1},pos::Array{Float64,1})
+    D[1] = sqrt(ps[1]*ps[9]/(ps[9]+ps[10]*pos[2]^2) + ps[6] + (ps[2]+ps[5])*pos[1])/(2*ps[11])
+    D[2] = sqrt(ps[3]*ps[9]/(ps[9]+ps[10]*pos[1]^2) + ps[8] + (ps[4]+ps[7])*pos[2])/(2*ps[11])
+    return(D)
+end
+# ps = [ k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f, Ω ]
+# function to plot powers from Tome Langevin method
+function power(hist::Array{Float64,2},ps::Array{Float64,1})
+    lA = size(hist,1)
+    lB = size(hist,2)
+    # make arrays to store powers
+    ΦC = zeros(lA,lB)
+    ΦD = zeros(lA,lB)
+    f = zeros(2)
+    fc = zeros(2)
+    fd = zeros(2)
+    fii = zeros(2)
+    D = zeros(2)
+    for j = 1:lB
+        for i = 1:lA
+            pos = [(i-1),(j-1)]/ps[11]
+            f = f!(ps,f,pos)
+            fc = fc!(ps,fc,pos)
+            fd = fd!(ps,fd,pos)
+            fii = fii!(ps,fii,pos)
+            D = D!(ps,D,pos)
+            ΦC[i,j] = (fc[1]*f[1]/D[1] + fc[2]*f[2]/D[2] + sum(fii))*hist[i,j]
+            ΦD[i,j] = (fd[1]*f[1]/D[1] + fd[2]*f[2]/D[2])*hist[i,j]
+        end
+    end
+    # println(argmax(hist))
+    heatmap(ΦC[1500:2500,1:15])
+    savefig("../Results/trail.png")
+    heatmap(ΦD[1500:2500,1:15])
+    savefig("../Results/trail2.png")
+    heatmap(hist[1500:2500,1:15])
+    savefig("../Results/trail3.png")
+    heatmap(ΦC[1500:2500,1:15].+ΦD[1500:2500,1:15])
+    savefig("../Results/trail4.png")
+    println(sum(ΦC))
+    println(sum(ΦD))
+    return(nothing)
 end
 
 # function to open my 4D histogram
@@ -123,8 +194,6 @@ function main()
     # define file names to read in
     input_wA = "../Results/wA$(ARGS[1])V$(ARGS[2]).csv"
     input_wB = "../Results/wB$(ARGS[1])V$(ARGS[2]).csv"
-    input_ps = "../Results/ps$(ARGS[1])V$(ARGS[2]).csv"
-    input_hist = "../Results/hist$(ARGS[1])V$(ARGS[2]).csv"
     lwA = countlines(input_wA)
     wA = zeros(lwA)
     i = 0
@@ -143,19 +212,77 @@ function main()
             wB[i] = parse(Float64,line)
         end
     end
-    histogram(wA,nbins=250)
+    nb = 500
+    hA = fit(Histogram,wA,nbins=nb,closed=:left)
+    hB = fit(Histogram,wB,nbins=nb,closed=:left)
+    maxA, MA = findmax(hA.weights)
+    binsA = hA.edges[1]
+    # point behind which should ignore data
+    dataA = convert(Array{Float64,1},hA.weights[MA:end])
+    tsA = zeros(length(binsA)-MA)
+    for i = MA:length(binsA)-1
+        tsA[i-MA+1] = 0.5*(binsA[i-1]+binsA[i])
+    end
+    maxB, MB = findmax(hB.weights)
+    binsB = hB.edges[1]
+    # point behind which should ignore data
+    dataB = convert(Array{Float64,1},hB.weights[MB:end])
+    tsB = zeros(length(binsB)-MB)
+    for i = MB:length(binsB)-1
+        tsB[i-MB+1] = 0.5*(binsB[i-1]+binsB[i])
+    end
+    # set up model to be fitted to
+    @. model(x, p) = p[1]*exp(-x*p[2])
+    p0 = [10000.0, 0.5]
+    fitA = curve_fit(model,tsA,dataA,p0)
+    fitB = curve_fit(model,tsB,dataB,p0)
+    pA = fitA.param
+    pB = fitB.param
+    # make forms of exponential to plot
+    rangeA = collect(0.0:1.0:tsA[end])
+    rangeB = collect(0.0:1.0:tsB[end])
+    A = model(rangeA,pA)
+    B = model(rangeB,pB)
+    # actually visulise the histograms
+    histogram(wA,nbins=nb,label="",linecolor=:blue)
+    plot!(rangeA,A,label="")
+    annotate!(tsA[floor(Int64,nb/2)],maxA,text("a = $(pA[1])\nb = $(pA[2])",:left,font(10,"Courier")))
     savefig("../Results/wA.png")
-    histogram(wB,nbins=250)
+    histogram(wB,nbins=nb,label="",linecolor=:blue)
+    plot!(rangeB,B,label="")
+    annotate!(tsB[floor(Int64,nb/2)],maxB,text("a = $(pB[1])\nb = $(pB[2])",:left,font(10,"Courier")))
     savefig("../Results/wB.png")
-    println(length(wA))
+    return(nothing)
+end
+
+# function to read in histogram and then find the powers associated
+function main2()
     # read in histogram
+    input_hist = "../Results/hist$(ARGS[1])V$(ARGS[2]).csv"
+    input_ps = "../Results/ps$(ARGS[1])V$(ARGS[2]).csv"
     hist = openhist2(input_hist)
     # sum over promotor dimensions
     # hist = dropdims(sum(hist,dims=4),dims=4)
     # hist = dropdims(sum(hist,dims=3),dims=3)
     heatmap(hist)
     savefig("../Results/HeatMap.png")
+    ps = zeros(11)
+    i = 0
+    open(input_ps, "r") do in_file
+        for line in eachline(in_file)
+            i += 1
+            ps[i] = parse(Float64,line)
+        end
+    end
+    # ps = [ k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f, Ω ]
+    # ps[1] = ps[1]/ps[11]
+    # ps[6] = ps[6]/ps[11]
+    # ps[3] = ps[3]/ps[11]
+    # ps[8] = ps[8]/ps[11]
+    # ps[10] = ps[10]*(ps[11]^2)
+    power(hist,ps)
     return(nothing)
 end
 
-@time main()
+# @time main()
+@time main2()

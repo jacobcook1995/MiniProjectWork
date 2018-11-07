@@ -10,7 +10,7 @@ using Plots
 # function that takes in two points and finds the probability that the switch that generates them happens
 function probs(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q::Float64,Q::Float64,
                 kmin::Float64,Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64)
-    rates = [ k*r/(r+f*star[2]^2), kmin*star[1], K*star[1], Kmin, q*r/(r+f*star[1]^2), qmin*star[2], Q*star[2], Qmin]
+    rates = [ k*r/(r+f*star[2]^2), kmin*star[1], K*star[1], Kmin, q*r/(r+f*star[1]^2), qmin*star[2], Q*star[2], Qmin ]
     # not actually possible to distinguish two processes, which will effect the probabilities
     if fin[1] - star[1] == 0
         if fin[2] - star[2] == 1
@@ -30,6 +30,162 @@ function probs(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q:
         end
     end
     return(P)
+end
+
+# This function now attempts to differentiate path taken
+function probsR(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q::Float64,Q::Float64,
+                kmin::Float64,Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64)
+    rates = [ k*r/(r+f*star[2]^2), kmin*star[1], K*star[1], Kmin, q*r/(r+f*star[1]^2), qmin*star[2], Q*star[2], Qmin]
+    # not actually possible to distinguish two processes, which will effect the probabilities
+    R = rand()
+    if fin[1] - star[1] == 0
+        if fin[2] - star[2] == 1
+            if R < rates[5]/(rates[5] + rates[8])
+                P = (rates[5])/sum(rates)
+                rev = 6
+            else
+                P = (rates[8])/sum(rates)
+                rev = 7
+            end
+        elseif fin[2] - star[2] == -1
+            if R < rates[6]/(rates[6] + rates[7])
+                P = (rates[6])/sum(rates)
+                rev = 5
+            else
+                P = (rates[7])/sum(rates)
+                rev = 8
+            end
+        else
+            error()
+        end
+    else
+        if fin[1] - star[1] == 1
+            if R < rates[1]/(rates[1] + rates[4])
+                P = (rates[1])/sum(rates)
+                rev = 2
+            else
+                P = (rates[4])/sum(rates)
+                rev = 3
+            end
+        elseif fin[1] - star[1] == -1
+            if R < rates[2]/(rates[2] + rates[3])
+                P = (rates[2])/sum(rates)
+                rev = 1
+            else
+                P = (rates[3])/sum(rates)
+                rev = 4
+            end
+        else
+            error()
+        end
+    end
+    # find reverse rates from final point
+    rsR = [ k*r/(r+f*fin[2]^2), kmin*fin[1], K*fin[1], Kmin, q*r/(r+f*fin[1]^2), qmin*fin[2], Q*fin[2], Qmin]
+    Pr = rsR[rev]/sum(rsR)
+    return(P,Pr)
+end
+
+# This function now just selects most probable of the two
+function probsR2(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q::Float64,Q::Float64,
+                kmin::Float64,Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64)
+    rates = [ k*r/(r+f*star[2]^2), kmin*star[1], K*star[1], Kmin, q*r/(r+f*star[1]^2), qmin*star[2], Q*star[2], Qmin]
+    # not actually possible to distinguish two processes, which will effect the probabilities
+    if fin[1] - star[1] == 0
+        if fin[2] - star[2] == 1
+            if rates[5] > rates[8]
+                P = (rates[5])/sum(rates)
+                rev = 6
+            else
+                P = (rates[8])/sum(rates)
+                rev = 7
+            end
+        elseif fin[2] - star[2] == -1
+            if rates[6] > rates[7]
+                P = (rates[6])/sum(rates)
+                rev = 5
+            else
+                P = (rates[7])/sum(rates)
+                rev = 8
+            end
+        else
+            error()
+        end
+    else
+        if fin[1] - star[1] == 1
+            if rates[1] > rates[4]
+                P = (rates[1])/sum(rates)
+                rev = 2
+            else
+                P = (rates[4])/sum(rates)
+                rev = 3
+            end
+        elseif fin[1] - star[1] == -1
+            if rates[2] > rates[3]
+                P = (rates[2])/sum(rates)
+                rev = 1
+            else
+                P = (rates[3])/sum(rates)
+                rev = 4
+            end
+        else
+            error()
+        end
+    end
+    # find reverse rates from final point
+    rsR = [ k*r/(r+f*fin[2]^2), kmin*fin[1], K*fin[1], Kmin, q*r/(r+f*fin[1]^2), qmin*fin[2], Q*fin[2], Qmin]
+    Pr = rsR[rev]/sum(rsR)
+    return(P,Pr)
+end
+# This function now just selects less probable of the two
+function probsR3(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q::Float64,Q::Float64,
+                kmin::Float64,Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64)
+    rates = [ k*r/(r+f*star[2]^2), kmin*star[1], K*star[1], Kmin, q*r/(r+f*star[1]^2), qmin*star[2], Q*star[2], Qmin]
+    # not actually possible to distinguish two processes, which will effect the probabilities
+    if fin[1] - star[1] == 0
+        if fin[2] - star[2] == 1
+            if rates[5] < rates[8]
+                P = (rates[5])/sum(rates)
+                rev = 6
+            else
+                P = (rates[8])/sum(rates)
+                rev = 7
+            end
+        elseif fin[2] - star[2] == -1
+            if rates[6] < rates[7]
+                P = (rates[6])/sum(rates)
+                rev = 5
+            else
+                P = (rates[7])/sum(rates)
+                rev = 8
+            end
+        else
+            error()
+        end
+    else
+        if fin[1] - star[1] == 1
+            if rates[1] < rates[4]
+                P = (rates[1])/sum(rates)
+                rev = 2
+            else
+                P = (rates[4])/sum(rates)
+                rev = 3
+            end
+        elseif fin[1] - star[1] == -1
+            if rates[2] < rates[3]
+                P = (rates[2])/sum(rates)
+                rev = 1
+            else
+                P = (rates[3])/sum(rates)
+                rev = 4
+            end
+        else
+            error()
+        end
+    end
+    # find reverse rates from final point
+    rsR = [ k*r/(r+f*fin[2]^2), kmin*fin[1], K*fin[1], Kmin, q*r/(r+f*fin[1]^2), qmin*fin[2], Q*fin[2], Qmin]
+    Pr = rsR[rev]/sum(rsR)
+    return(P,Pr)
 end
 
 # Also need another function that calculates probability of waiting time t
@@ -55,7 +211,6 @@ function main()
     end
     input_filep = "../Results/1809/$(ARGS[1])p.csv"
     points1 = Array{Float64,2}(undef,0,2)
-    points2 = Array{Float64,2}(undef,0,2)
     ps = Array{Float64,1}(undef,0)
     open(input_filep, "r") do in_file
         # Use a for loop to process the rows in the input file one-by-one
@@ -105,7 +260,6 @@ function main()
     f = f/((Ω/Ωi)^2)
     # rescale points1 and 2
     points1 = points1*(Ω/Ωi)
-    points2 = points2*(Ω/Ωi)
     # Should now make path in A,B
     path = Array{Int64,2}(undef,0,2)
     ts = Array{Float64,1}(undef,0)
@@ -233,12 +387,14 @@ function main()
     Pwf2 = zeros(len)
     Pwb2 = zeros(len)
     for i = 2:len+1
+        #Pf[i-1], Pb[i-1] = probsR3(path[i-1,:],path[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
         Pf[i-1] = probs(path[i-1,:],path[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
         Pb[i-1] = probs(backp[i-1,:],backp[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
         Pwf[i-1] = probw(path[i-1,:],path[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f,ts[i-1],ts[i])
         Pwb[i-1] = probw(backp[i-1,:],backp[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f,backts[i-1],backts[i])
     end
     ents = log.(Pf./Pb[end:-1:1])
+    # ents = log.(Pf./Pb)
     ents2 = log.(Pwf./Pwb[end:-1:1])
     # plot(ents)
     # savefig("../Results/test1.png")

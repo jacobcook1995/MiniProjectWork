@@ -7,19 +7,31 @@ using Plots
 import GR
 
 # Now construct the three relevant vectors of equations
-function f!(F::Float64,X::Float64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Int64)
+function f!(F::Float64,X::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Float64)
+    F = k1*V - K1*X - k2*X*(X-1)*(X-2)/(V*V) + K2*B*X*(X-1)/V
+    return F
+end
+
+# Now construct the three relevant vectors of equations
+function f!(F::Float64,X::Float64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Float64)
     F = k1*V - K1*X - k2*X*(X-1)*(X-2)/(V*V) + K2*B*X*(X-1)/V
     return F
 end
 
 # Then construct the necessary matrices
-function D!(D::Float64,X::Float64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Int64)
+function D!(D::Float64,X::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Float64)
+    D = k1*V + K1*X + k2*X*(X-1)*(X-2)/(V*V) + K2*B*X*(X-1)/V
+    return D
+end
+
+# Then construct the necessary matrices
+function D!(D::Float64,X::Float64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Float64)
     D = k1*V + K1*X + k2*X*(X-1)*(X-2)/(V*V) + K2*B*X*(X-1)/V
     return D
 end
 
 # finction to find start end and saddle points
-function nullcline(k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,high2low::Bool,V::Int64)
+function nullcline(k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,high2low::Bool,V::Float64)
     # write out equation to be solved
     f(x) = k1 - K1*x - k2*(x^3) + K2*B*(x^2)
     three = false
@@ -47,7 +59,7 @@ function nullcline(k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,hi
 end
 
 # function to construct the rates
-function rates(X::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Int64)
+function rates(X::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Float64)
     rates = [ k1*V, K1*X, k2*X*(X-1)*(X-2)/(V*V), K2*B*X*(X-1)/V]
     return(rates)
 end
@@ -100,13 +112,14 @@ end
 
 function Gillespie!(stead::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,noits::Int64,
                     pf::Array{Float64,1},pb::Array{Float64,1},times::Array{Float64,1},vars::Array{Int64,1},
-                    V::Int64,up::Int64,down::Int64,qs::Array{Float64,1},fs::Array{Float64,1},Ds::Array{Float64,1})
+                    V::Float64,up::Int64,down::Int64,qs::Array{Float64,1},fs::Array{Float64,1},Ds::Array{Float64,1})
     # Preallocate for simulation
     times[1] = 0
     vars[1] = stead
     reac = 0
     tup = tdown = 0
     hl = zeros(noits)
+    X = zeros(noits)
     for i = 1:noits
         # calculate rates
         rs = rates(vars[i],k1,K1,k2,K2,B,V)
@@ -129,7 +142,7 @@ function Gillespie!(stead::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64
         # do gillepsie step
         vars[i+1], pf[i], reac = step(rs,vars[i],reac)
         posX = vars[i]# (vars[i+1] + vars[i])/(2)
-        qs[i] = (vars[i+1] - vars[i])/(τ)
+        qs[i] = (vars[i+1] - vars[i])/(V*τ)
         fs[i] = f!(fs[i],posX,k1,K1,k2,K2,B,V)
         Ds[i] = D!(Ds[i],posX,k1,K1,k2,K2,B,V)
         Ds[i] = Ds[i]/τ # applies here as we need a τ in each expression, D will be inverted later
@@ -146,7 +159,7 @@ end
 
 # function to run multiple short gillespie simulations in order to improve sampling statistics
 function multgill(noits::Int64,noruns::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,
-                    star1::Float64,mid1::Float64,fin1::Float64,V::Int64)
+                    star1::Float64,mid1::Float64,fin1::Float64,V::Float64)
     SX = zeros(noruns)
     minX = zeros(noruns)
     maxX = zeros(noruns)
@@ -177,7 +190,7 @@ function multgill(noits::Int64,noruns::Int64,k1::Float64,K1::Float64,k2::Float64
     varsX = fill(0,noits+1)
     for j = 1:noruns
         p[j] = 1
-        init = mid2 # generate an initial condition here, should be more complex in future
+        init = fin2 # generate an initial condition here, should be more complex in future
         pfX, pbX, timesX, varsX, pup[j], pdown[j], hl, qs, fs, Ds = Gillespie!(init,k1,K1,k2,K2,B,noits,pfX,pbX,timesX,varsX,V,up,down,qs,fs,Ds)
         # calculate total entropy production
         for i = 1:noits
@@ -216,15 +229,16 @@ function main()
     k2 = 1.0 # k_{+2}
     K2 = 1.0 # k_{-2}
     B = 4.0
-    V = 15
+    V = 250.0
     high2low = false
     # first need to use these parameters to find a steady state
     star1, mid1, fin1 = nullcline(k1,K1,k2,K2,B,high2low,V)
     # now run multiple Gillespie simulations
-    noits = 2500000
+    noits = 25000#000
     noruns = 500
     SX, minX, maxX, pup, pdown, Sup, Sdown, pf, ts, qf, qq, ff = multgill(noits,noruns,k1,K1,k2,K2,B,star1,mid1,fin1,V)
     println(sum(SX)/(V*noruns))
+    println(sum(qf)/(noruns))
     # calculations here
     # rescale pf here
     t = maximum(ts)
@@ -252,16 +266,16 @@ function main()
     pone = vline!(pone, [2*sum(qf)/noruns], color = :green)
     savefig("../Results/Histqf$(ARGS[1]).png")
     # ff histogram
-    pone = histogram(2*ff, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
-    pone = vline!(pone, [convert(Float64,2*ffw)], color = :red)
-    pone = vline!(pone, [convert(Float64,2*ffw2)], color = :yellow)
-    pone = vline!(pone, [2*sum(ff)/noruns], color = :green)
+    pone = histogram(ff, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,ffw)], color = :red)
+    pone = vline!(pone, [convert(Float64,ffw2)], color = :yellow)
+    pone = vline!(pone, [sum(ff)/noruns], color = :green)
     savefig("../Results/Histff$(ARGS[1]).png")
     # qq histogram
-    pone = histogram(2*qq, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
-    pone = vline!(pone, [convert(Float64,2*qqw)], color = :red)
-    pone = vline!(pone, [convert(Float64,2*qqw2)], color = :yellow)
-    pone = vline!(pone, [2*sum(qq)/noruns], color = :green)
+    pone = histogram(qq, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
+    pone = vline!(pone, [convert(Float64,qqw)], color = :red)
+    pone = vline!(pone, [convert(Float64,qqw2)], color = :yellow)
+    pone = vline!(pone, [sum(qq)/noruns], color = :green)
     savefig("../Results/Histqq$(ARGS[1]).png")
 
     # pone = scatter(exp.((Sup-Sdown)/V),pup./pdown)

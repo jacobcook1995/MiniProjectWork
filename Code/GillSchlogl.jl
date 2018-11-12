@@ -109,16 +109,67 @@ function rev(rs::AbstractVector,reac::Int64)
         error("Invalid reaction code returned")
     end
 end
+# function to find reverse probability from reduced master equation
+function revr(rs::AbstractVector,reac::Int64)
+    rs = rs/sum(rs)
+    if reac > 0 || reac < 5
+        if reac == 2 || reac == 3
+            return(rs[1]+rs[4])
+        else
+            return(rs[2]+rs[3])
+        end
+    else
+        error("Invalid reaction code returned")
+    end
+end
+# function to find forward probability from reduced master equation
+function forr(rs::AbstractVector,reac::Int64)
+    rs = rs/sum(rs)
+    if reac > 0 || reac < 5
+        if reac == 2 || reac == 3
+            return(rs[2]+rs[3])
+        else
+            return(rs[1]+rs[4])
+        end
+    else
+        error("Invalid reaction code returned")
+    end
+end
+
+# function to calculate entropy production via Schnakenberg method for full master equation
+function schf(k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Float64,X::Float64)
+    r1 = k1*V
+    rmin1 = K1*X
+    r2 = k2*(X^3)/(V^2)
+    rmin2 = K2*B*(X^2)/V
+    F1 = r1 - rmin1
+    A1 = log(r1/rmin1)
+    F2 = r2 - rmin2
+    A2 = log(r2/rmin2)
+    S1 = F1*A1
+    S2 = F2*A2
+    S = (S1 + S2)/V # volume rescale
+    return(S)
+end
+
+# function to calculate entropy production via Schnakenberg method for reduced master equation
+function schr(k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,V::Float64,X::Float64)
+    r1 = k1*V + K2*B*(X^2)/V
+    rmin1 = K1*X + k2*(X^3)/(V^2)
+    F = r1 - rmin1
+    A = log(r1/rmin1)
+    S = F*A/V # volume rescale
+    return(S)
+end
 
 function Gillespie!(stead::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,noits::Int64,
-                    pf::Array{Float64,1},pb::Array{Float64,1},times::Array{Float64,1},vars::Array{Int64,1},
-                    V::Float64,up::Int64,down::Int64,qs::Array{Float64,1},fs::Array{Float64,1},Ds::Array{Float64,1})
+                    pf::Array{Float64,1},pb::Array{Float64,1},pfr::Array{Float64,1},pbr::Array{Float64,1},
+                    times::Array{Float64,1},vars::Array{Int64,1},V::Float64,qs::Array{Float64,1},fs::Array{Float64,1},Ds::Array{Float64,1})
     # Preallocate for simulation
     times[1] = 0
     vars[1] = stead
     reac = 0
     tup = tdown = 0
-    hl = zeros(noits)
     X = zeros(noits)
     for i = 1:noits
         # calculate rates
@@ -126,22 +177,16 @@ function Gillespie!(stead::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64
         if i != 1
             # now use reac to calculate reverse rate
             pb[i-1] = rev(rs,reac)
+            pbr[i-1] = revr(rs,reac)
         end
         # calculate timestep
         τ = timstep(rs)
-        # update marginal times
-        if vars[i] <= down
-            tdown += τ
-            hl[i] = 2
-        elseif vars[i] >= up
-            tup += τ
-            hl[i] = 1
-        end
         # update time
         times[i+1] = times[i] + τ
         # do gillepsie step
         vars[i+1], pf[i], reac = step(rs,vars[i],reac)
-        posX = vars[i]# (vars[i+1] + vars[i])/(2)
+        pfr[i] = forr(rs,reac)
+        posX = (vars[i+1] + vars[i])/(2)#vars[i]
         qs[i] = (vars[i+1] - vars[i])/(V*τ)
         fs[i] = f!(fs[i],posX,k1,K1,k2,K2,B,V)
         Ds[i] = D!(Ds[i],posX,k1,K1,k2,K2,B,V)
@@ -150,26 +195,22 @@ function Gillespie!(stead::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64
         if i == noits
             rs = rates(vars[end],k1,K1,k2,K2,B,V)
             pb[end] = rev(rs,reac)
+            pbr[end] = revr(rs,reac)
         end
     end
-    pup = tup/times[end]
-    pdown = tdown/times[end]
-    return(pf,pb,times,vars,pup,pdown,hl,qs,fs,Ds)
+    return(pf,pb,pfr,pbr,times,vars,qs,fs,Ds)
 end
 
 # function to run multiple short gillespie simulations in order to improve sampling statistics
 function multgill(noits::Int64,noruns::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64,B::Float64,
                     star1::Float64,mid1::Float64,fin1::Float64,V::Float64)
     SX = zeros(noruns)
+    SXr = zeros(noruns)
     minX = zeros(noruns)
     maxX = zeros(noruns)
-    pup = zeros(noruns)
-    pdown = zeros(noruns)
     qq = zeros(noruns)
     qf = zeros(noruns)
     ff = zeros(noruns)
-    Sup = zeros(noruns)
-    Sdown = zeros(noruns)
     ts = zeros(noruns)
     p = zeros(BigFloat,noruns)
     qs = zeros(noits)
@@ -179,37 +220,29 @@ function multgill(noits::Int64,noruns::Int64,k1::Float64,K1::Float64,k2::Float64
     star2 = round(Int64,star1)
     fin2 = round(Int64,fin1)
     mid2 = round(Int64,mid1)
-    # upper and lower bounds for the threshold
-    up = ceil(Int64,mid1)
-    down = floor(Int64,mid1)
-    up = down # set this for now DELETE later
     # preallocating arrays used inside function
     pfX = zeros(noits)
     pbX = zeros(noits)
+    pfXr = zeros(noits)
+    pbXr = zeros(noits)
     timesX = zeros(noits+1)
     varsX = fill(0,noits+1)
     for j = 1:noruns
         p[j] = 1
-        init = fin2 # generate an initial condition here, should be more complex in future
-        pfX, pbX, timesX, varsX, pup[j], pdown[j], hl, qs, fs, Ds = Gillespie!(init,k1,K1,k2,K2,B,noits,pfX,pbX,timesX,varsX,V,up,down,qs,fs,Ds)
+        init = star2 # generate an initial condition here, should be more complex in future
+        pfX, pbX, pfXr, pbXr, timesX, varsX, qs, fs, Ds = Gillespie!(init,k1,K1,k2,K2,B,noits,pfX,pbX,pfXr,pbXr,timesX,varsX,V,qs,fs,Ds)
         # calculate total entropy production
         for i = 1:noits
             SX[j] += log(pfX[i]) - log(pbX[i])
+            SXr[j] += log(pfXr[i]) - log(pbXr[i])
             p[j] *= pfX[i]
-            if hl[i] == 1
-                Sup[j] += log(pfX[i]) - log(pbX[i])
-            elseif hl[i] == 2
-                Sdown[j] += log(pfX[i]) - log(pbX[i])
-            end
             qf[j] += qs[i]*fs[i]/Ds[i]
             qq[j] += qs[i]*qs[i]/Ds[i]
             ff[j] += fs[i]*fs[i]/Ds[i]
         end
-
         # convert total entropy production to entropy production rate
         SX[j] = SX[j]/timesX[end]
-        Sup[j] = Sup[j]/timesX[end]
-        Sdown[j] = Sdown[j]/timesX[end]
+        SXr[j] = SXr[j]/timesX[end]
         ts[j] = timesX[end]
         qf[j] = qf[j]/timesX[end]
         qq[j] = qq[j]/timesX[end]
@@ -219,7 +252,7 @@ function multgill(noits::Int64,noruns::Int64,k1::Float64,K1::Float64,k2::Float64
         maxX[j] = maximum(varsX)
     end
     println("Gillespies Done!")
-    return(SX,minX,maxX,pup,pdown,Sup,Sdown,p,ts,qf,qq,ff)
+    return(SX,SXr,minX,maxX,p,ts,qf,qq,ff)
 end
 
 # main function
@@ -229,61 +262,35 @@ function main()
     k2 = 1.0 # k_{+2}
     K2 = 1.0 # k_{-2}
     B = 4.0
-    V = 250.0
+    V = 2500.0
     high2low = false
     # first need to use these parameters to find a steady state
     star1, mid1, fin1 = nullcline(k1,K1,k2,K2,B,high2low,V)
     # now run multiple Gillespie simulations
-    noits = 25000#000
+    noits = 2500#00
     noruns = 500
-    SX, minX, maxX, pup, pdown, Sup, Sdown, pf, ts, qf, qq, ff = multgill(noits,noruns,k1,K1,k2,K2,B,star1,mid1,fin1,V)
+    SX, SXr, minX, maxX, pf, ts, qf, qq, ff = multgill(noits,noruns,k1,K1,k2,K2,B,star1,mid1,fin1,V)
+    scatter(SXr/V,2*qf)
+    savefig("../Results/test.png")
     println(sum(SX)/(V*noruns))
-    println(sum(qf)/(noruns))
+    println(sum(SXr)/(V*noruns))
+    println(2*sum(qf)/(noruns))
     # calculations here
     # rescale pf here
     t = maximum(ts)
     println(t)
-    pf1 = ones(length(pf))
-    for i = 1:noruns
-        pf1[i] = (pf[i])^(t/ts[i])
-    end
-    # renormalise probability
-    pf1 = pf1/sum(pf1)
-    pf = pf/sum(pf)
-    qqw = ffw = qfw = qfw2 = qqw2 = ffw2 = 0
-    for i = 1:noruns
-        qqw += pf[i]*qq[i]
-        qfw += pf[i]*qf[i]
-        ffw += pf[i]*ff[i]
-        qqw2 += pf1[i]*qq[i]
-        qfw2 += pf1[i]*qf[i]
-        ffw2 += pf1[i]*ff[i]
-    end
     # qf histogram
     pone = histogram(2*qf, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
-    pone = vline!(pone, [convert(Float64,2*qfw)], color = :red)
-    pone = vline!(pone, [convert(Float64,2*qfw2)], color = :yellow)
     pone = vline!(pone, [2*sum(qf)/noruns], color = :green)
     savefig("../Results/Histqf$(ARGS[1]).png")
     # ff histogram
     pone = histogram(ff, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
-    pone = vline!(pone, [convert(Float64,ffw)], color = :red)
-    pone = vline!(pone, [convert(Float64,ffw2)], color = :yellow)
     pone = vline!(pone, [sum(ff)/noruns], color = :green)
     savefig("../Results/Histff$(ARGS[1]).png")
     # qq histogram
     pone = histogram(qq, xlabel = "Entropy Production", ylabel = "Frequency", color = :blue, legend = false)
-    pone = vline!(pone, [convert(Float64,qqw)], color = :red)
-    pone = vline!(pone, [convert(Float64,qqw2)], color = :yellow)
     pone = vline!(pone, [sum(qq)/noruns], color = :green)
     savefig("../Results/Histqq$(ARGS[1]).png")
-
-    # pone = scatter(exp.((Sup-Sdown)/V),pup./pdown)
-    # savefig("../Results/ScatterSch.png")
-    # pone = scatter(log.(pf),pup./pdown)
-    # savefig("../Results/Scatter2Sch.png")
-    # pone = scatter(log.(pf),exp.((Sup-Sdown)/V))
-    # savefig("../Results/Scatter3Sch.png")
     return(nothing)
 end
 

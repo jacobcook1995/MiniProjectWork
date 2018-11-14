@@ -184,7 +184,6 @@ function multgill(noits::Int64,noruns::Int64,r::Float64,f::Float64,K::Float64,Q:
         S[j] = S[j]/times[end]
         Sup[j] = Sup[j]/times[end]
         Sdown[j] = Sdown[j]/times[end]
-
         # store this data so validity can be checked later on
         min[j,1] = minimum(vars[1,:])
         min[j,2] = minimum(vars[2,:])

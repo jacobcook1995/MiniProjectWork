@@ -37,16 +37,13 @@ function paras()
         # stopping condition
         # now gather parameters
         paras = [ k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f]
-        steady = steady3(paras)
-        if steady == true
-            works = true
-        end
+        works = steady3(paras)
     end
     return(paras)
 end
 
 # function to test if parameter set allows three +ve stationary points
-function steady3(ps)
+function steady3(ps::Array{Float64,1})
     # ps = [ k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f]
     # A1(x) = sqrt((r/f)*(q/((qmin+Q)*B - Qmin) - 1))
     A1(x) = real(sqrt(complex((ps[9]/ps[10])*(ps[3]/((ps[4]+ps[7])*x - ps[8]) - 1))))

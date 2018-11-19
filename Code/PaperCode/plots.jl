@@ -47,6 +47,37 @@ function main()
         end
     end
     # Check there is a file of parameters to be read
+    infile = "../Results/Fig3Data/$(ARGS[1])gill.csv"
+    if ~isfile(infile)
+        println("Error: No file of 'Entropy Productions' to be read.")
+        return(nothing)
+    end
+    # now read in 'Entropy productions'
+    l = countlines(infile)
+    w = 2
+    tjents = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                tjents[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Check there is a file of parameters to be read
     infile = "../Results/Fig3Data/$(ARGS[1])schnak.csv"
     if ~isfile(infile)
         println("Error: No file of Entropy Productions to be read.")
@@ -78,17 +109,28 @@ function main()
         end
     end
     # combine entropies as one structure
-    ent = zeros(l,4)
+    ent = zeros(l,6)
     for i = 1:l
         ent[i,1] = prods[i,1]
         ent[i,2] = prods[i,3]
         ent[i,3] = ents[i,1]
         ent[i,4] = ents[i,3]
+        ent[i,5] = tjents[i,1]
+        ent[i,6] = tjents[i,2]
     end
     # then plot scatter graph
     scatter([ent[:,1]], [ent[:,3]],label="")
     scatter!([ent[:,2]], [ent[:,4]],label="")
+    plot!(xlabel="Ent Prod Rate Term",ylabel="Ent Prod Rate Sch",title="Ent Prod Terms vs Schnakenberg")
     savefig("../Results/SchnakvsTerms.png")
+    scatter([ent[:,1]], [ent[:,5]],label="")
+    scatter!([ent[:,2]], [ent[:,6]],label="")
+    plot!(xlabel="Ent Prod Rate Term",ylabel="Ent Prod Rate Traj",title="Trajectory Entropy Prod vs Ent Prod Terms")
+    savefig("../Results/SchnakvsTraj.png")
+    scatter([ent[:,3]], [ent[:,5]],label="")
+    scatter!([ent[:,4]], [ent[:,6]],label="")
+    plot!(xlabel="Ent Prod Rate Sch",ylabel="Ent Prod Rate Traj",title="Trajectory Entropy Prod vs Schnakenberg")
+    savefig("../Results/TermsvsTraj.png")
     return(nothing)
 end
 

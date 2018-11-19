@@ -35,14 +35,14 @@ function rates(A::Int64,B::Int64,k::Float64,K::Float64,q::Float64,Q::Float64,kmi
 end
 
 # function to calculate the time step
-function timstep(rates::AbstractVector)
+function timstep(rates::Array{Float64,1})
     r = rand()
     τ = -log(r)/sum(rates)
     return(τ)
 end
 
 # function to advance gillespie one step
-function step(rates::AbstractVector,vars::Array{Int64,1},reac::Int64)
+function step(rates::Array{Float64,1},vars::Array{Int64,1},reac::Int64)
     r = rand()
     rs = rates/sum(rates)
     p = 0 # probability used for forward path
@@ -83,7 +83,7 @@ function step(rates::AbstractVector,vars::Array{Int64,1},reac::Int64)
 end
 
 # function to find reverse probability
-function rev(rs::AbstractVector,reac::Int64)
+function rev(rs::Array{Float64,1},reac::Int64)
     rs = rs/sum(rs)
     if reac > 0 || reac < 9
         if reac % 2 == 0 # even rates backwards

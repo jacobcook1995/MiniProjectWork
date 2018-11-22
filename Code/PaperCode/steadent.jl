@@ -65,7 +65,7 @@ function gillespie(stead::Array{Float64,1},mid::Array{Float64,1},ps::Array{Float
     sad = round.(Int64,mid*Ω)
     star = round.(Int64,stead*Ω)
     vars[:,1] = star
-    hist = spzeros(80*Ω,80*Ω) # Possible source of error
+    hist = spzeros(100*Ω,100*Ω) # Possible source of error
     # run gillespie loop
     for i = 1:noits
         # calculate rates

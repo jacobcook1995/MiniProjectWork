@@ -248,8 +248,13 @@ function main()
     Qmin = ps[8]
     f = ps[9]
     r = ps[10]
-    T1 = ps[11]
-    T2 = ps[12]
+    if one == true
+        T1 = ps[11]
+        T2 = ps[12]
+    else
+        T1 = ps[12]
+        T2 = ps[11]
+    end
     Ωi = 2 # orginal volume here
     Ω = 25000 # new volume
     # rescale rates appropriately

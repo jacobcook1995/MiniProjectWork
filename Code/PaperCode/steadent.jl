@@ -65,7 +65,7 @@ function gillespie(stead::Array{Float64,1},mid::Array{Float64,1},ps::Array{Float
     sad = round.(Int64,mid*Ω)
     star = round.(Int64,stead*Ω)
     vars[:,1] = star
-    hist = spzeros(100*Ω,100*Ω) # Possible source of error
+    hist = spzeros(250*Ω,250*Ω) # making matrix huge as now using a sparse array
     # run gillespie loop
     for i = 1:noits
         # calculate rates
@@ -188,6 +188,14 @@ function main()
         println(i)
         flush(stdout)
         S[i,1], S[i,2] = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ω)
+        # step to catch 0s
+        if S[i,1] == 0.0
+            println("S1 rerun")
+            _, S[i,1] = gillespie([steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ω)
+        elseif S[i,2] == 0.0
+            println("S2 rerun")
+            S[i,2], _ = gillespie([steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ω)
+        end
     end
     # Now write out ents to file
     output_file = "../Results/Fig3Data/$(ARGS[1])ent.csv"

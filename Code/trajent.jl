@@ -368,7 +368,6 @@ function main()
                     n += 1 # another point completed
                 end
             end
-            # times are non-sensenscial for cases where A and B both run
             # Now reorder vals by the times
             p = sortperm(tempt)
             tempt = sort(tempt)

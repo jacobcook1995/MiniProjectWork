@@ -21,18 +21,22 @@ function Ds()
     A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = SymEngine.symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
     # Make a symbolic version of the matrix, needs no input in this case
     e = Array{SymEngine.Basic,2}(undef,4,4)
-    e[1,2:4] .= e[2,1] = e[2,3] = e[2,4] = e[3,4] = e[4,3] = 0
-    e[1,1] = sqrt(k*S*r/(r + f*B^2) + kmin*A + K*A + Kmin*W)
-    e[2,2] = sqrt(q*S*r/(r + f*A^2) + qmin*B + Q*B + Qmin*W)
-    e[3,1] = -sqrt(k*S*r/(r + f*B^2) + kmin*A)
-    e[3,2] = -sqrt(q*S*r/(r + f*A^2) + qmin*B)
-    e[3,3] = sqrt(F)
+    e[1,1] = sqrt(K*A + Kmin*W)
+    e[2,1] = 0
+    e[3,1] = 0
     e[4,1] = -sqrt(K*A + Kmin*W)
-    e[4,2] = -sqrt(Q*B + Qmin*W)
-    e[4,4] = sqrt(F)
-    # new bit I'm adding
-    # e[3,4] = -sqrt(F)
-    # e[4,3] = -sqrt(F)
+    e[1,2] = 0
+    e[2,2] = sqrt(q*S*r/(r+f*A^2) + qmin*A)
+    e[3,2] = -sqrt(q*S*r/(r+f*A^2) + qmin*A)
+    e[4,2] = 0
+    e[1,3] = -sqrt(k*S*r/(r+f*B^2) + kmin*A)
+    e[2,3] = 0
+    e[3,3] = sqrt(k*S*r/(r+f*B^2) + kmin*A)
+    e[4,3] = 0
+    e[1,4] = 0
+    e[2,4] = -sqrt(Q*B + Qmin*W)
+    e[3,4] = 0
+    e[4,4] = sqrt(Q*B + Qmin*W)
     # Now do the transformations required
     eT = transpose(e)
     D = e*eT

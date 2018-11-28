@@ -26,8 +26,8 @@ function Ds()
     e[3,1] = 0
     e[4,1] = -sqrt(K*A + Kmin*W)
     e[1,2] = 0
-    e[2,2] = sqrt(q*S*r/(r+f*A^2) + qmin*A)
-    e[3,2] = -sqrt(q*S*r/(r+f*A^2) + qmin*A)
+    e[2,2] = sqrt(q*S*r/(r+f*A^2) + qmin*B)
+    e[3,2] = -sqrt(q*S*r/(r+f*A^2) + qmin*B)
     e[4,2] = 0
     e[1,3] = -sqrt(k*S*r/(r+f*B^2) + kmin*A)
     e[2,3] = 0
@@ -43,15 +43,37 @@ function Ds()
     return(D)
 end
 
+# make a symbolic diffusion matrix, in a simpler form to be used for the inverse diffusion matrix
+function Ds2()
+    EAW, EAS, EBW, EBS = SymEngine.symbols("EAW EAS EBW EBS")
+    # Make a symbolic version of the matrix, needs no input in this case
+    e = Array{SymEngine.Basic,2}(undef,4,4)
+    e[1,1] = sqrt(EAW)
+    e[2,1] = 0
+    e[3,1] = 0
+    e[4,1] = -sqrt(EAW)
+    e[1,2] = 0
+    e[2,2] = sqrt(EBS)
+    e[3,2] = -sqrt(EBS)
+    e[4,2] = 0
+    e[1,3] = -sqrt(EAS)
+    e[2,3] = 0
+    e[3,3] = sqrt(EAS)
+    e[4,3] = 0
+    e[1,4] = 0
+    e[2,4] = -sqrt(EBW)
+    e[3,4] = 0
+    e[4,4] = sqrt(EBW)
+    # Now do the transformations required
+    eT = transpose(e)
+    D = e*eT
+    return(D)
+end
+
 # function to generate symbolic inverse diffusion matrix
 function Dmins()
-    D = Ds()
+    D = Ds2()
     Dmin = inv(D)
-    for j = 1:4
-        for i = 1:4
-            Dmin[i,j] = SymEngine.expand(Dmin[i,j])
-        end
-    end
     return(Dmin)
 end
 
@@ -192,6 +214,7 @@ function ϑs()
     c[3] = λ*y3 - b[3]
     c[4] = λ*y4 - b[4]
     ϑ = Array{SymEngine.Basic,1}(undef,4)
+    # theres an additional simplification that could be acheived by multiplying all ϑ by detD
     ϑ[1] = Dmin[1,1]*c[1] + Dmin[1,2]*c[2] + Dmin[1,3]*c[3] + Dmin[1,4]*c[4]
     ϑ[2] = Dmin[2,1]*c[1] + Dmin[2,2]*c[2] + Dmin[2,3]*c[3] + Dmin[2,4]*c[4]
     ϑ[3] = Dmin[3,1]*c[1] + Dmin[3,2]*c[2] + Dmin[3,3]*c[3] + Dmin[3,4]*c[4]
@@ -406,9 +429,14 @@ function discretise(x::AbstractArray,NG::Int,Nmid::Int)
 end
 
 # function to generate the variables needed for a given algoritm iteration
-function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,1},NG::Int,Nmid::Int)
+# ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, Ne ]
+function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,1},NG::Int,Nmid::Int,ps::Array{Float64,1})
     # define neccesary symbols
-    A, B, S, W, y1, y2, y3, y4 = SymEngine.symbols("A B S W y1 y2 y3 y4")
+    A, B, S, W, y1, y2, y3, y4, EAW, EAS, EBW, EBS = SymEngine.symbols("A B S W y1 y2 y3 y4 EAW EAS EBW EBS")
+    eas =  ps[2]*ps[10].*x[:,3]./(ps[10].+ps[9].*x[:,2].^2) .+ ps[5]*x[:,1]
+    ebs =  ps[4]*ps[10].*x[:,3]./(ps[10].+ps[9].*x[:,1].^2) .+ ps[7]*x[:,2]
+    eaw =  ps[1]*x[:,1] .+ ps[6]*x[:,4]
+    ebw =  ps[3]*x[:,2] .+ ps[8]*x[:,4]
     # calculate velocities
     xprim = fill(NaN, NG+1, 4)
     for i = 2:NG
@@ -421,13 +449,16 @@ function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,
     for i = 2:Nmid-1
         λt = λ # temporary λ to avoid changing the master one
         λt = SymEngine.subs(λt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
-        λs[i] = SymEngine.subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
+        λt = SymEngine.subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4])
+        println(i) # some horrible complex number error here
+        λs[i] = SymEngine.subs(λt, EAS=>eas[i], EBS=>ebs[i], EAW=>eaw[i], EBW=>ebw[i]) |> float
     end
     λs[Nmid] = 0 # midpoint should be a saddle point
     for i = Nmid+1:NG
         λt = λ # temporary λ to avoid changing the master one
         λt = SymEngine.subs(λt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
-        λs[i] = SymEngine.subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
+        λt = SymEngine.subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4])
+        λs[i] = SymEngine.subs(λt, EAS=>eas[i], EBS=>ebs[i], EAW=>eaw[i], EBW=>ebw[i]) |> float
     end
     # Critical points so expect both to be zero
     λs[1] = 0
@@ -438,7 +469,8 @@ function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,
     for j = 1:4
         for i = 2:NG
             ϑt[j] = SymEngine.subs(ϑ[j], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
-            ϑs[i,j] = SymEngine.subs(ϑt[j], y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
+            ϑt[j] = SymEngine.subs(ϑt[j], y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4])
+            ϑs[i,j] = SymEngine.subs(ϑt[j], EAS=>eas[i], EBS=>ebs[i], EAW=>eaw[i], EBW=>ebw[i]) |> float
         end
     end
     # Now find λprim
@@ -568,15 +600,14 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
 end
 
 # main function generates symbolic matrices that the 4 variables can be subbed into
-function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int64,NG::Int64,Nmid::Int64,Δτ::Float64,high2low::Bool)
-    # make vector of these optimisation parameters
-    paras = [ K; k; Q; q; kmin; Kmin; qmin; Qmin; f; r; F; Ne ]
+# make vector of these optimisation parameters
+#
+function gMAP(ps::Array{Float64,1},NM::Int64,NG::Int64,Nmid::Int64,Δτ::Float64,high2low::Bool)
     # confusingly paras is different to ps, this is something I should probably fix but can't be bothered currently
     # generate symbolic forms for equations required for the simulation
-    ϑ, λ, Hθ, Hθx, Hθθ, Hx, H = gensyms(paras)
-
+    ϑ, λ, Hθ, Hθx, Hθθ, Hx, H = gensyms(ps)
     # Now generate an initial path to optimize over
-    ss1, sad, ss2 = nullcline(paras,15.0,0.1)
+    ss1, sad, ss2 = nullcline(ps,15.0,0.1)
     a1 = collect(range(ss1[1],stop=sad[1],length=Nmid))
     a2 = collect(range(sad[1],stop=ss2[1],length=NG+2-Nmid))
     a = vcat(a1,a2[2:length(a2)])
@@ -594,16 +625,14 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int64,NG::Int64,Nmid::Int
     if high2low == false
         x = x[end:-1:1,:]
     end
-
     # Then appropriatly discretise the path such that it works with this algorithm
     x = discretise(x,NG,Nmid)
-
     # Set up method to tell if is converged
     convrg = false
     l = 0
     xold = x
     while convrg == false
-        x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG,Nmid)
+        x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG,Nmid,ps)
         newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG,Nmid,H)
         xn = discretise(newx.zero,NG,Nmid)
         S = Ŝ(xn,xprim,λs,ϑs,λprim,NG)
@@ -629,7 +658,7 @@ function gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM::Int64,NG::Int64,Nmid::Int
         end
         # Now overwrite old x
         x = xn
-        if l == 10000
+        if l == 10#000
             convrg = true
         end
         l += 1
@@ -703,46 +732,46 @@ end
 
 function main()
     # General parameters
-    Ω = 60 # system size, this is just a fudge to get my Euler-Maruyama algorithm (later) to work
-    # K = 1.0
-    # k = 1.0
-    # Q = 1.0
-    # q = 11.0/15
-    # kmin = 0.5 # now reverse creation is an important process
-    # qmin = 0.1
-    # f = 1.0/((Ω/60)^2) # Promoter switching
-    # r = 10.0
-    # F = 10.0*(Ω/60)
-    # Kmin = 10.0^-10 # remains neligable though
-    # Qmin = 10.0^-10
-    # Ne = 150.0*(Ω/60) # number of elements in the system
+    Ω = 1 # system size, this is just a fudge to get my Euler-Maruyama algorithm (later) to work
     K = 1.0
-    k = 2.0
+    k = 1.0
     Q = 1.0
-    q = 22.0/15
-    kmin = 0.8 # now reverse creation is an important process
-    qmin = 0.3
-    f = 100.0/((Ω/60)^2) # Promoter switching
+    q = 11.0/15
+    kmin = 0.5 # now reverse creation is an important process
+    qmin = 0.1
+    f = 1.0/(Ω^2) # Promoter switching
     r = 10.0
-    F = 15.0*(Ω/60)
+    F = 10.0*Ω
     Kmin = 10.0^-10 # remains neligable though
     Qmin = 10.0^-10
-    Ne = 3800.0*(Ω/60) # number of elements in the system
+    Ne = 150.0*Ω # number of elements in the system
+    # K = 1.0
+    # k = 2.0
+    # Q = 1.0
+    # q = 22.0/15
+    # kmin = 0.8 # now reverse creation is an important process
+    # qmin = 0.3
+    # f = 100.0/((Ω/60)^2) # Promoter switching
+    # r = 10.0
+    # F = 15.0*(Ω/60)
+    # Kmin = 10.0^-10 # remains neligable though
+    # Qmin = 10.0^-10
+    # Ne = 3800.0*(Ω/60) # number of elements in the system
     # make vector to write out
     ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, Ne ]
     # Optimisation parameters
-    NM = 300 # number of segments to discretise MAP onto
+    NM = 600 # number of segments to discretise MAP onto
     NG = 600 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
     Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
     high2low = true # Set if starting from high state or low state
     # Now call simulation function with these parameters
-    path = gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,high2low)
+    path = gMAP(ps,NM,NG,Nmid,Δτ,high2low)
     plot(path[:,1],path[:,2])
     savefig("../Results/Graph1.png")
     plot(path[:,3],path[:,4])
     savefig("../Results/Graph2.png")
-    path2 = gMAP(K,k,Q,q,kmin,Kmin,qmin,Qmin,f,r,F,Ne,NM,NG,Nmid,Δτ,~high2low)
+    path2 = gMAP(ps,NM,NG,Nmid,Δτ,~high2low)
     plot(path[:,1],path[:,2])
     savefig("../Results/Graph12.png")
     plot(path[:,3],path[:,4])

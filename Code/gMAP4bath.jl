@@ -20,50 +20,43 @@ import GR # Need this to stop world age plotting error?
 function Ds()
     A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = SymEngine.symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
     # Make a symbolic version of the matrix, needs no input in this case
-    e = Array{SymEngine.Basic,2}(undef,4,4)
-    e[1,1] = sqrt(K*A + Kmin*W)
-    e[2,1] = 0
-    e[3,1] = 0
-    e[4,1] = -sqrt(K*A + Kmin*W)
-    e[1,2] = 0
-    e[2,2] = sqrt(q*S*r/(r+f*A^2) + qmin*B)
-    e[3,2] = -sqrt(q*S*r/(r+f*A^2) + qmin*B)
-    e[4,2] = 0
-    e[1,3] = -sqrt(k*S*r/(r+f*B^2) + kmin*A)
-    e[2,3] = 0
-    e[3,3] = sqrt(k*S*r/(r+f*B^2) + kmin*A)
-    e[4,3] = 0
+    e = Array{SymEngine.Basic,2}(undef,4,9)
+    e[1,1] = sqrt(k*S*r/(r + f*B^2))
+    e[1,2] = -sqrt(kmin*A)
+    e[1,3] = 0
     e[1,4] = 0
-    e[2,4] = -sqrt(Q*B + Qmin*W)
-    e[3,4] = 0
-    e[4,4] = sqrt(Q*B + Qmin*W)
-    # Now do the transformations required
-    eT = transpose(e)
-    D = e*eT
-    return(D)
-end
-
-# make a symbolic diffusion matrix, in a simpler form to be used for the inverse diffusion matrix
-function Ds2()
-    EAW, EAS, EBW, EBS = SymEngine.symbols("EAW EAS EBW EBS")
-    # Make a symbolic version of the matrix, needs no input in this case
-    e = Array{SymEngine.Basic,2}(undef,4,4)
-    e[1,1] = sqrt(EAW)
+    e[1,5] = -sqrt(K*A)
+    e[1,6] = sqrt(Kmin*W)
+    e[1,7] = 0
+    e[1,8] = 0
+    e[1,9] = 0
     e[2,1] = 0
-    e[3,1] = 0
-    e[4,1] = -sqrt(EAW)
-    e[1,2] = 0
-    e[2,2] = sqrt(EBS)
-    e[3,2] = -sqrt(EBS)
+    e[2,2] = 0
+    e[2,3] = sqrt(q*S*r/(r + f*A^2))
+    e[2,4] = -sqrt(qmin*B)
+    e[2,5] = 0
+    e[2,6] = 0
+    e[2,7] = -sqrt(Q*B)
+    e[2,8] = sqrt(Qmin*W)
+    e[2,9] = 0
+    e[3,1] = -sqrt(k*S*r/(r + f*B^2))
+    e[3,2] = sqrt(kmin*A)
+    e[3,3] = -sqrt(q*S*r/(r + f*A^2))
+    e[3,4] = sqrt(qmin*B)
+    e[3,5] = 0
+    e[3,6] = 0
+    e[3,7] = 0
+    e[3,8] = 0
+    e[3,9] = sqrt(F)
+    e[4,1] = 0
     e[4,2] = 0
-    e[1,3] = -sqrt(EAS)
-    e[2,3] = 0
-    e[3,3] = sqrt(EAS)
     e[4,3] = 0
-    e[1,4] = 0
-    e[2,4] = -sqrt(EBW)
-    e[3,4] = 0
-    e[4,4] = sqrt(EBW)
+    e[4,4] = 0
+    e[4,5] = sqrt(K*A)
+    e[4,6] = -sqrt(Kmin*W)
+    e[4,7] = sqrt(Q*B)
+    e[4,8] = -sqrt(Qmin*W)
+    e[4,9] = -sqrt(F)
     # Now do the transformations required
     eT = transpose(e)
     D = e*eT
@@ -72,9 +65,63 @@ end
 
 # function to generate symbolic inverse diffusion matrix
 function Dmins()
-    D = Ds2()
+    D = Ds()
     Dmin = inv(D)
+    cofacD = cofac4x4(D)
+    println(cofacD)
+    error()
     return(Dmin)
+end
+
+# function to return determinent of a 2X2 matrix
+function det2x2(Mat::Array{SymEngine.Basic,2})
+    if size(Mat,1) != 2 || size(Mat,2) != 2
+        println("Error:Wrong matrix size must be 2x2")
+        error()
+    else
+        Det = Mat[1,1]*Mat[2,2] - Mat[1,2]*Mat[2,1]
+        return(Det)
+    end
+end
+
+# function to return determinent of a 3X3 matrix
+function det3x3(Mat::Array{SymEngine.Basic,2})
+    if size(Mat,1) != 3 || size(Mat,2) != 3
+        println("Error:Wrong matrix size must be 3x3")
+        error()
+    else
+        Det = Mat[1,1]*det2x2(Mat[2:3,2:3]) - Mat[1,2]*det2x2(Mat[2:3,1:2:3]) + Mat[1,3]*det2x2(Mat[2:3,1:2])
+        return(Det)
+    end
+end
+
+# function to return determinent of a 4X4 matrix
+function det4x4(Mat::Array{SymEngine.Basic,2})
+    if size(Mat,1) != 4 || size(Mat,2) != 4
+        println("Error:Wrong matrix size must be 4x4")
+        error()
+    else
+        Det = Mat[1,1]*det3x3(Mat[2:4,2:4]) - Mat[1,2]*det3x3(Mat[2:4,[1,3,4]]) + Mat[1,3]*det3x3(Mat[2:4,[1,2,4]]) - Mat[1,4]*det3x3(Mat[2:4,1:3])
+        return(Det)
+    end
+end
+
+# function to return cofactor matrix for a 4X4 matrix
+function cofac4x4(Mat::Array{SymEngine.Basic,2})
+    if size(Mat,1) != 4 || size(Mat,2) != 4
+        println("Error:Wrong matrix size must be 4x4")
+        error()
+    else
+        Cofac = Array{SymEngine.Basic,2}(undef,4,4)
+        for i = 1:4
+            ilist = setdiff([1,2,3,4], [i])
+            for j = 1:4
+                jlist = setdiff([1,2,3,4], [j])
+                Cofac[i,j] = ((-1)^(i+j))*det3x3(Mat[ilist,jlist])
+            end
+        end
+        return(Cofac)
+    end
 end
 
 # function to make a symbolic equation vector
@@ -430,13 +477,9 @@ end
 
 # function to generate the variables needed for a given algoritm iteration
 # ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, Ne ]
-function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,1},NG::Int,Nmid::Int,ps::Array{Float64,1})
+function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,1},NG::Int,Nmid::Int)
     # define neccesary symbols
-    A, B, S, W, y1, y2, y3, y4, EAW, EAS, EBW, EBS = SymEngine.symbols("A B S W y1 y2 y3 y4 EAW EAS EBW EBS")
-    eas =  ps[2]*ps[10].*x[:,3]./(ps[10].+ps[9].*x[:,2].^2) .+ ps[5]*x[:,1]
-    ebs =  ps[4]*ps[10].*x[:,3]./(ps[10].+ps[9].*x[:,1].^2) .+ ps[7]*x[:,2]
-    eaw =  ps[1]*x[:,1] .+ ps[6]*x[:,4]
-    ebw =  ps[3]*x[:,2] .+ ps[8]*x[:,4]
+    A, B, S, W, y1, y2, y3, y4 = SymEngine.symbols("A B S W y1 y2 y3 y4")
     # calculate velocities
     xprim = fill(NaN, NG+1, 4)
     for i = 2:NG
@@ -449,16 +492,13 @@ function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,
     for i = 2:Nmid-1
         λt = λ # temporary λ to avoid changing the master one
         λt = SymEngine.subs(λt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
-        λt = SymEngine.subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4])
-        println(i) # some horrible complex number error here
-        λs[i] = SymEngine.subs(λt, EAS=>eas[i], EBS=>ebs[i], EAW=>eaw[i], EBW=>ebw[i]) |> float
+        λs[i] = SymEngine.subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
     end
     λs[Nmid] = 0 # midpoint should be a saddle point
     for i = Nmid+1:NG
         λt = λ # temporary λ to avoid changing the master one
         λt = SymEngine.subs(λt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
-        λt = SymEngine.subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4])
-        λs[i] = SymEngine.subs(λt, EAS=>eas[i], EBS=>ebs[i], EAW=>eaw[i], EBW=>ebw[i]) |> float
+        λs[i] = SymEngine.subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
     end
     # Critical points so expect both to be zero
     λs[1] = 0
@@ -469,8 +509,7 @@ function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,
     for j = 1:4
         for i = 2:NG
             ϑt[j] = SymEngine.subs(ϑ[j], A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
-            ϑt[j] = SymEngine.subs(ϑt[j], y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4])
-            ϑs[i,j] = SymEngine.subs(ϑt[j], EAS=>eas[i], EBS=>ebs[i], EAW=>eaw[i], EBW=>ebw[i]) |> float
+            ϑs[i,j] = SymEngine.subs(ϑt[j], y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
         end
     end
     # Now find λprim
@@ -632,7 +671,7 @@ function gMAP(ps::Array{Float64,1},NM::Int64,NG::Int64,Nmid::Int64,Δτ::Float64
     l = 0
     xold = x
     while convrg == false
-        x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG,Nmid,ps)
+        x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG,Nmid)
         newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG,Nmid,H)
         xn = discretise(newx.zero,NG,Nmid)
         S = Ŝ(xn,xprim,λs,ϑs,λprim,NG)

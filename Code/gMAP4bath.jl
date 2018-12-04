@@ -9,6 +9,7 @@ using Roots
 using NLsolve
 using SymEngine # Trying alternative substitution method to see if this is faster
 using SymPy
+using LinearAlgebra
 ENV["GKSwstype"]="png" # ????????? this might stop the GKSterm error
 import GR # Need this to stop world age plotting error?
 
@@ -20,7 +21,7 @@ import GR # Need this to stop world age plotting error?
 function Ds()
     A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = SymEngine.symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
     # Make a symbolic version of the matrix, needs no input in this case
-    e = Array{SymEngine.Basic,2}(undef,4,9)
+    e = Array{SymEngine.Basic,2}(undef,4,8)
     e[1,1] = sqrt(k*S*r/(r + f*B^2))
     e[1,2] = -sqrt(kmin*A)
     e[1,3] = 0
@@ -29,7 +30,6 @@ function Ds()
     e[1,6] = sqrt(Kmin*W)
     e[1,7] = 0
     e[1,8] = 0
-    e[1,9] = 0
     e[2,1] = 0
     e[2,2] = 0
     e[2,3] = sqrt(q*S*r/(r + f*A^2))
@@ -38,7 +38,6 @@ function Ds()
     e[2,6] = 0
     e[2,7] = -sqrt(Q*B)
     e[2,8] = sqrt(Qmin*W)
-    e[2,9] = 0
     e[3,1] = -sqrt(k*S*r/(r + f*B^2))
     e[3,2] = sqrt(kmin*A)
     e[3,3] = -sqrt(q*S*r/(r + f*A^2))
@@ -47,7 +46,6 @@ function Ds()
     e[3,6] = 0
     e[3,7] = 0
     e[3,8] = 0
-    e[3,9] = sqrt(F)
     e[4,1] = 0
     e[4,2] = 0
     e[4,3] = 0
@@ -56,7 +54,6 @@ function Ds()
     e[4,6] = -sqrt(Kmin*W)
     e[4,7] = sqrt(Q*B)
     e[4,8] = -sqrt(Qmin*W)
-    e[4,9] = -sqrt(F)
     # Now do the transformations required
     eT = transpose(e)
     D = e*eT
@@ -66,11 +63,9 @@ end
 # function to generate symbolic inverse diffusion matrix
 function Dmins()
     D = Ds()
-    Dmin = inv(D)
     cofacD = cofac4x4(D)
-    println(cofacD)
-    error()
-    return(Dmin)
+    adD = transpose(cofacD)
+    return(detD,cofacD)
 end
 
 # function to return determinent of a 2X2 matrix

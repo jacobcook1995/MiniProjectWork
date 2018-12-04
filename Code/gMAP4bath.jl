@@ -21,7 +21,7 @@ import GR # Need this to stop world age plotting error?
 function Ds()
     A, B, S, W, K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F = SymEngine.symbols("A B S W K k Q q kmin Kmin qmin Qmin f r F")
     # Make a symbolic version of the matrix, needs no input in this case
-    e = Array{SymEngine.Basic,2}(undef,4,8)
+    e = Array{SymEngine.Basic,2}(undef,4,10)
     e[1,1] = sqrt(k*S*r/(r + f*B^2))
     e[1,2] = -sqrt(kmin*A)
     e[1,3] = 0
@@ -30,6 +30,8 @@ function Ds()
     e[1,6] = sqrt(Kmin*W)
     e[1,7] = 0
     e[1,8] = 0
+    e[1,9] = 0
+    e[1,10] = 0
     e[2,1] = 0
     e[2,2] = 0
     e[2,3] = sqrt(q*S*r/(r + f*A^2))
@@ -38,6 +40,8 @@ function Ds()
     e[2,6] = 0
     e[2,7] = -sqrt(Q*B)
     e[2,8] = sqrt(Qmin*W)
+    e[2,9] = 0
+    e[2,10] = 0
     e[3,1] = -sqrt(k*S*r/(r + f*B^2))
     e[3,2] = sqrt(kmin*A)
     e[3,3] = -sqrt(q*S*r/(r + f*A^2))
@@ -46,6 +50,8 @@ function Ds()
     e[3,6] = 0
     e[3,7] = 0
     e[3,8] = 0
+    e[3,9] = sqrt(F)
+    e[3,10] = 0
     e[4,1] = 0
     e[4,2] = 0
     e[4,3] = 0
@@ -54,6 +60,8 @@ function Ds()
     e[4,6] = -sqrt(Kmin*W)
     e[4,7] = sqrt(Q*B)
     e[4,8] = -sqrt(Qmin*W)
+    e[4,9] = 0
+    e[4,10] = sqrt(F)
     # Now do the transformations required
     eT = transpose(e)
     D = e*eT
@@ -63,9 +71,10 @@ end
 # function to generate symbolic inverse diffusion matrix
 function Dmins()
     D = Ds()
+    detD = det4x4(D)
     cofacD = cofac4x4(D)
-    adD = transpose(cofacD)
-    return(detD,cofacD)
+    adjD = transpose(cofacD)
+    return(detD,adjD)
 end
 
 # function to return determinent of a 2X2 matrix
@@ -227,18 +236,18 @@ end
 function λs()
     y1, y2, y3, y4 = SymEngine.symbols("y1 y2 y3 y4")
     b = bs()
-    Dmin = Dmins()
+    _, adjD = Dmins()
     num = 0
-    num += b[1]*Dmin[1,1]*b[1] + b[1]*Dmin[1,2]*b[2] + b[1]*Dmin[1,3]*b[3] + b[1]*Dmin[1,4]*b[4]
-    num += b[2]*Dmin[2,1]*b[1] + b[2]*Dmin[2,2]*b[2] + b[2]*Dmin[2,3]*b[3] + b[2]*Dmin[2,4]*b[4]
-    num += b[3]*Dmin[3,1]*b[1] + b[3]*Dmin[3,2]*b[2] + b[3]*Dmin[3,3]*b[3] + b[3]*Dmin[3,4]*b[4]
-    num += b[4]*Dmin[4,1]*b[1] + b[4]*Dmin[4,2]*b[2] + b[4]*Dmin[4,3]*b[3] + b[4]*Dmin[4,4]*b[4]
+    num += b[1]*adjD[1,1]*b[1] + b[1]*adjD[1,2]*b[2] + b[1]*adjD[1,3]*b[3] + b[1]*adjD[1,4]*b[4]
+    num += b[2]*adjD[2,1]*b[1] + b[2]*adjD[2,2]*b[2] + b[2]*adjD[2,3]*b[3] + b[2]*adjD[2,4]*b[4]
+    num += b[3]*adjD[3,1]*b[1] + b[3]*adjD[3,2]*b[2] + b[3]*adjD[3,3]*b[3] + b[3]*adjD[3,4]*b[4]
+    num += b[4]*adjD[4,1]*b[1] + b[4]*adjD[4,2]*b[2] + b[4]*adjD[4,3]*b[3] + b[4]*adjD[4,4]*b[4]
     den = 0
-    den += y1*Dmin[1,1]*y1 + y1*Dmin[1,2]*y2 + y1*Dmin[1,3]*y3 + y1*Dmin[1,4]*y4
-    den += y2*Dmin[2,1]*y1 + y2*Dmin[2,2]*y2 + y2*Dmin[2,3]*y3 + y2*Dmin[2,4]*y4
-    den += y3*Dmin[3,1]*y1 + y3*Dmin[3,2]*y2 + y3*Dmin[3,3]*y3 + y3*Dmin[3,4]*y4
-    den += y4*Dmin[4,1]*y1 + y4*Dmin[4,2]*y2 + y4*Dmin[4,3]*y3 + y4*Dmin[4,4]*y4
-    λ = sqrt(num)/sqrt(den)
+    den += y1*adjD[1,1]*y1 + y1*adjD[1,2]*y2 + y1*adjD[1,3]*y3 + y1*adjD[1,4]*y4
+    den += y2*adjD[2,1]*y1 + y2*adjD[2,2]*y2 + y2*adjD[2,3]*y3 + y2*adjD[2,4]*y4
+    den += y3*adjD[3,1]*y1 + y3*adjD[3,2]*y2 + y3*adjD[3,3]*y3 + y3*adjD[3,4]*y4
+    den += y4*adjD[4,1]*y1 + y4*adjD[4,2]*y2 + y4*adjD[4,3]*y3 + y4*adjD[4,4]*y4
+    λ = sqrt(num/den)
     return(λ)
 end
 
@@ -248,7 +257,7 @@ function ϑs()
     # create necessary symbols and and symbolic expressions
     y1, y2, y3, y4 = SymEngine.symbols("y1 y2 y3 y4")
     λ = λs()
-    Dmin = Dmins()
+    detD, adjD = Dmins()
     b = bs()
     c = Array{SymEngine.Basic,1}(undef,4)
     c[1] = λ*y1 - b[1]
@@ -257,10 +266,10 @@ function ϑs()
     c[4] = λ*y4 - b[4]
     ϑ = Array{SymEngine.Basic,1}(undef,4)
     # theres an additional simplification that could be acheived by multiplying all ϑ by detD
-    ϑ[1] = Dmin[1,1]*c[1] + Dmin[1,2]*c[2] + Dmin[1,3]*c[3] + Dmin[1,4]*c[4]
-    ϑ[2] = Dmin[2,1]*c[1] + Dmin[2,2]*c[2] + Dmin[2,3]*c[3] + Dmin[2,4]*c[4]
-    ϑ[3] = Dmin[3,1]*c[1] + Dmin[3,2]*c[2] + Dmin[3,3]*c[3] + Dmin[3,4]*c[4]
-    ϑ[4] = Dmin[4,1]*c[1] + Dmin[4,2]*c[2] + Dmin[4,3]*c[3] + Dmin[4,4]*c[4]
+    ϑ[1] = (adjD[1,1]*c[1] + adjD[1,2]*c[2] + adjD[1,3]*c[3] + adjD[1,4]*c[4])/detD
+    ϑ[2] = (adjD[2,1]*c[1] + adjD[2,2]*c[2] + adjD[2,3]*c[3] + adjD[2,4]*c[4])/detD
+    ϑ[3] = (adjD[3,1]*c[1] + adjD[3,2]*c[2] + adjD[3,3]*c[3] + adjD[3,4]*c[4])/detD
+    ϑ[4] = (adjD[4,1]*c[1] + adjD[4,2]*c[2] + adjD[4,3]*c[3] + adjD[4,4]*c[4])/detD
     return(ϑ)
 end
 
@@ -483,6 +492,7 @@ function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,
         end
     end
     # now find λs
+    t1 = time_ns()/10^9
     λs = fill(NaN, NG+1)
     for i = 2:Nmid-1
         λt = λ # temporary λ to avoid changing the master one
@@ -495,7 +505,10 @@ function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,
         λt = SymEngine.subs(λt, A=>x[i,1], B=>x[i,2], S=>x[i,3], W=>x[i,4])
         λs[i] = SymEngine.subs(λt, y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
     end
+    t2 = time_ns()/10^9
+    println("Step 2: $(t2-t1)") # second or so spent here but that is perhaps unavoidable
     # Critical points so expect both to be zero
+    t1 = time_ns()/10^9
     λs[1] = 0
     λs[NG+1] = 0
     # now find ϑs
@@ -507,6 +520,8 @@ function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,
             ϑs[i,j] = SymEngine.subs(ϑt[j], y1=>xprim[i,1], y2=>xprim[i,2], y3=>xprim[i,3], y4=>xprim[i,4]) |> float
         end
     end
+    t2 = time_ns()/10^9
+    println("Step 3: $(t2-t1)") # majority of time of entire program spent here
     # Now find λprim
     λprim = fill(NaN, NG+1)
     for i = 2:NG
@@ -666,6 +681,7 @@ function gMAP(ps::Array{Float64,1},NM::Int64,NG::Int64,Nmid::Int64,Δτ::Float64
     l = 0
     xold = x
     while convrg == false
+        t1 = time_ns()/10^9
         x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG,Nmid)
         newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG,Nmid,H)
         xn = discretise(newx.zero,NG,Nmid)
@@ -676,9 +692,11 @@ function gMAP(ps::Array{Float64,1},NM::Int64,NG::Int64,Nmid::Int64,Δτ::Float64
                 δ += abs(x[i,j] - xn[i,j])
             end
         end
+        t2 = time_ns()/10^9
+        println("$(t2-t1)s")
         println("$(sum(S)),$(δ)")
         flush(stdout) # needed to get output in log file
-        if l % 1000 == 0
+        if l % 10 == 0#00 == 0
             plot(x[:,1],x[:,2])
             savefig("../Results/GraphAB$(l).png")
             plot(x[:,3],x[:,4])
@@ -689,10 +707,12 @@ function gMAP(ps::Array{Float64,1},NM::Int64,NG::Int64,Nmid::Int64,Δτ::Float64
             savefig("../Results/vartheta$(l).png")
             plot(λs)
             savefig("../Results/lambdas$(l).png")
+            plot(x[:,1].+x[:,2].+x[:,3].+x[:,4])
+            savefig("../Results/total$(l).png")
         end
         # Now overwrite old x
         x = xn
-        if l == 10#000
+        if l == 100#00
             convrg = true
         end
         l += 1
@@ -779,25 +799,13 @@ function main()
     Kmin = 10.0^-10 # remains neligable though
     Qmin = 10.0^-10
     Ne = 150.0*Ω # number of elements in the system
-    # K = 1.0
-    # k = 2.0
-    # Q = 1.0
-    # q = 22.0/15
-    # kmin = 0.8 # now reverse creation is an important process
-    # qmin = 0.3
-    # f = 100.0/((Ω/60)^2) # Promoter switching
-    # r = 10.0
-    # F = 15.0*(Ω/60)
-    # Kmin = 10.0^-10 # remains neligable though
-    # Qmin = 10.0^-10
-    # Ne = 3800.0*(Ω/60) # number of elements in the system
     # make vector to write out
     ps = [ K, k, Q, q, kmin, Kmin, qmin, Qmin, f, r, F, Ne ]
     # Optimisation parameters
     NM = 600 # number of segments to discretise MAP onto
     NG = 600 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.001 # I've made this choice arbitarily, too large and the algorithm breaks
+    Δτ = 0.1 # I've made this choice arbitarily, too large and the algorithm breaks
     high2low = true # Set if starting from high state or low state
     # Now call simulation function with these parameters
     path = gMAP(ps,NM,NG,Nmid,Δτ,high2low)

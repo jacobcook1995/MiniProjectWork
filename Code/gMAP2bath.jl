@@ -302,9 +302,9 @@ function g!(F::AbstractArray,x::AbstractArray,C::AbstractVector,K::AbstractArray
 end
 
 # function to solve the system of linear equations
-function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector,
+function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1},ϑs::Array{Float64,2},λprim::Array{Float64,1},
                 Hx::Array{SymEngine.Basic,1},Hθ::Array{SymEngine.Basic,1},Hθθ::Array{SymEngine.Basic,2},
-                Hθx::Array{SymEngine.Basic,2},Δτ::Number,NG::Int,Nmid::Int,H::SymEngine.Basic)
+                Hθx::Array{SymEngine.Basic,2},Δτ::Float64,NG::Int64,Nmid::Int64,H::SymEngine.Basic)
     # define relevant symbols
     A, B, the1, the2 = symbols("A B the1 the2")
     # Make array to store fixed points
@@ -347,10 +347,9 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     # loop for additional midpoint terms
     for j = 1:2
         for i = 1:2
-            xi[2,i] -= Δτ*(Hxθt[i,j]*Hθt[j])
+            xi[2,i] -= Δτ*(Hxθt[i,j]*Hθttt[j])
         end
     end
-
     # Make vector to store constant terms C
     C = fill(NaN, NG+1)
     for i = 2:NG
@@ -808,7 +807,7 @@ function main()
     NM = 600 # number of segments to discretise MAP onto
     NG = 600 # number of segments to optimize gMAP over
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.005#0.001 # I've made this choice arbitarily, too large and the algorithm breaks
+    Δτ = 0.05#0.005#0.001 # I've made this choice arbitarily, too large and the algorithm breaks
     high2low = false
     spline = false
 

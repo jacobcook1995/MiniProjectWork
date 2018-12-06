@@ -432,7 +432,7 @@ function linsys(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::A
     # loop for additional midpoint terms
     for j = 1:3
         for i = 1:3
-            xi[2,i] -= Δτ*(Hxθt[i,j]*Hθt[j])
+            xi[2,i] -= Δτ*(Hxθt[i,j]*Hθtt[j])
         end
     end
 

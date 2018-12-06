@@ -293,10 +293,11 @@ function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1
     # loop for additional midpoint terms
     for j = 1:2
         for i = 1:2
-            xi[2,i] -= Δτ*(Hxθt[i,j]*Hθt[j]) # maybe Hθttt[j]?
+            xi[2,i] -= Δτ*(Hxθt[i,j]*Hθttt[j]) # maybe Hθttt[j]?
         end
-    end # problem here
-    println(xi[2,:])
+    end
+    # now set up correctly but all fixed points are moving?
+    println(xi)
     # Make vector to store constant terms C
     C = fill(NaN, NG+1)
     for i = 2:NG

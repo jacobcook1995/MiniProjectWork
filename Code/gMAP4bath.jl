@@ -593,10 +593,9 @@ function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1
     # loop for additional midpoint terms
     for j = 1:4
         for i = 1:4
-            xi[2,i] -= Δτ*(Hxθt[i,j]*Hθt[j])
+            xi[2,i] -= Δτ*(Hxθt[i,j]*Hθttt[j])
         end
     end
-
     # Make vector to store constant terms C
     C = fill(NaN, NG+1)
     for i = 2:NG

@@ -296,8 +296,6 @@ function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1
             xi[2,i] -= Δτ*(Hxθt[i,j]*Hθttt[j]) # maybe Hθttt[j]?
         end
     end
-    # now set up correctly but all fixed points are moving?
-    println(xi)
     # Make vector to store constant terms C
     C = fill(NaN, NG+1)
     for i = 2:NG
@@ -542,13 +540,15 @@ function main()
     # preallocate to store paths
     NG = 600
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.00001
+    Δτ = 0.001
     path1 = zeros(NG+1,2)
     path2 = zeros(NG+1,2)
     # run the stability analysis for each of the hundred steady states
     for i = 1:l
-        path1 = gMAP(ps[:,i],NG,Nmid,Δτ,[steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],[steads[i,5],steads[i,6]])
-        path2 = gMAP(ps[:,i],NG,Nmid,Δτ,[steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],[steads[i,1],steads[i,2]])
+        println("Run number: $(i)")
+        flush(stdout)
+        path1 = gMAP(ps[i,:],NG,Nmid,Δτ,[steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],[steads[i,5],steads[i,6]])
+        path2 = gMAP(ps[i,:],NG,Nmid,Δτ,[steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],[steads[i,1],steads[i,2]])
         # define sensible names for the output files
         outfile1 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2B.csv"
         outfile2 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2A.csv"

@@ -178,7 +178,7 @@ function gensyms(ps::AbstractVector)
 end
 
 # function to generate the variables needed for a given algoritm iteration
-function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,1},NG::Int,Nmid::Int)
+function genvars(x::Array{Float64,2},λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,1},NG::Int64,Nmid::Int64)
     # define neccesary symbols
     A, B, y1, y2 = symbols("A B y1 y2")
     # calculate velocities
@@ -222,7 +222,7 @@ function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,
 end
 
 # function to be solved by NLsolve
-function g!(F::AbstractArray,x::AbstractArray,C::AbstractVector,K::AbstractArray,xi::AbstractArray,NG::Int64,Nmid::Int64)
+function g!(F::Array{Float64,2},x::Array{Float64,2},C::Array{Float64,1},K::Array{Float64,2},xi::Array{Float64,2},NG::Int64,Nmid::Int64)
     # Start point
     F[1,1] = x[1,1] - xi[1,1]
     F[1,2] = x[1,2] - xi[1,2]
@@ -339,7 +339,7 @@ function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1
 end
 
 # function to discretise a path in a way that makes it compatable with the algorithm
-function discretise(x::AbstractArray,NG::Int64,Nmid::Int64)
+function discretise(x::Array{Float64,2},NG::Int64,Nmid::Int64)
     # need to interpolate the data from x onto disx, preserving |x'| = const,
     # i.e equal distance between points
     s1 = zeros(Nmid)

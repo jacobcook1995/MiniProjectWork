@@ -195,7 +195,7 @@ end
 
 # function to generate one of each symbolic object and to substitute parameter values into it
 # this is a computationally intensive function, need to minimize the number of calls
-function gensyms(ps::AbstractVector)
+function gensyms(ps::Array{Float64,1})
     # create symbolic objects
     ϑ = ϑs()
     λ = λs()
@@ -232,7 +232,7 @@ function gensyms(ps::AbstractVector)
 end
 
 # function to generate the variables needed for a given algoritm iteration
-function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,1},NG::Int,Nmid::Int)
+function genvars(x::Array{Float64,2},λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,1},NG::Int64,Nmid::Int64)
     # define neccesary symbols
     A, B, y1, y2 = symbols("A B y1 y2")
     # calculate velocities
@@ -276,7 +276,7 @@ function genvars(x::AbstractArray,λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,
 end
 
 # function to be solved by NLsolve
-function g!(F::AbstractArray,x::AbstractArray,C::AbstractVector,K::AbstractArray,xi::AbstractArray,NG::Int64,Nmid::Int64)
+function g!(F::Array{Float64,2},x::Array{Float64,2},C::Array{Float64,1},K::Array{Float64,2},xi::Array{Float64,2},NG::Int64,Nmid::Int64)
     # Start point
     F[1,1] = x[1,1] - xi[1,1]
     F[1,2] = x[1,2] - xi[1,2]
@@ -393,7 +393,7 @@ function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1
 end
 
 # function to discretise a path in a way that makes it compatable with the algorithm
-function discretise(x::AbstractArray,NG::Int64,Nmid::Int64,spline::Bool,sub::Int64)
+function discretise(x::Array{Float64,2},NG::Int64,Nmid::Int64,spline::Bool,sub::Int64)
     if spline == false
         # need to interpolate the data from x onto disx, preserving |x'| = const,
         # i.e equal distance between points
@@ -687,7 +687,7 @@ function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,high2low:
 end
 
 # Function to calculate the action of a given path
-function Ŝ(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector,NG::Int64)
+function Ŝ(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1},ϑs::Array{Float64,2},λprim::Array{Float64,1},NG::Int64)
     S = zeros(NG-1)
     S[1] = (3/(2*NG))*(xprim[2,1]*ϑs[2,1] + xprim[2,2]*ϑs[2,2])
     # Not excluding the midpoint as the contribution is vanishing
@@ -700,7 +700,7 @@ function Ŝ(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::Abst
 end
 
 # function to find the times of each point
-function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::AbstractArray,λprim::AbstractVector,NG::Int64)
+function times(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1},ϑs::Array{Float64,2},λprim::Array{Float64,1},NG::Int64)
     ts = zeros(NG+1)
     for i = 2:NG+1
         ts[i] = ts[i-1] + (1/(2*λs[i-1]) + 1/(2*λs[i]))/NG
@@ -709,7 +709,7 @@ function times(x::AbstractArray,xprim::AbstractArray,λs::AbstractVector,ϑs::Ab
 end
 
 # function to rediscretise a path from arc discretisation to time discretisation
-function timdis(ts::AbstractVector,x::AbstractArray,NG::Int64,NM::Int64)
+function timdis(ts::Array{Float64,1},x::Array{Float64,2},NG::Int64,NM::Int64)
     # Make discrete vector of time points
     t = zeros(NM+1)
     for i = 1:NM+1

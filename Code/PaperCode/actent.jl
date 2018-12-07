@@ -103,6 +103,147 @@ function gensyms(ps::Array{Float64,1})
     return(ϑ,λ,b,Dmin)
 end
 
+# function to generate the variables needed for a given path
+function genvars(x::Array{Float64,2},λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,1},NG::Int64,Nmid::Int64)
+    # define neccesary symbols
+    A, B, y1, y2 = symbols("A B y1 y2")
+    # calculate velocities
+    xprim = fill(NaN, NG+1, 2)
+    for i = 2:NG
+        for j = 1:2
+            xprim[i,j] = (x[i+1,j] - x[i-1,j])/(2/NG)
+        end
+    end
+    # now find λs
+    λs = fill(NaN, NG+1)
+    for i = 2:Nmid-1
+        λt = λ # temporary λ to avoid changing the master one
+        λt = subs(λt, A=>x[i,1], B=>x[i,2])
+        λs[i] = subs(λt, y1=>xprim[i,1], y2=>xprim[i,2]) |> float
+    end
+    λs[Nmid] = 0 # midpoint should be a saddle point
+    for i = Nmid+1:NG
+        λt = λ # temporary λ to avoid changing the master one
+        λt = subs(λt, A=>x[i,1], B=>x[i,2])
+        λs[i] = subs(λt, y1=>xprim[i,1], y2=>xprim[i,2]) |> float
+    end
+    # Critical points so expect both to be zero
+    λs[1] = 0
+    λs[NG+1] = 0
+    # now find ϑs
+    ϑs = fill(NaN, NG+1, 2)
+    ϑt = Array{SymEngine.Basic,1}(undef,2)
+    for j = 1:2
+        for i = 2:NG
+            ϑt[j] = subs(ϑ[j], A=>x[i,1], B=>x[i,2])
+            ϑs[i,j] = subs(ϑt[j], y1=>xprim[i,1], y2=>xprim[i,2]) |> float
+        end
+    end
+    # Now find λprim
+    λprim = fill(NaN, NG+1)
+    for i = 2:NG
+        λprim[i] = (λs[i+1] - λs[i-1])/(2/NG)
+    end
+    return(x,xprim,λs,ϑs,λprim)
+end
+
+# Function to calculate the action of a given path
+function Ŝ(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1},ϑs::Array{Float64,2},λprim::Array{Float64,1},NG::Int64)
+    S = zeros(NG-1)
+    S[1] = (3/(2*NG))*(xprim[2,1]*ϑs[2,1] + xprim[2,2]*ϑs[2,2])
+    # Not excluding the midpoint as the contribution is vanishing
+    # Might have to rethink this for the 4 species case
+    for i = 3:NG-1
+        S[i-1] += (1/NG)*(xprim[i,1]*ϑs[i,1] + xprim[i,2]*ϑs[i,2])
+    end
+    S[NG-1] += (3/(2*NG))*(xprim[NG,1]*ϑs[NG,1] + xprim[NG,2]*ϑs[NG,2])
+    return(S)
+end
+
+# function to find the times of each point
+function times(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1},ϑs::Array{Float64,2},λprim::Array{Float64,1},NG::Int64)
+    ts = zeros(NG+1)
+    for i = 2:NG+1
+        ts[i] = ts[i-1] + (1/(2*λs[i-1]) + 1/(2*λs[i]))/NG
+    end
+    return(ts)
+end
+
+# function to rediscretise a path from arc discretisation to time discretisation
+function timdis(ts::Array{Float64,1},x::Array{Float64,2},NG::Int64,NM::Int64)
+    # Make discrete vector of time points
+    t = zeros(NM+1)
+    for i = 1:NM+1
+        t[i] = (i-1)*ts[end]/NM
+    end
+    # Find index of first element greater than t[i] in ts
+    inds = fill(0,NM+1)
+    j = 1
+    for i = 1:NM+1
+        higher = false
+        while higher == false
+            if ts[j] >= t[i] || j == NG+1
+                inds[i] = j
+                higher = true
+            else
+                j += 1
+            end
+        end
+    end
+    # First do end points as they are fixed
+    path = zeros(NM+1,2)
+    path[1,:] = x[1,:]
+    path[NM+1,:] = x[NG+1,:]
+    # This is done to linear order, which is probably good enough
+    for i = 2:NM
+        one = inds[i] - 1
+        two = inds[i]
+        t₀ = ts[one]
+        t₁ = ts[two]
+        for j = 1:2
+            x₀ = x[one,j]
+            x₁ = x[two,j]
+            path[i,j] = x₀ + (t[i] - t₀)*(x₁ - x₀)/(t₁ - t₀)
+        end
+    end
+    return(path)
+end
+
+# function to take time discretised path and return Action and total entropy production based on it
+function act(x::Array{Float64,2},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::Array{SymEngine.Basic,2})
+    # find time step etc
+    N = size(x,1)-1
+    dt = Tp/(N)
+    Ac = 0
+    ΔS = 0
+    A, B, y1, y2 = symbols("A B y1 y2")
+    # temporary bs and Dmins to store values
+    bt = Array{Float64,1}(undef,2)
+    Dm = Array{Float64,2}(undef,2,2)
+    for i = 1:N
+        # need to find velocity for each point
+        qdot = (x[i+1,:] .- x[i,:])/(dt)
+        # and need to find midpoint
+        posA = (x[i+1,1] + x[i,1])/(2)
+        posB = (x[i+1,2] + x[i,2])/(2)
+        # now substitue into b and Dmin
+        for j = 1:2
+            bt[j] = subs(b[j],A=>posA,B=>posB) |> float
+            for k = 1:2
+                Dm[j,k] = subs(Dmin[j,k],A=>posA,B=>posB,y1=>qdot[1],y2=>qdot[2]) |> float
+            end
+        end
+        # now calculate the update to A and ΔS from this point
+        for j = 1:2
+            for k = 1:2
+                Ac += 0.5*(qdot[j] - bt[j])*Dm[j,k]*(qdot[k] - bt[k])*dt
+                ΔS += 2*qdot[j]*Dm[j,k]*bt[k]*dt
+            end
+        end
+    end
+    return(Ac,ΔS)
+end
+
 function main()
     println("Compiled, Starting script.")
     flush(stdout)
@@ -143,12 +284,14 @@ function main()
         end
     end
     # 2 for loops to loop over every file
-    for i = 1#:l
+    for i = 1:l
         for j = 1:2
             if j == 1
                 infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2B.csv"
+                outfile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BD.csv"
             else
                 infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2A.csv"
+                outfile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AD.csv"
             end
             # check if file
             if isfile(infile)
@@ -163,11 +306,11 @@ function main()
                         # parse line by finding commas
                         L = length(line)
                         comma = fill(0,w+1)
-                        j = 1
+                        m = 1
                         for i = 1:L
                             if line[i] == ','
-                                j += 1
-                                comma[j] = i
+                                m += 1
+                                comma[m] = i
                             end
                         end
                         comma[end] = L+1
@@ -177,7 +320,31 @@ function main()
                         k += 1
                     end
                 end
-
+                # generate symbolic objects
+                ϑ, λ, b, Dmin = gensyms(ps[i,:])
+                # define NG and Nmid and use to find variables
+                NG = NM = l - 1
+                Nmid = convert(Int64, ceil((NG+1)/2))
+                x, xprim, λs, ϑs, λprim = genvars(path,λ,ϑ,NG,Nmid)
+                # use function Ŝ to find the action associated with this path
+                λs[1] = λs[2]
+                λs[Nmid] = (λs[Nmid+1] + λs[Nmid-1])/2
+                λs[end] = λs[end-1]
+                # find and save action from geometric method
+                S = Ŝ(x,xprim,λs,ϑs,λprim,NG)
+                ActS = sum(S)
+                tims2 = times(x,xprim,λs,ϑs,λprim,NG)
+                # save time of path
+                Tp = tims2[end]
+                path2 = timdis(tims2,x,NG,NM)
+                # now use a function that takes the time discretised path and
+                # finds the action in a more conventional manner and then can also get entropy production from this
+                Act, ΔS = act(path2,Tp,b,Dmin)
+                # and write out the new data to a new file
+                out_file = open(outfile, "w")
+                line = "$(Tp),$(ActS),$(Act),$(ΔS)\n"
+                write(out_file, line)
+                close(out_file)
             else # Tell users about missing files
                 if j == 1
                     println("No A to B path for $(i)")

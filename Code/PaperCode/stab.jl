@@ -456,12 +456,14 @@ function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,ss1::Arra
         l += 1
         if l % 200 == 0
             println("$l,$δ")
+            flush(stdout)
         end
         # Now overwrite old x
         x = xn
         if δ <= 0.000000005#0.00000000005
             convrg = true
             print("$(l) steps to converge\n")
+            flush(stdout)
         end
     end
     return(x)

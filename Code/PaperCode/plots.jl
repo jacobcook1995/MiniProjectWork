@@ -194,13 +194,13 @@ function main()
         end
     end
     pyplot()
-    scatter([ent[:,3]],[Ds[:,1]],label="")
-    scatter!([ent[:,4]],[Ds[:,3]],label="")
-    plot!(xlabel=L"\dot{S}",ylabel=L"mag(D)",title="Magnitude of D vs Entropy Production")
-    savefig("../Results/DvsEntProd.png")
-    scatter([ent[:,3].-ent[:,4]],[Ds[:,1]./Ds[:,3]],label="")
-    plot!(xlabel=L"\dot{S}_{h}-\dot{S}_{l}",ylabel=L"mag(D_{h})/mag(D_{l})",title="Ratio of D vs Entropy Production diff")
-    savefig("../Results/DiffDvsEntProd.png")
+    # scatter([ent[:,3]],[Ds[:,1]],label="")
+    # scatter!([ent[:,4]],[Ds[:,3]],label="")
+    # plot!(xlabel=L"\dot{S}",ylabel=L"mag(D)",title="Magnitude of D vs Entropy Production")
+    # savefig("../Results/DvsEntProd.png")
+    # scatter([ent[:,3].-ent[:,4]],[Ds[:,1]./Ds[:,3]],label="")
+    # plot!(xlabel=L"\dot{S}_{h}-\dot{S}_{l}",ylabel=L"mag(D_{h})/mag(D_{l})",title="Ratio of D vs Entropy Production diff")
+    # savefig("../Results/DiffDvsEntProd.png")
     # scatter([ent[:,1].-ent[:,2]],[ent[:,3].-ent[:,4]],label="")
     # plot!(xlabel=L"\dot{S}_{h,prod}-\dot{S}_{l,prod}",ylabel=L"\dot{S}_h - \dot{S}_l",title="Diff in Entropy vs Production")
     # savefig("../Results/DifferProds.png")
@@ -212,13 +212,13 @@ function main()
     # scatter([shent[:,1].-shent[:,2]],[ent[:,3].-ent[:,4]],label="")
     # plot!(xlabel=L"\dot{S}_h-\dot{S}_l",ylabel=L"S_h - S_l",title="Diff in Entropy vs Production")
     # savefig("../Results/DiffEnt.png")
-    # plot scatter graph of the wrong points
+    # # plot scatter graph of the wrong points
     # plot(xlabel="Ent Prod Rate Term",ylabel="Ent Prod Rate Traj",title="Mismatched points")
     # for i = 1:length(wrong)
     #     scatter!([ent[wrong[i],1],ent[wrong[i],2]], [ent[wrong[i],5],ent[wrong[i],6]],label="")
     # end
     # savefig("../Results/WrongTrajvsTerms.png")
-    # then plot scatter graph
+    # # then plot scatter graph
     # scatter([ent[:,1]], [ent[:,3]],label="")
     # scatter!([ent[:,2]], [ent[:,4]],label="")
     # plot!(xlabel="Ent Prod Rate Term",ylabel="Ent Prod Rate Sch",title="Ent Prod Terms vs Schnakenberg")
@@ -231,6 +231,82 @@ function main()
     # scatter!([ent[:,4]], [ent[:,6]],label="")
     # plot!(xlabel="Ent Prod Rate Sch",ylabel="Ent Prod Rate Traj",title="Trajectory Entropy Prod vs Schnakenberg")
     # savefig("../Results/SchnakvsTraj.png")
+    # Now a whole section for reading and plotting the stability data
+    # first make structure to store data to
+    acts = zeros(l,8)
+    datayn = fill(true,l)
+    for i = 1:l
+        for j = 1:2
+            # set file to read in
+            if j == 1
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BD.csv"
+            else
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AD.csv"
+            end
+            # check it exits
+            if isfile(infile)
+                w = 4
+                open(infile, "r") do in_file
+                    # only one line now
+                    for line in eachline(in_file)
+                        # parse line by finding commas
+                        L = length(line)
+                        comma = fill(0,w+1)
+                        m = 1
+                        for k = 1:L
+                            if line[k] == ','
+                                m += 1
+                                comma[m] = k
+                            end
+                        end
+                        comma[end] = L+1
+                        for k = 1:w
+                            acts[i,(j-1)*4+k] = parse(Float64,line[(comma[k]+1):(comma[k+1]-1)])
+                        end
+                    end
+                end
+            else # if file doesn't exist inform user of missing data and exclude from plots
+                if j == 1
+                    println("Missing data for run $(i) high A to high B")
+                    datayn[i] = false
+                else
+                    println("Missing data for run $(i) high B to high A")
+                    datayn[i] = false
+                end
+            end
+        end
+    end
+    # # plot change in action vs entropy produced
+    # plot(xlabel="Difference in Entropy Produced",ylabel="Difference in Actions",title="Action Difference vs Difference in Entropy Produced")
+    # for i = 1:l
+    #     if datayn[i] == true
+    #         scatter!([acts[i,4]-acts[i,8]],[acts[i,2]-acts[i,6]],label="",color=:blue)
+    #     end
+    # end
+    # savefig("../Results/DiffActvsDiffEntProd.png")
+    # plot(xlabel="Entropy Produced",ylabel="Action",title="Action vs Entropy Produced")
+    # for i = 1:l
+    #     if datayn[i] == true
+    #         scatter!([acts[i,4],acts[i,8]],[acts[i,2],acts[i,6]],label="",color=:blue)
+    #     end
+    # end
+    # savefig("../Results/ActvsEntProd.png")
+    # plot(xlabel="Approx Action",ylabel="Action",title="Action vs Approx Action")
+    # for i = 1:l
+    #     if datayn[i] == true
+    #         scatter!([acts[i,3],acts[i,7]],[acts[i,2],acts[i,6]],label="",color=:blue)
+    #     end
+    # end
+    # savefig("../Results/ActvsActapprox.png")
+    # now try to get log ratio of rate of switching to plot against differences in entropy production
+    lab = L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}"
+    plot(xlabel="Difference in Entropy Production",ylabel=lab,title="Log ratio of switching vs Diff in Entropy Production")
+    for i = 1:l
+        if datayn[i] == true
+            scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="",color=:blue)
+        end
+    end
+    savefig("../Results/LogStabvsDiffEnt.png")
     return(nothing)
 end
 

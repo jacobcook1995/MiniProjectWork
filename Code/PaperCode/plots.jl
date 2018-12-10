@@ -204,12 +204,12 @@ function main()
     # scatter([ent[:,1].-ent[:,2]],[ent[:,3].-ent[:,4]],label="")
     # plot!(xlabel=L"\dot{S}_{h,prod}-\dot{S}_{l,prod}",ylabel=L"\dot{S}_h - \dot{S}_l",title="Diff in Entropy vs Production")
     # savefig("../Results/DifferProds.png")
-    # # Plot entropies against Schnakenberg entropy production
-    # scatter([shent[:,1]],[ent[:,3]],label="")
-    # scatter!([shent[:,2]],[ent[:,4]],label="")
+    # Plot entropies against Schnakenberg entropy production
+    # scatter([ent[:,3]],[shent[:,1]],label="")
+    # scatter!([ent[:,4]],[shent[:,2]],label="")
     # plot!(xlabel=L"\dot{S}",ylabel=L"S",title="Ent vs Ent Prod")
     # savefig("../Results/EntvsSchnak.png")
-    # scatter([shent[:,1].-shent[:,2]],[ent[:,3].-ent[:,4]],label="")
+    # scatter([ent[:,3].-ent[:,4]],[shent[:,1].-shent[:,2]],label="")
     # plot!(xlabel=L"\dot{S}_h-\dot{S}_l",ylabel=L"S_h - S_l",title="Diff in Entropy vs Production")
     # savefig("../Results/DiffEnt.png")
     # # plot scatter graph of the wrong points
@@ -298,15 +298,15 @@ function main()
     #     end
     # end
     # savefig("../Results/ActvsActapprox.png")
-    # now try to get log ratio of rate of switching to plot against differences in entropy production
-    lab = L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}"
-    plot(xlabel="Difference in Entropy Production",ylabel=lab,title="Log ratio of switching vs Diff in Entropy Production")
-    for i = 1:l
-        if datayn[i] == true
-            scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="",color=:blue)
-        end
-    end
-    savefig("../Results/LogStabvsDiffEnt.png")
+    # # now try to get log ratio of rate of switching to plot against differences in entropy production
+    # lab = L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}"
+    # plot(xlabel="Difference in Entropy Production",ylabel=lab,title="Log ratio of switching vs Diff in Entropy Production")
+    # for i = 1:l
+    #     if datayn[i] == true
+    #         scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="",color=:blue)
+    #     end
+    # end
+    # savefig("../Results/LogStabvsDiffEnt.png")
     return(nothing)
 end
 

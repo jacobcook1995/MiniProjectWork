@@ -44,7 +44,7 @@ function step(rates::Array{Float64,1},vars::Array{Int64,1})
     return(vars)
 end
 
-function gillespie(stead::Array{Float64,1},mid::Array{Float64,1},ps::Array{Float64,1},noits::Int64,Ω::Int64)
+function gillespie(stead::Array{Float64,1},mid::Array{Float64,1},ps::Array{Float64,1},noits::Int64,Ω::Float64)
     # extract all parameters and then rescale
     # ps = [ k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f]
     k = ps[1]*Ω
@@ -65,7 +65,11 @@ function gillespie(stead::Array{Float64,1},mid::Array{Float64,1},ps::Array{Float
     vars[:,1] = star
     th = 0
     tl = 0
-    high = true
+    if star[1] > sad[1]
+        high = true
+    else
+        high = false
+    end
     N = 0 # number of switches
     # run gillespie loop
     for i = 1:noits
@@ -172,34 +176,56 @@ function main()
     end
     # now run gillespie to find plow and phigh
     probs = zeros(l,2)
-    Ω = 1
-    noits = 10000000#0
-    thresh = 1000
-    for i = 1#:l
+    Ωs = zeros(l)
+    noits = 100000000
+    thresh = 5000
+    for i = 1:l
+        # need a step here to ensure that a resonable volume system is simulated
+        println("Run $(i)")
+        flush(stdout)
+        tot = (steads[i,1] + steads[i,2] + steads[i,5] + steads[i,6])/4
+        if tot >= 50.0
+            Ωs[i] = 0.125
+        elseif tot >= 25.0
+            Ωs[i] = 0.25
+        elseif tot >= 10.0
+            Ωs[i] = 0.5
+        elseif tot >= 5.0
+            Ωs[i] = 1.0
+        elseif tot >= 2.0
+            Ωs[i] = 2.0
+        else
+            Ωs[i] = 3.0
+        end
         repeat = false
-        probs[i,1], probs[i,2], N, T = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ω)
+        probs[i,1], probs[i,2], N, T = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
         if N < thresh
             repeat = true
         end
         while repeat == true
             count = 0
             if count % 2 == 0
-                pht, plt, n, τ = gillespie([steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ω)
+                pht, plt, n, τ = gillespie([steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
             else
-                pht, plt, n, τ = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ω)
+                pht, plt, n, τ = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
             end
             count += 1
             probs[i,1] = (probs[i,1]*T + pht*τ)/(T+τ)
             probs[i,2] = (probs[i,2]*T + plt*τ)/(T+τ)
             T += τ
             N += n
-            println(N)
             if N > thresh
                 repeat = false
             end
         end
     end
-    println(probs[1,:])
+    # now output data
+    outfile = "../Results/Fig3Data/$(ARGS[1])probs.csv"
+    out_file = open(outfile, "w")
+    for i = 1:l
+        line = "$(probs[i,1]),$(probs[i,2]),$(Ωs[i])\n"
+        write(out_file,line)
+    end
     return(nothing)
 end
 

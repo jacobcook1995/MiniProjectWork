@@ -1,17 +1,16 @@
 #!/usr/bin/env julia
-# steadent.jl
+# steadentS.jl
 # A script to read in parameters and steady states and then do Gillespie simulationa
 # in order to obtain values of entropy for each steady state
 #
 # Author: Jacob Cook
-# Date: November 2018
+# Date: December 2018
 
 using SparseArrays
 
 # function to construct the rates
-function rates(A::Int64,B::Int64,k::Float64,K::Float64,q::Float64,Q::Float64,kmin::Float64,
-                Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64)
-    rates = [ r*k/(r + f*B*(B-1)), kmin*A, K*A, Kmin, r*q/(r + f*A*(A-1)), qmin*B, Q*B, Qmin ]
+function rates(X::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64)
+    rates = [ k1, K1*X, k2*X*(X-1)*(X-2), K2*X*(X-1) ]
     return(rates)
 end
 
@@ -23,110 +22,88 @@ function timstep(rates::Array{Float64,1})
 end
 
 # function to advance gillespie one step
-function step(rates::Array{Float64,1},vars::Array{Int64,1})
+function step(rates::Array{Float64,1},vars::Int64)
     r = rand()
     rs = rates/sum(rates)
     if r < rs[1]
-        vars[1] += 1 # A produced
+        vars += 1 # X produced
     elseif r < rs[1] + rs[2]
-        vars[1] -= 1 # A unravels
+        vars -= 1 # X unravels
     elseif r < sum(rs[1:3])
-        vars[1] -= 1 # A decays
-    elseif r < sum(rs[1:4])
-        vars[1] += 1 # A regenerated
-    elseif r < sum(rs[1:5])
-        vars[2] += 1 # B produced
-    elseif r < sum(rs[1:6])
-        vars[2] -= 1 # B unravels
-    elseif r < sum(rs[1:7])
-        vars[2] -= 1 # B decays
+        vars -= 1 # X decays
     else
-        vars[2] += 1 # B regenerated
+        vars += 1 # X regenerated
     end
     return(vars)
 end
 
-function gillespie(stead::Array{Float64,1},mid::Array{Float64,1},ps::Array{Float64,1},noits::Int64,Ω::Int64)
+function gillespie(stead::Float64,mid::Float64,ps::Array{Float64,1},noits::Int64,Ω::Int64)
     # extract all parameters and then rescale
-    # ps = [ k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f]
-    k = ps[1]*Ω
-    kmin = ps[2]
-    q = ps[3]*Ω
-    qmin = ps[4]
-    K = ps[5]
-    Kmin = ps[6]*Ω
-    Q = ps[7]
-    Qmin = ps[8]*Ω
-    r = ps[9]
-    f = ps[10]/(Ω^2)
+    # ps = [ k1, K1, k2, K2 ]
+    k1 = ps[1]*Ω
+    K1 = ps[2]
+    k2 = ps[3]/(Ω^2)
+    K2 = ps[4]/Ω
     # make relevant data structures
     times = zeros(2)
-    vars = fill(0,2,2)
-    sad = round.(Int64,mid*Ω)
-    star = round.(Int64,stead*Ω)
-    vars[:,1] = star
-    hist = spzeros(250*Ω,250*Ω) # making matrix huge as now using a sparse array
+    vars = fill(0,2)
+    sad = round(Int64,mid*Ω)
+    star = round(Int64,stead*Ω)
+    vars[1] = star
+    hist = spzeros(250*Ω) # making matrix huge as now using a sparse array
     # run gillespie loop
     for i = 1:noits
         # calculate rates
-        rs = rates(vars[1,1],vars[2,1],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        rs = rates(vars[1],k1,K1,k2,K2)
         # calculate timestep
         τ = timstep(rs)
         # update time
         times[2] = times[1] + τ
-        hist[vars[1,1]+1,vars[2,1]+1] += times[2] - times[1]
+        hist[vars[1]+1] += times[2] - times[1]
         # do gillepsie step
-        vars[:,2] = step(rs,vars[:,1])
-        vars[:,1] = vars[:,2]
+        vars[2] = step(rs,vars[1])
+        vars[1] = vars[2]
         times[1] = times[2]
     end
     # normalise probability distribution
     hist = hist/times[2]
     # Now extract entropy of the state from the histogram
-    SA = 0.0
-    SB = 0.0
+    Sh = 0.0
+    Sl = 0.0
     # rescale for first state
-    histn = hist[1:(sad[1]+1),(sad[2]+1):end]/sum(hist[1:(sad[1]+1),(sad[2]+1):end])
-    for j = 1:size(histn,2)
-        for i = 1:size(histn,1)
-            if histn[i,j] != 0 && ~isnan(histn[i,j])
-                SB -= histn[i,j]*log(histn[i,j])
-            end
+    histn = hist[1:(sad+1)]/sum(hist[1:(sad+1)])
+    for i = 1:size(histn,1)
+        if histn[i] != 0 && ~isnan(histn[i])
+            Sl -= histn[i]*log(histn[i])
         end
     end
     # rescale for second state
-    histn = hist[(sad[1]+1):end,1:(sad[2]+1)]/sum(hist[(sad[1]+1):end,1:(sad[2]+1)])
-    for j = 1:size(histn,2)
-        for i = 1:size(histn,1)
-            if histn[i,j] != 0 && ~isnan(histn[i,j])
-                SA -= histn[i,j]*log(histn[i,j])
-            end
+    histn = hist[(sad+1):end]/sum(hist[(sad+1):end])
+    for i = 1:size(histn,1)
+        if histn[i] != 0 && ~isnan(histn[i])
+            Sh -= histn[i]*log(histn[i])
         end
     end
-    # return values in appropriate order
-    if stead[1] > mid[1]
-        return(SA,SB)
-    else
-        return(SB,SA)
-    end
+    return(Sh,Sl)
 end
 
 function main()
     println("Compiled, Starting script.")
+    flush(stdout)
     # First check that an argument for naming has been provided
     if length(ARGS) == 0
         println("Error: Need to provide an argument to name output with.")
         return(nothing)
     end
     # Check there is a file of parameters to be read
-    infile = "../Results/Fig3Data/$(ARGS[1])para.csv"
+    infile = "../Results/Fig3DataS/$(ARGS[1])paraS.csv"
     if ~isfile(infile)
         println("Error: No file of parameters to be read.")
         return(nothing)
     end
     # now read in parameters
     l = countlines(infile)
-    w = 10
+    w = 4
     ps = zeros(l,w)
     open(infile, "r") do in_file
         # Use a for loop to process the rows in the input file one-by-one
@@ -150,14 +127,14 @@ function main()
         end
     end
     # Check there is a file of steady states to be read
-    infile = "../Results/Fig3Data/$(ARGS[1])stead.csv"
+    infile = "../Results/Fig3DataS/$(ARGS[1])steadS.csv"
     if ~isfile(infile)
         println("Error: No file of steady states to be read.")
         return(nothing)
     end
     # now read in steady states
     l = countlines(infile)
-    w = 6
+    w = 3
     steads = zeros(l,w)
     open(infile, "r") do in_file
         # Use a for loop to process the rows in the input file one-by-one
@@ -187,18 +164,18 @@ function main()
     for i = 1:l
         println(i)
         flush(stdout)
-        S[i,1], S[i,2] = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ω)
+        S[i,1], S[i,2] = gillespie(steads[i,1],steads[i,2],ps[i,:],noits,Ω)
         # step to catch 0s
         if S[i,1] == 0.0
             println("S1 rerun")
-            _, S[i,1] = gillespie([steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ω)
+            _, S[i,1] = gillespie(steads[i,3],steads[i,2],ps[i,:],noits,Ω)
         elseif S[i,2] == 0.0
             println("S2 rerun")
-            S[i,2], _ = gillespie([steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ω)
+            S[i,2], _ = gillespie(steads[i,3],steads[i,2],ps[i,:],noits,Ω)
         end
     end
     # Now write out ents to file
-    output_file = "../Results/Fig3Data/$(ARGS[1])ent.csv"
+    output_file = "../Results/Fig3DataS/$(ARGS[1])entS.csv"
     out_file = open(output_file, "w")
     for i = 1:size(S,1)
         line = ""

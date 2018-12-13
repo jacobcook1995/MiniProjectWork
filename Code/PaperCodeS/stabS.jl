@@ -54,7 +54,7 @@ end
 
 # function to generate first differential of the symbolic hamiltonian in x
 function Hxs()
-    A, B = symbols("X")
+    X = symbols("X")
     # generate Hamiltonian
     H = Hs()
     Hx = Array{SymEngine.Basic,1}(undef,1)
@@ -84,7 +84,7 @@ end
 
 # function to generate the second differential of the symbolic hamiltonian in θ follwed by X
 function Hθxs()
-    A, B = symbols("X")
+    X = symbols("X")
     # generate Hamiltonian
     Hθ = Hθs()
     Hθx = Array{SymEngine.Basic,2}(undef,1,1)
@@ -203,7 +203,7 @@ function g!(F::Array{Float64,1},x::Array{Float64,1},C::Array{Float64,1},K::Array
 end
 
 # function to solve the system of linear equations
-function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1},ϑs::Array{Float64,2},λprim::Array{Float64,1},
+function linsys(x::Array{Float64,1},xprim::Array{Float64,1},λs::Array{Float64,1},ϑs::Array{Float64,1},λprim::Array{Float64,1},
                 Hx::Array{SymEngine.Basic,1},Hθ::Array{SymEngine.Basic,1},Hθθ::Array{SymEngine.Basic,2},
                 Hθx::Array{SymEngine.Basic,2},Δτ::Float64,NG::Int64,Nmid::Int64,H::SymEngine.Basic)
     # define relevant symbols
@@ -224,13 +224,13 @@ function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1
     Hxt[1] = subs(Hxt[1], X=>x[Nmid]) |> float
     Hθttt[1] = subs(Hθt[1], X=>x[Nmid]) |> float
     Hθtt[1] = subs(Hθt[1], X=>x[1]) |> float
-    Hθt[1] = subs(Hθt[1], X=>x[end]]) |> float
+    Hθt[1] = subs(Hθt[1], X=>x[end]) |> float
     # start point
     xi[1] = Δτ*(Hθtt[1]) + x[1]
     # midpoint
-    xi[2] = -Δτ*(Hxt[1]*Ht) + x[Nmid,i] # x[Nmid,i] is changing between loops for some reason
+    xi[2] = -Δτ*(Hxt[1]*Ht) + x[Nmid] # x[Nmid,i] is changing between loops for some reason
     # End point
-    xi[3] = Δτ*(Hθt[i]) + x[end,i]
+    xi[3] = Δτ*(Hθt[1]) + x[end]
     Hxθt = Array{SymEngine.Basic,2}(undef,1,1)
     # loop to calculate Hxθ
     Hxθt[1,1] = subs(Hθx[1,1], the=>0.0)
@@ -276,7 +276,7 @@ function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1
 end
 
 # function to discretise a path in a way that makes it compatable with the algorithm
-function discretise(x::Array{Float64,2},NG::Int64,Nmid::Int64)
+function discretise(x::Array{Float64,1},NG::Int64,Nmid::Int64)
     # need to interpolate the data from x onto disx, preserving |x'| = const,
     # i.e equal distance between points
     s1 = zeros(Nmid)
@@ -285,11 +285,11 @@ function discretise(x::Array{Float64,2},NG::Int64,Nmid::Int64)
     s2[1] = 0
     for i = 2:Nmid
         dX = x[i] - x[i-1]
-        s1[i] = s1[i-1] + dX
+        s1[i] = s1[i-1] + abs(dX)
     end
     for i = 2:(NG+2-Nmid)
         dX = x[i+Nmid-1] - x[i+Nmid-2]
-        s2[i] = s2[i-1] + dX
+        s2[i] = s2[i-1] + abs(dX)
     end
     # Divide total arc length into equal segments
     ls1 = zeros(Nmid)
@@ -328,7 +328,7 @@ function discretise(x::Array{Float64,2},NG::Int64,Nmid::Int64)
         end
     end
     # First do mid points and end points as they should be fixed
-    disx = zeros(NG+1,1)
+    disx = zeros(NG+1)
     disx[1] = x[1]
     disx[Nmid] = x[Nmid]
     disx[NG+1] = x[NG+1]
@@ -378,6 +378,7 @@ function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,ss1::Floa
         for i = 1:NG+1
             δ += abs(x[i] - xn[i])
         end
+        println("$(δ)")
         l += 1
         if l % 200 == 0
             println("$l,$δ")
@@ -385,7 +386,7 @@ function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,ss1::Floa
         end
         # Now overwrite old x
         x = xn
-        if δ <= 0.000000005#0.00000000005
+        if δ <= 5.0*10.0^(-10)
             convrg = true
             print("$(l) steps to converge\n")
             flush(stdout)
@@ -467,7 +468,7 @@ function main()
     # preallocate to store paths
     NG = 600
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.001
+    Δτ = 0.01
     path1 = zeros(NG+1,2)
     path2 = zeros(NG+1,2)
     # run the stability analysis for each of the hundred steady states

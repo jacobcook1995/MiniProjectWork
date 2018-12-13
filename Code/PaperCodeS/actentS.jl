@@ -262,25 +262,13 @@ function main()
                 # now should read in path
                 l = countlines(infile)
                 w = 1
-                path = zeros(l,w)
+                path = zeros(l)
                 open(infile, "r") do in_file
                     # Use a for loop to process the rows in the input file one-by-one
                     k = 1
                     for line in eachline(in_file)
-                        # parse line by finding commas
-                        L = length(line)
-                        comma = fill(0,w+1)
-                        m = 1
-                        for i = 1:L
-                            if line[i] == ','
-                                m += 1
-                                comma[m] = i
-                            end
-                        end
-                        comma[end] = L+1
-                        for i = 1:w
-                            path[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-                        end
+                        # just parse entire line
+                        path[k] = parse(Float64,line[1:end])
                         k += 1
                     end
                 end
@@ -311,9 +299,9 @@ function main()
                 close(out_file)
             else # Tell users about missing files
                 if j == 1
-                    println("No A to B path for $(i)")
+                    println("No high to low path for $(i)")
                 else
-                    println("No B to A path for $(i)")
+                    println("No low to high path for $(i)")
                 end
             end
         end

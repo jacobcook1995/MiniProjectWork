@@ -542,18 +542,26 @@ function main()
     # preallocate to store paths
     NG = 600
     Nmid = convert(Int64, ceil((NG+1)/2))
-    Δτ = 0.001
     path1 = zeros(NG+1,2)
     path2 = zeros(NG+1,2)
+    println(sum(steads[2,:]))
     # run the stability analysis for each of the hundred steady states
-    for i = 1:l
+    for i = 52#1:l
         println("Run number: $(i)")
         flush(stdout)
+        # pick appropriate Δτ for simulation, this still requires more testing
+        if minimum(steads[i,:]) <= 0.01
+            Δτ = 0.001
+        elseif sum(steads[i,:]) >= 100.0
+            Δτ = 0.1
+        else
+            Δτ = 0.05
+        end
         path1 = gMAP(ps[i,:],NG,Nmid,Δτ,[steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],[steads[i,5],steads[i,6]])
         path2 = gMAP(ps[i,:],NG,Nmid,Δτ,[steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],[steads[i,1],steads[i,2]])
         # define sensible names for the output files
-        outfile1 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2B.csv"
-        outfile2 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2A.csv"
+        outfile1 = "../Results/Fig3Data/Traj2/$(i)$(ARGS[1])A2B.csv" # temporary change back
+        outfile2 = "../Results/Fig3Data/Traj2/$(i)$(ARGS[1])B2A.csv" # temporary change back
         # open files for writing
         out_file1 = open(outfile1, "w")
         for j = 1:size(path1,1)

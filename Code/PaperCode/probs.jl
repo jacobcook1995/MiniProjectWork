@@ -190,6 +190,8 @@ function main()
             Ωs[i] = 0.25
         elseif tot >= 10.0
             Ωs[i] = 0.5
+        elseif tot >= 7.5
+            Ωs[i] = 0.75
         elseif tot >= 5.0
             Ωs[i] = 1.0
         elseif tot >= 2.0
@@ -202,8 +204,8 @@ function main()
         if N < thresh
             repeat = true
         end
+        count = 0
         while repeat == true
-            count = 0
             if count % 2 == 0
                 pht, plt, n, τ = gillespie([steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
             else

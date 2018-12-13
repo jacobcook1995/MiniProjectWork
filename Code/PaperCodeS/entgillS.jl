@@ -11,11 +11,6 @@ function rates(X::Int64,k1::Float64,K1::Float64,k2::Float64,K2::Float64)
     rates = [ k1, K1*X, k2*X*(X-1)*(X-2), K2*X*(X-1) ]
     return(rates)
 end
-# function to construct the rates
-function rates(X::Float64,k1::Float64,K1::Float64,k2::Float64,K2::Float64)
-    rates = [ k1, K1*X, k2*X*(X-1)*(X-2), K2*X*(X-1) ]
-    return(rates)
-end
 
 # function to calculate the time step
 function timstep(rates::Array{Float64,1})

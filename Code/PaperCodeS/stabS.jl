@@ -249,29 +249,22 @@ function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1
     Hxt = Array{SymEngine.Basic,1}(undef,1)
     Hθθt = Array{SymEngine.Basic,2}(undef,1,1)
     Hθxt = Array{SymEngine.Basic,2}(undef,1,1)
-    ########################################################################################################################################
     # Put initial values for K in
-    for j = 1:2
-        for i = 2:NG
-            K[i,j] = x[i,j]
-            K[i,j] += Δτ*λs[i]*λprim[i]*xprim[i,j]
-        end
+    for i = 2:NG
+        K[i] = x[i]
+        K[i] += Δτ*λs[i]*λprim[i]*xprim[i]
     end
-    for l = 1:2
-        for i = 2:NG
-            # Save temporary Hamiltonians so that the substitution doesn't overwrite orginal
-            Hxt[l] = subs(Hx[l], A=>x[i,1], B=>x[i,2])
-            Hxt[l] = subs(Hxt[l], the1=>ϑs[i,1], the2=>ϑs[i,2]) |> float
-            for m = 1:2
-                Hθθt[m,l] = subs(Hθθ[m,l], A=>x[i,1], B=>x[i,2])
-                Hθθt[m,l] = subs(Hθθt[m,l], the1=>ϑs[i,1], the2=>ϑs[i,2]) |> float
-                Hθxt[m,l] = subs(Hθx[m,l], A=>x[i,1], B=>x[i,2])
-                Hθxt[m,l] = subs(Hθxt[m,l], the1=>ϑs[i,1], the2=>ϑs[i,2]) |> float
-                # Update K's with new contributions from Hamiltonians
-                K[i,m] -= Δτ*λs[i]*(Hθxt[m,l]*xprim[i,l])
-                K[i,m] += Δτ*(Hθθt[m,l]*Hxt[l])
-            end
-        end
+    for i = 2:NG
+        # Save temporary Hamiltonians so that the substitution doesn't overwrite orginal
+        Hxt[1] = subs(Hx[1], X=>x[i])
+        Hxt[1] = subs(Hxt[1], the=>ϑs[i]) |> float
+        Hθθt[1,1] = subs(Hθθ[1,1], X=>x[i])
+        Hθθt[1,1] = subs(Hθθt[1,1], the=>ϑs[i]) |> float
+        Hθxt[1,1] = subs(Hθx[1,1], X=>x[i])
+        Hθxt[1,1] = subs(Hθxt[1,1], the=>ϑs[i]) |> float
+        # Update K's with new contributions from Hamiltonians
+        K[i] -= Δτ*λs[i]*(Hθxt[1,1]*xprim[i])
+        K[i] += Δτ*(Hθθt[1,1]*Hxt[1])
     end
     # Make an initial guess of the path, as prior path
     newxi = x
@@ -291,14 +284,12 @@ function discretise(x::Array{Float64,2},NG::Int64,Nmid::Int64)
     s1[1] = 0
     s2[1] = 0
     for i = 2:Nmid
-        dA = x[i,1] - x[i-1,1]
-        dB = x[i,2] - x[i-1,2]
-        s1[i] = s1[i-1] + sqrt(dA^2 + dB^2) # Could probably drop the sqrts to speed up the code
+        dX = x[i] - x[i-1]
+        s1[i] = s1[i-1] + dX
     end
     for i = 2:(NG+2-Nmid)
-        dA = x[i+Nmid-1,1] - x[i+Nmid-2,1]
-        dB = x[i+Nmid-1,2] - x[i+Nmid-2,2]
-        s2[i] = s2[i-1] + sqrt(dA^2 + dB^2) # Could probably drop the sqrts to speed up the code
+        dX = x[i+Nmid-1] - x[i+Nmid-2]
+        s2[i] = s2[i-1] + dX
     end
     # Divide total arc length into equal segments
     ls1 = zeros(Nmid)
@@ -337,21 +328,19 @@ function discretise(x::Array{Float64,2},NG::Int64,Nmid::Int64)
         end
     end
     # First do mid points and end points as they should be fixed
-    disx = zeros(NG+1,2)
-    disx[1,:] = x[1,:]
-    disx[Nmid,:] = x[Nmid,:]
-    disx[NG+1,:] = x[NG+1,:]
+    disx = zeros(NG+1,1)
+    disx[1] = x[1]
+    disx[Nmid] = x[Nmid]
+    disx[NG+1] = x[NG+1]
     # This is done to linear order, which is probably good enough
     for i = 2:Nmid-1
         one = inds1[i] - 1
         two = inds1[i]
         s₀ = s1[one]
         s₁ = s1[two]
-        for j = 1:2
-            x₀ = x[one,j]
-            x₁ = x[two,j]
-            disx[i,j] = x₀ + (ls1[i] - s₀)*(x₁ - x₀)/(s₁ - s₀)
-        end
+        x₀ = x[one]
+        x₁ = x[two]
+        disx[i] = x₀ + (ls1[i] - s₀)*(x₁ - x₀)/(s₁ - s₀)
     end
 
     for i = Nmid+1:NG
@@ -359,28 +348,22 @@ function discretise(x::Array{Float64,2},NG::Int64,Nmid::Int64)
         two = inds2[i+1-Nmid]
         s₀ = s2[one+1-Nmid]
         s₁ = s2[two+1-Nmid]
-        for j = 1:2
-            x₀ = x[one,j]
-            x₁ = x[two,j]
-            disx[i,j] = x₀ + (ls2[i+1-Nmid] - s₀)*(x₁ - x₀)/(s₁ - s₀)
-        end
+        x₀ = x[one]
+        x₁ = x[two]
+        disx[i] = x₀ + (ls2[i+1-Nmid] - s₀)*(x₁ - x₀)/(s₁ - s₀)
     end
     return(disx)
 end
 
 # Function to generate an initial path then run the alorithm until a MAP is obtained
 # This path is then returned for other functions
-function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,ss1::Array{Float64,1},sad::Array{Float64,1},ss2::Array{Float64,1})
+function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,ss1::Float64,sad::Float64,ss2::Float64)
     # generate symbolic forms for equations required for the simulation
     ϑ, λ, Hθ, Hθx, Hθθ, Hx, H = gensyms(ps)
     # First find the steady states and saddle point
-    a1 = collect(range(ss1[1],stop=sad[1],length=Nmid))
-    a2 = collect(range(sad[1],stop=ss2[1],length=Nmid))
-    a = vcat(a1,a2[2:end])
-    b1 = collect(range(ss1[2],stop=sad[2],length=Nmid))
-    b2 = collect(range(sad[2],stop=ss2[2],length=Nmid))
-    b = vcat(b1,b2[2:end])
-    x = hcat(a,b)
+    X1 = collect(range(ss1,stop=sad,length=Nmid))
+    X2 = collect(range(sad,stop=ss2,length=Nmid))
+    x = vcat(X1,X2[2:end])
     # Then appropriatly discretise the path such that it works with this algorithm
     x = discretise(x,NG,Nmid)
     # Set up method to tell if is converged
@@ -393,9 +376,7 @@ function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,ss1::Arra
         # delta is the sum of the differences of all the points in the path
         δ = 0
         for i = 1:NG+1
-            for j = 1:2
-                δ += abs(x[i,j] - xn[i,j])
-            end
+            δ += abs(x[i] - xn[i])
         end
         l += 1
         if l % 200 == 0
@@ -422,14 +403,14 @@ function main()
         return(nothing)
     end
     # Check there is a file of parameters to be read
-    infile = "../Results/Fig3Data/$(ARGS[1])para.csv"
+    infile = "../Results/Fig3DataS/$(ARGS[1])paraS.csv"
     if ~isfile(infile)
         println("Error: No file of parameters to be read.")
         return(nothing)
     end
     # now read in parameters
     l = countlines(infile)
-    w = 10
+    w = 4
     ps = zeros(l,w)
     open(infile, "r") do in_file
         # Use a for loop to process the rows in the input file one-by-one
@@ -453,14 +434,14 @@ function main()
         end
     end
     # Check there is a file of steady states to be read
-    infile = "../Results/Fig3Data/$(ARGS[1])stead.csv"
+    infile = "../Results/Fig3DataS/$(ARGS[1])steadS.csv"
     if ~isfile(infile)
         println("Error: No file of steady states to be read.")
         return(nothing)
     end
     # now read in steady states
     l = countlines(infile)
-    w = 6
+    w = 3
     steads = zeros(l,w)
     open(infile, "r") do in_file
         # Use a for loop to process the rows in the input file one-by-one
@@ -493,21 +474,21 @@ function main()
     for i = 1:l
         println("Run number: $(i)")
         flush(stdout)
-        path1 = gMAP(ps[i,:],NG,Nmid,Δτ,[steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],[steads[i,5],steads[i,6]])
-        path2 = gMAP(ps[i,:],NG,Nmid,Δτ,[steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],[steads[i,1],steads[i,2]])
+        path1 = gMAP(ps[i,:],NG,Nmid,Δτ,steads[i,1],steads[i,2],steads[i,3])
+        path2 = gMAP(ps[i,:],NG,Nmid,Δτ,steads[i,3],steads[i,2],steads[i,1])
         # define sensible names for the output files
-        outfile1 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2B.csv"
-        outfile2 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2A.csv"
+        outfile1 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[1])h2l.csv"
+        outfile2 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[1])l2h.csv"
         # open files for writing
         out_file1 = open(outfile1, "w")
         for j = 1:size(path1,1)
-            line = "$(path1[j,1]),$(path1[j,2])\n"
+            line = "$(path1[j])\n"
             write(out_file1, line)
         end
         close(out_file1)
         out_file2 = open(outfile2, "w")
         for j = 1:size(path2,1)
-            line = "$(path2[j,1]),$(path2[j,2])\n"
+            line = "$(path2[j])\n"
             write(out_file2, line)
         end
         close(out_file2)

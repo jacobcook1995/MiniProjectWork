@@ -266,7 +266,7 @@ function main()
     ents = zeros(l,2)
     # things to fiddle with to get to work
     noits = 100000000
-    Ω = 5000
+    Ω = 50000
     pf = zeros(noits)
     pb = zeros(noits)
     for i = 1:l

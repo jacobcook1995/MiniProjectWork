@@ -50,38 +50,37 @@ function main()
             k += 1
         end
     end
-    # Should be commented out for time being
-    # # Check there is a file of parameters to be read
-    # infile = "../Results/Fig3DataS/$(ARGS[1])gillS.csv"
-    # if ~isfile(infile)
-    #     println("Error: No file of 'Entropy Productions' to be read.")
-    #     return(nothing)
-    # end
-    # # now read in 'Entropy productions'
-    # l = countlines(infile)
-    # w = 2
-    # tjents = zeros(l,w)
-    # open(infile, "r") do in_file
-    #     # Use a for loop to process the rows in the input file one-by-one
-    #     k = 1
-    #     for line in eachline(in_file)
-    #         # parse line by finding commas
-    #         L = length(line)
-    #         comma = fill(0,w+1)
-    #         j = 1
-    #         for i = 1:L
-    #             if line[i] == ','
-    #                 j += 1
-    #                 comma[j] = i
-    #             end
-    #         end
-    #         comma[end] = L+1
-    #         for i = 1:w
-    #             tjents[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-    #         end
-    #         k += 1
-    #     end
-    # end
+    # Check there is a file of parameters to be read
+    infile = "../Results/Fig3DataS/$(ARGS[1])gillS.csv"
+    if ~isfile(infile)
+        println("Error: No file of 'Entropy Productions' to be read.")
+        return(nothing)
+    end
+    # now read in 'Entropy productions'
+    l = countlines(infile)
+    w = 2
+    tjents = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                tjents[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
     # Check there is a file of Schnakenberg entropy productions to be read
     infile = "../Results/Fig3DataS/$(ARGS[1])schnakS.csv"
     if ~isfile(infile)
@@ -195,43 +194,43 @@ function main()
         end
     end
     pyplot()
-    # scatter([ent[:,3]],[Ds[:,1]],label="")
-    # scatter!([ent[:,4]],[Ds[:,3]],label="")
-    # plot!(xlabel=L"\dot{S}",ylabel=L"mag(D)",title="Magnitude of D vs Entropy Production")
-    # savefig("../Results/DvsEntProd.png")
-    # scatter([ent[:,3].-ent[:,4]],[Ds[:,1]./Ds[:,3]],label="")
-    # plot!(xlabel=L"\dot{S}_{h}-\dot{S}_{l}",ylabel=L"mag(D_{h})/mag(D_{l})",title="Ratio of D vs Entropy Production diff")
-    # savefig("../Results/DiffDvsEntProd.png")
-    # scatter([ent[:,1].-ent[:,2]],[ent[:,3].-ent[:,4]],label="")
-    # plot!(xlabel=L"\dot{S}_{h,prod}-\dot{S}_{l,prod}",ylabel=L"\dot{S}_h - \dot{S}_l",title="Diff in Entropy vs Production")
-    # savefig("../Results/DifferProds.png")
+    scatter([ent[:,3]],[Ds[:,1]],label="")
+    scatter!([ent[:,4]],[Ds[:,3]],label="")
+    plot!(xlabel=L"\dot{S}",ylabel=L"mag(D)",title="Magnitude of D vs Entropy Production")
+    savefig("../Results/DvsEntProdS.png")
+    scatter([ent[:,3].-ent[:,4]],[Ds[:,1]./Ds[:,3]],label="")
+    plot!(xlabel=L"\dot{S}_{h}-\dot{S}_{l}",ylabel=L"mag(D_{h})/mag(D_{l})",title="Ratio of D vs Entropy Production diff")
+    savefig("../Results/DiffDvsEntProdS.png")
+    scatter([ent[:,1].-ent[:,2]],[ent[:,3].-ent[:,4]],label="")
+    plot!(xlabel=L"\dot{S}_{h,prod}-\dot{S}_{l,prod}",ylabel=L"\dot{S}_h - \dot{S}_l",title="Diff in Entropy vs Production")
+    savefig("../Results/DifferProdsS.png")
     # Plot entropies against Schnakenberg entropy production
-    # scatter([ent[:,3]],[shent[:,1]],label="")
-    # scatter!([ent[:,4]],[shent[:,2]],label="")
-    # plot!(xlabel=L"\dot{S}",ylabel=L"S",title="Ent vs Ent Prod")
-    # savefig("../Results/EntvsSchnak.png")
-    # scatter([ent[:,3].-ent[:,4]],[shent[:,1].-shent[:,2]],label="")
-    # plot!(xlabel=L"\dot{S}_h-\dot{S}_l",ylabel=L"S_h - S_l",title="Diff in Entropy vs Production")
-    # savefig("../Results/DiffEnt.png")
-    # # plot scatter graph of the wrong points
-    # plot(xlabel="Ent Prod Rate Term",ylabel="Ent Prod Rate Traj",title="Mismatched points")
-    # for i = 1:length(wrong)
-    #     scatter!([ent[wrong[i],1],ent[wrong[i],2]], [ent[wrong[i],5],ent[wrong[i],6]],label="")
-    # end
-    # savefig("../Results/WrongTrajvsTerms.png")
-    # # then plot scatter graph
-    # scatter([ent[:,1]], [ent[:,3]],label="")
-    # scatter!([ent[:,2]], [ent[:,4]],label="")
-    # plot!(xlabel="Ent Prod Rate Term",ylabel="Ent Prod Rate Sch",title="Ent Prod Terms vs Schnakenberg")
-    # savefig("../Results/SchnakvsTerms.png")
-    # scatter([ent[:,1]], [ent[:,5]],label="")
-    # scatter!([ent[:,2]], [ent[:,6]],label="")
-    # plot!(xlabel="Ent Prod Rate Term",ylabel="Ent Prod Rate Traj",title="Trajectory Entropy Prod vs Ent Prod Terms")
-    # savefig("../Results/TermsvsTraj.png")
-    # scatter([ent[:,3]], [ent[:,5]],label="")
-    # scatter!([ent[:,4]], [ent[:,6]],label="")
-    # plot!(xlabel="Ent Prod Rate Sch",ylabel="Ent Prod Rate Traj",title="Trajectory Entropy Prod vs Schnakenberg")
-    # savefig("../Results/SchnakvsTraj.png")
+    scatter([ent[:,3]],[shent[:,1]],label="")
+    scatter!([ent[:,4]],[shent[:,2]],label="")
+    plot!(xlabel=L"\dot{S}",ylabel=L"S",title="Ent vs Ent Prod")
+    savefig("../Results/EntvsSchnakS.png")
+    scatter([ent[:,3].-ent[:,4]],[shent[:,1].-shent[:,2]],label="")
+    plot!(xlabel=L"\dot{S}_h-\dot{S}_l",ylabel=L"S_h - S_l",title="Diff in Entropy vs Production")
+    savefig("../Results/DiffEnt.png")
+    # plot scatter graph of the wrong points
+    plot(xlabel="Ent Prod Rate Term",ylabel="Ent Prod Rate Traj",title="Mismatched points")
+    for i = 1:length(wrong)
+        scatter!([ent[wrong[i],1],ent[wrong[i],2]], [ent[wrong[i],5],ent[wrong[i],6]],label="")
+    end
+    savefig("../Results/WrongTrajvsTermsS.png")
+    # then plot scatter graph
+    scatter([ent[:,1]], [ent[:,3]],label="")
+    scatter!([ent[:,2]], [ent[:,4]],label="")
+    plot!(xlabel="Ent Prod Rate Term",ylabel="Ent Prod Rate Sch",title="Ent Prod Terms vs Schnakenberg")
+    savefig("../Results/SchnakvsTermsS.png")
+    scatter([ent[:,1]], [ent[:,5]],label="")
+    scatter!([ent[:,2]], [ent[:,6]],label="")
+    plot!(xlabel="Ent Prod Rate Term",ylabel="Ent Prod Rate Traj",title="Trajectory Entropy Prod vs Ent Prod Terms")
+    savefig("../Results/TermsvsTrajS.png")
+    scatter([ent[:,3]], [ent[:,5]],label="")
+    scatter!([ent[:,4]], [ent[:,6]],label="")
+    plot!(xlabel="Ent Prod Rate Sch",ylabel="Ent Prod Rate Traj",title="Trajectory Entropy Prod vs Schnakenberg")
+    savefig("../Results/SchnakvsTrajS.png")
     # Now a whole section for reading and plotting the stability data
     # first make structure to store data to
     acts = zeros(l,8)
@@ -277,37 +276,37 @@ function main()
             end
         end
     end
-    # # plot change in action vs entropy produced
-    # plot(xlabel="Difference in Entropy Produced",ylabel="Difference in Actions",title="Action Difference vs Difference in Entropy Produced")
-    # for i = 1:l
-    #     if datayn[i] == true
-    #         scatter!([acts[i,4]-acts[i,8]],[acts[i,2]-acts[i,6]],label="",color=:blue)
-    #     end
-    # end
-    # savefig("../Results/DiffActvsDiffEntProd.png")
-    # plot(xlabel="Entropy Produced",ylabel="Action",title="Action vs Entropy Produced")
-    # for i = 1:l
-    #     if datayn[i] == true
-    #         scatter!([acts[i,4],acts[i,8]],[acts[i,2],acts[i,6]],label="",color=:blue)
-    #     end
-    # end
-    # savefig("../Results/ActvsEntProd.png")
-    # plot(xlabel="Approx Action",ylabel="Action",title="Action vs Approx Action")
-    # for i = 1:l
-    #     if datayn[i] == true
-    #         scatter!([acts[i,3],acts[i,7]],[acts[i,2],acts[i,6]],label="",color=:blue)
-    #     end
-    # end
-    # savefig("../Results/ActvsActapprox.png")
-    # # now try to get log ratio of rate of switching to plot against differences in entropy production
-    # lab = L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}"
-    # plot(xlabel="Difference in Entropy Production",ylabel=lab,title="Log ratio of switching vs Diff in Entropy Production")
-    # for i = 1:l
-    #     if datayn[i] == true
-    #         scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="",color=:blue)
-    #     end
-    # end
-    # savefig("../Results/LogStabvsDiffEnt.png")
+    # plot change in action vs entropy produced
+    plot(xlabel="Difference in Entropy Produced",ylabel="Difference in Actions",title="Action Difference vs Difference in Entropy Produced")
+    for i = 1:l
+        if datayn[i] == true
+            scatter!([acts[i,4]-acts[i,8]],[acts[i,2]-acts[i,6]],label="",color=:blue)
+        end
+    end
+    savefig("../Results/DiffActvsDiffEntProdS.png")
+    plot(xlabel="Entropy Produced",ylabel="Action",title="Action vs Entropy Produced")
+    for i = 1:l
+        if datayn[i] == true
+            scatter!([acts[i,4],acts[i,8]],[acts[i,2],acts[i,6]],label="",color=:blue)
+        end
+    end
+    savefig("../Results/ActvsEntProdS.png")
+    plot(xlabel="Approx Action",ylabel="Action",title="Action vs Approx Action")
+    for i = 1:l
+        if datayn[i] == true
+            scatter!([acts[i,3],acts[i,7]],[acts[i,2],acts[i,6]],label="",color=:blue)
+        end
+    end
+    savefig("../Results/ActvsActapproxS.png")
+    # now try to get log ratio of rate of switching to plot against differences in entropy production
+    lab = L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}"
+    plot(xlabel="Difference in Entropy Production",ylabel=lab,title="Log ratio of switching vs Diff in Entropy Production")
+    for i = 1:l
+        if datayn[i] == true
+            scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="",color=:blue)
+        end
+    end
+    savefig("../Results/LogStabvsDiffEntS.png")
     return(nothing)
 end
 

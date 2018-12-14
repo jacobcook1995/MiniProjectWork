@@ -186,7 +186,7 @@ function main()
         tot = (steads[i,1] + steads[i,2] + steads[i,5] + steads[i,6])/4
         if tot >= 50.0
             Ωs[i] = 0.125
-        elseif tot >= 25.0
+        elseif tot >= 25.0 || maximum(steads[i,:]) >= 50.0
             Ωs[i] = 0.25
         elseif tot >= 10.0
             Ωs[i] = 0.5

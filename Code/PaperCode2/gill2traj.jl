@@ -10,7 +10,7 @@ using Roots
 using Plots
 using LaTeXStrings
 using PyCall
-pygui(:qt5)
+# pygui(:qt5)
 import PyPlot
 
 # function to find start end and saddle points
@@ -61,15 +61,9 @@ end
 
 # function to construct the rates
 function rates(A::Int64,B::Int64,k::Float64,K::Float64,q::Float64,Q::Float64,kmin::Float64,
-                Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64,diffs::Bool=false)
+                Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64)
     rates = [ r*k/(r + f*B*(B-1)), kmin*A, K*A, Kmin, r*q/(r + f*A*(A-1)), qmin*B, Q*B, Qmin ]
-    if diffs == false
-        return(rates)
-    else
-        dA = [ 1, -1, -1, 1, 0, 0, 0, 0]
-        dB = [ 0, 0, 0, 0, 1, -1, -1, 1]
-        return(rates,dA,dB)
-    end
+    return(rates)
 end
 
 # function to advance gillespie one step
@@ -100,25 +94,87 @@ end
 function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmin::Float64,
                     f::Float64,r::Float64,Kmin::Float64,Qmin::Float64,star::Array{Int64,1},
                     fin::Array{Int64,1},Ω::Int64)
-    # change this so that it uses less memory
-    ABf = zeros(1001,2)
-    ABb = zeros(1001,2)
+    # rescale constants appropraiatly
+    Kmin = Kmin*Ω
+    Qmin = Qmin*Ω
+    k = k*Ω
+    q = q*Ω
+    f = f/(Ω^2)
+    # set up arrarys to store paths
+    L = 100000000
+    ABf = zeros(L,2)
+    ABb = zeros(L,2)
+    # first do forward transistion
     forw = false
-    back = false
     ABf0 = copy(star)
     ABf[1,:] = ABf0
+    j = forj = 0
+    while forw == false
+        j += 1
+        # calculate rates
+        rs = rates(ABf0[1],ABf0[2],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        # do gillepsie step
+        ABf0 = step(rs,ABf0)
+        # add to vectors
+        ABf[j,:] = ABf0
+        # stopping condition
+        if ABf0[1] <= fin[1] && ABf0[2] >= fin[2]
+            forw = true
+            forj = j
+        elseif j >= L # overflow condition
+            j = round(Int64,L/2)
+            ABf[1:j,:] = ABf[j+1:end,:]
+            ABf[j+1:end,:] .= 0
+        end
+    end
+    println("Forward Gillespie Done!")
+    flush(stdout)
+    # and then backwards transisition
+    back = false
     ABb0 = copy(fin)
     ABb[1,:] = ABb0
-    # for i = 1:noits
-    #     # calculate rates
-    #     rs = rates(AB[1],AB[2],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
-    #     # do gillepsie step
-    #     AB = step(rs,AB)
-    #     # add to vectors
-    #     ABs[i+1,:] = AB
-    # end
-    println("Gillespie Done!")
-    return(ABf,ABb)
+    j = bacj = 0
+    while back == false
+        j += 1
+        # calculate rates
+        rs = rates(ABb0[1],ABb0[2],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        # do gillepsie step
+        ABb0 = step(rs,ABb0)
+        # add to vectors
+        ABb[j,:] = ABb0
+        # stopping condition
+        if ABb0[1] >= star[1] && ABb0[2] <= star[2]
+            back = true
+            bacj = j
+        elseif j >= L # overflow condition
+            j = round(Int64,L/2)
+            ABb[1:j,:] = ABb[j+1:end,:]
+            ABb[j+1:end,:] .= 0
+        end
+    end
+    println("Backward Gillespie Done!")
+    flush(stdout)
+    # now remove redudent zeros from array
+    ABf2 = ABf[1:forj,:]
+    ABb2 = ABb[1:bacj,:]
+    fori = baci = 1
+    # now search for sensible starting point for trajectories
+    for i = forj:(-1):2
+        if ABf2[i,1] >= star[1] && ABf2[i,2] <= star[2]
+            fori = i
+            break
+        end
+    end
+    for i = bacj:(-1):2
+        if ABb2[i,1] <= fin[1] && ABb2[i,2] >= fin[2]
+            baci = i
+            break
+        end
+    end
+    # remove uneccesary earlier trajectory
+    ABf3 = ABf2[fori:end,:]
+    ABb3 = ABb2[baci:end,:]
+    return(ABf3,ABb3)
 end
 
 # main function

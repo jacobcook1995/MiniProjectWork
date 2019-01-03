@@ -53,6 +53,11 @@ function LangEnt(traj::Array{Float64,2},ps::Array{Float64,1},dt::Float64)
     return(entp)
 end
 
+# A function to find and plot the reduced master equation entropy productions of the various trajectories
+function LangEnt(traj::Array{Float64,2},ps::Array{Float64,1},dt::Float64)
+    
+    return(entp,As)
+end
 function main()
     println("Compiled, Starting script.")
     flush(stdout)
@@ -204,6 +209,13 @@ function main()
         end
     end
     LatS2 = L"\\Delta S_{M}"
+    Ω = 5000
+    for i = 1:len
+        for j = 1:2
+            d = 2*(j-1)+4*(i-1)
+            entp2, As = MastEnt(traj[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1]/N)
+        end
+    end
     return(nothing)
 end
 

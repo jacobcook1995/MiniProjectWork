@@ -178,8 +178,15 @@ end
 
 # main function
 function main()
+    println("Compiled, Starting script.")
+    flush(stdout)
+    # First check that an argument for naming has been provided
+    if length(ARGS) == 0
+        println("Error: Need to provide an argument to name output with.")
+        return(nothing)
+    end
     # General parameters
-    Ω = 150
+    Ω = 5#150
     k = 26.097758831774257
     kmin = 2.179419011537317
     q = 25.772181639137496
@@ -203,9 +210,126 @@ function main()
     end
     # now run gillespie
     ABf, ABb = gillespie(K,k,Q,q,kmin,qmin,f,r,Kmin,Qmin,star2,fin2,Ω)
+    # First write out parameters
+    outfile = "../Results/Fig1Data/$(ARGS[1])paras.csv"
+    out_file = open(outfile, "w")
+    ps = [k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f , Ω, star2[1], star2[2], mid2[1], mid2[2], fin2[1], fin2[2]]
+    line = ""
+    for j = 1:length(ps)
+        line *= "$(ps[j]),"
+    end
+    # remove surplus ,
+    line = line[1:end-1]
+    # add a new line
+    line *= "\n"
+    write(out_file,line)
+    close(outfile)
+    # Then write out forward trajectory
+    outfile1 = "../Results/Fig1Data/$(ARGS[1])for.csv"
+    out_file1 = open(outfile1, "w")
+    for j = 1:size(ABf,1)
+        line = "$(ABf[j,1]),$(ABf[j,2])\n"
+        write(out_file1, line)
+    end
+    close(outfile1)
+    # Then write out backward trajectory
+    outfile2 = "../Results/Fig1Data/$(ARGS[1])bac.csv"
+    out_file2 = open(outfile2, "w")
+    for j = 1:size(ABb,1)
+        line = "$(ABb[j,1]),$(ABb[j,2])\n"
+        write(out_file2, line)
+    end
+    close(outfile2)
+    return(nothing)
+end
+
+# Seperate plotting function
+function plots()
+    println("Compiled, Starting plotting function.")
+    flush(stdout)
+    # First check that an argument for naming has been provided
+    if length(ARGS) == 0
+        println("Error: Need to provide an argument to use to find input.")
+        return(nothing)
+    end
+    infile = "../Results/Fig1Data/$(ARGS[1])paras.csv"
+    w = 17
+    ps = zeros(w)
+    open(infile, "r") do in_file
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                ps[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+        end
+    end
+    Ω = ps[11]
+    star2 = [ps[12], ps[13]]
+    mid2 = [ps[14], ps[15]]
+    fin2 = [ps[16], ps[17]]
+    # Now read in forward path
+    infile = "../Results/Fig1Data/$(ARGS[1])for.csv"
+    w = 2
+    len = countlines(infile)
+    ABf = zeros(len,w)
+    open(infile, "r") do in_file
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                ABf[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Now read in backward path
+    infile = "../Results/Fig1Data/$(ARGS[1])bac.csv"
+    w = 2
+    len = countlines(infile)
+    ABb = zeros(len,w)
+    open(infile, "r") do in_file
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                ABb[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
     # switch to PyPlot
     pyplot()
-    # DEfine relevant latex strings
+    # Define relevant latex strings
     LatS = latexstring("\\Omega = $(Ω)")
     # Then plot graphs
     plot(ABf[:,2]/Ω,ABf[:,1]/Ω,label="to high A",title="2D Toggle Switch",legendtitle=LatS)
@@ -214,7 +338,7 @@ function main()
     scatter!([mid2[2]/Ω], [mid2[1]/Ω], seriescolor = :orange, label="")
     scatter!([fin2[2]/Ω], [fin2[1]/Ω], seriescolor = :red, label="")
     savefig("../Results/switch.png")
-    return(nothing)
 end
 
-@time main()
+# @time main()
+@time plots()

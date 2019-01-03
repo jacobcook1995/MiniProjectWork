@@ -10,7 +10,6 @@ using Roots
 using Plots
 using LaTeXStrings
 using PyCall
-# pygui(:qt5)
 import PyPlot
 
 # function to find start end and saddle points

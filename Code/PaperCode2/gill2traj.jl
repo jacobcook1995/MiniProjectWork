@@ -190,7 +190,7 @@ function main()
         return(nothing)
     end
     # General parameters
-    Ω = 50 #80
+    Ω = 80
     k = 20.315460339280257
     kmin = 0.19687208653639934
     q = 12.294415636568056

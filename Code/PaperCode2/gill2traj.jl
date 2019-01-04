@@ -101,13 +101,14 @@ function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmi
     f = f/(Ω^2)
     # set up arrarys to store paths
     L = 100000000
-    ABf = zeros(L,2)
-    ABb = zeros(L,2)
+    ABf = zeros(2,L)
+    ABb = zeros(2,L)
     # first do forward transistion
     forw = false
     ABf0 = copy(star)
-    ABf[1,:] = ABf0
+    ABf[:,1] = ABf0
     j = forj = 0
+    t1 = time_ns()
     while forw == false
         j += 1
         # calculate rates
@@ -115,24 +116,26 @@ function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmi
         # do gillepsie step
         ABf0 = step(rs,ABf0)
         # add to vectors
-        ABf[j,:] = ABf0
+        ABf[:,j] = ABf0
         # stopping condition
         if ABf0[1] <= fin[1] && ABf0[2] >= fin[2]
             forw = true
             forj = j
         elseif j >= L # overflow condition
-            j = round(Int64,L/2)
-            ABf[1:j,:] = ABf[j+1:end,:]
-            ABf[j+1:end,:] .= 0
+            j = 1
+            ABf[:,1] = ABf[:,end]
         end
     end
+    t2 = time_ns()
     println("Forward Gillespie Done!")
+    println("Time Elapsed: $((t2-t1)*10.0^-9)")
     flush(stdout)
     # and then backwards transisition
     back = false
     ABb0 = copy(fin)
-    ABb[1,:] = ABb0
+    ABb[:,1] = ABb0
     j = bacj = 0
+    t1 = time_ns()
     while back == false
         j += 1
         # calculate rates
@@ -140,39 +143,40 @@ function gillespie(K::Float64,k::Float64,Q::Float64,q::Float64,kmin::Float64,qmi
         # do gillepsie step
         ABb0 = step(rs,ABb0)
         # add to vectors
-        ABb[j,:] = ABb0
+        ABb[:,j] = ABb0
         # stopping condition
         if ABb0[1] >= star[1] && ABb0[2] <= star[2]
             back = true
             bacj = j
         elseif j >= L # overflow condition
-            j = round(Int64,L/2)
-            ABb[1:j,:] = ABb[j+1:end,:]
-            ABb[j+1:end,:] .= 0
+            j = 1
+            ABb[:,1] = ABb[:,end]
         end
     end
+    t2 = time_ns()
     println("Backward Gillespie Done!")
+    println("Time Elapsed: $((t2-t1)*10.0^-9)")
     flush(stdout)
-    # now remove redudent zeros from array
-    ABf2 = ABf[1:forj,:]
-    ABb2 = ABb[1:bacj,:]
+    # now remove invalid data from array
+    ABf2 = ABf[:,1:forj]
+    ABb2 = ABb[:,1:bacj]
     fori = baci = 1
     # now search for sensible starting point for trajectories
     for i = forj:(-1):2
-        if ABf2[i,1] >= star[1] && ABf2[i,2] <= star[2]
+        if ABf2[1,i] >= star[1] && ABf2[2,i] <= star[2]
             fori = i
             break
         end
     end
     for i = bacj:(-1):2
-        if ABb2[i,1] <= fin[1] && ABb2[i,2] >= fin[2]
+        if ABb2[1,i] <= fin[1] && ABb2[2,i] >= fin[2]
             baci = i
             break
         end
     end
     # remove uneccesary earlier trajectory
-    ABf3 = ABf2[fori:end,:]
-    ABb3 = ABb2[baci:end,:]
+    ABf3 = ABf2[:,fori:end]
+    ABb3 = ABb2[:,baci:end]
     return(ABf3,ABb3)
 end
 
@@ -186,17 +190,17 @@ function main()
         return(nothing)
     end
     # General parameters
-    Ω = 5#150
-    k = 26.097758831774257
-    kmin = 2.179419011537317
-    q = 25.772181639137496
-    qmin = 1.4148644973536413
-    K = 8.24009582574649
-    Kmin = 0.6004846952009286
-    Q = 6.96376978178525
-    Qmin = 0.1657402116759403
-    r = 3875.552664673383
-    f = 9285.774344574023
+    Ω = 50 #80
+    k = 20.315460339280257
+    kmin = 0.19687208653639934
+    q = 12.294415636568056
+    qmin = 0.37021152930020407
+    K = 7.792600383813772
+    Kmin = 0.7093969626035892
+    Q = 4.669640667899318
+    Qmin = 0.3211077205202387
+    r = 1516.1520996175293
+    f = 7513.713695501023
     # first need to use these parameters to find a steady state
     star1, mid1, fin1 = nullcline(r,f,K,Q,k,q,kmin,qmin,Kmin,Qmin)
     # round star so that it becomes a vector of integers
@@ -227,16 +231,16 @@ function main()
     # Then write out forward trajectory
     outfile1 = "../Results/Fig1Data/$(ARGS[1])for.csv"
     out_file1 = open(outfile1, "w")
-    for j = 1:size(ABf,1)
-        line = "$(ABf[j,1]),$(ABf[j,2])\n"
+    for j = 1:size(ABf,2)
+        line = "$(ABf[1,j]),$(ABf[2,j])\n"
         write(out_file1, line)
     end
     close(outfile1)
     # Then write out backward trajectory
     outfile2 = "../Results/Fig1Data/$(ARGS[1])bac.csv"
     out_file2 = open(outfile2, "w")
-    for j = 1:size(ABb,1)
-        line = "$(ABb[j,1]),$(ABb[j,2])\n"
+    for j = 1:size(ABb,2)
+        line = "$(ABb[1,j]),$(ABb[2,j])\n"
         write(out_file2, line)
     end
     close(outfile2)
@@ -332,7 +336,7 @@ function plots()
     # Define relevant latex strings
     LatS = latexstring("\\Omega = $(Ω)")
     # Then plot graphs
-    plot(ABf[:,2]/Ω,ABf[:,1]/Ω,label="to high A",title="2D Toggle Switch",legendtitle=LatS)
+    plot(ABf[:,2]/Ω,ABf[:,1]/Ω,label="to high A",title="2D Toggle Switch",legendtitle=LatS,dpi=300)
     plot!(ABb[:,2]/Ω,ABb[:,1]/Ω,label="to high B",xlabel="A",ylabel="B")
     scatter!([star2[2]/Ω], [star2[1]/Ω], seriescolor = :green, label="")
     scatter!([mid2[2]/Ω], [mid2[1]/Ω], seriescolor = :orange, label="")
@@ -340,5 +344,5 @@ function plots()
     savefig("../Results/switch.png")
 end
 
-# @time main()
-@time plots()
+@time main()
+# @time plots()

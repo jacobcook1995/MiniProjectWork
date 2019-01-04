@@ -9,7 +9,8 @@
 using Plots
 using StatsBase
 using LsqFit
-import GR # this is necessary to avoid a world age error when using GR in function
+using LaTeXStrings
+import PyPlot # this is necessary to avoid a world age error when using GR in function
 
 # function to open my 4D histogram
 function openhist(input_file::String)
@@ -192,8 +193,8 @@ function main()
         end
     end
     # define file names to read in
-    input_wA = "../Results/wA$(ARGS[1])V$(ARGS[2]).csv"
-    input_wB = "../Results/wB$(ARGS[1])V$(ARGS[2]).csv"
+    input_wA = "../Results/WaitTime/wA$(ARGS[1])V$(ARGS[2]).csv"
+    input_wB = "../Results/WaitTime/wB$(ARGS[1])V$(ARGS[2]).csv"
     lwA = countlines(input_wA)
     wA = zeros(lwA)
     i = 0
@@ -244,13 +245,12 @@ function main()
     A = model(rangeA,pA)
     B = model(rangeB,pB)
     # actually visulise the histograms
-    histogram(wA,nbins=nb,label="",linecolor=:blue)
-    plot!(rangeA,A,label="")
-    annotate!(tsA[floor(Int64,nb/2)],maxA,text("a = $(pA[1])\nb = $(pA[2])",:left,font(10,"Courier")))
+    pyplot()
+    bar(hA,label="",linecolor=:blue,dpi=300,fillalpha=1.0,fillcolor=:blue)
+    plot!(rangeA,A,label="",xaxis=false,yaxis=false,grid=false)
     savefig("../Results/wA.png")
-    histogram(wB,nbins=nb,label="",linecolor=:blue)
-    plot!(rangeB,B,label="")
-    annotate!(tsB[floor(Int64,nb/2)],maxB,text("a = $(pB[1])\nb = $(pB[2])",:left,font(10,"Courier")))
+    bar(hB,label="",linecolor=:blue,dpi=300,fillalpha=1.0,fillcolor=:blue)
+    plot!(rangeB,B,label="",xaxis=false,yaxis=false,grid=false)
     savefig("../Results/wB.png")
     return(nothing)
 end
@@ -258,8 +258,8 @@ end
 # function to read in histogram and then find the powers associated
 function main2()
     # read in histogram
-    input_hist = "../Results/hist$(ARGS[1])V$(ARGS[2]).csv"
-    input_ps = "../Results/ps$(ARGS[1])V$(ARGS[2]).csv"
+    input_hist = "../Results/WaitTime/hist$(ARGS[1])V$(ARGS[2]).csv"
+    input_ps = "../Results/WaitTime/ps$(ARGS[1])V$(ARGS[2]).csv"
     hist = openhist2(input_hist)
     # sum over promotor dimensions
     # hist = dropdims(sum(hist,dims=4),dims=4)
@@ -284,5 +284,5 @@ function main2()
     return(nothing)
 end
 
-# @time main()
-@time main2()
+@time main()
+# @time main2()

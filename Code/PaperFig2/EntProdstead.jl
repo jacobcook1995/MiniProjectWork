@@ -13,6 +13,48 @@ using LaTeXStrings
 using PyCall
 import PyPlot
 
+# Diffusion matrix D
+# ps = [ k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f]
+function D!(D::Array{Float64,2},x::Array{Float64,1},ps::Array{Float64,1})
+    D[1,1] = ps[1]*ps[9]/(ps[9]+ps[10]*x[2]*x[2]) + (ps[5]+ps[2])*x[1] + ps[6]
+    D[1,2] = 0
+    D[2,1] = 0
+    D[2,2] = ps[3]*ps[9]/(ps[9]+ps[10]*x[1]*x[1]) + (ps[7]+ps[4])*x[2] + ps[8]
+    return(D)
+end
+
+# vector of forces
+function f!(f::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
+    f[1] = ps[1]*ps[9]/(ps[9]+ps[10]*x[2]*x[2]) - ps[2]*x[1] - ps[5]*x[1] + ps[6]
+    f[2] = ps[3]*ps[9]/(ps[9]+ps[10]*x[1]*x[1]) - ps[4]*x[2] - ps[7]*x[2] + ps[8]
+    return(f)
+end
+
+# A function to find and plot the langevin entropy productions of the various trajectories
+function LangEnt(traj::Array{Float64,2},ps::Array{Float64,1},ts::Array{Float64,1})
+    entp = zeros(size(traj,1)-1)
+    f = [0.0; 0.0]
+    D = [0.0 0.0; 0.0 0.0]
+    for i = 1:length(entp)
+        dt = ts[i+1] - ts[i]
+        qdot = (traj[i+1,:] .- traj[i,:])/(dt)
+        # and need to find midpoint
+        posA = (traj[i+1,1] + traj[i,1])/(2)
+        posB = (traj[i+1,2] + traj[i,2])/(2)
+        f = f!(f,[posA,posB],ps)
+        D = D!(D,[posA,posB],ps)
+        for j = 1:2
+            for k = 1:2
+                if D[j,k] != 0
+                    entp[i] += 2*qdot[j]*f[k]*dt/D[j,k]
+                end
+            end
+        end
+    end
+    entP = sum(entp)
+    return(entP)
+end
+
 # function to construct the rates
 function rates(A::Int64,B::Int64,k::Float64,K::Float64,q::Float64,Q::Float64,kmin::Float64,
                 Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64)
@@ -34,35 +76,35 @@ function step(rates::Array{Float64,1},vars::Array{Int64,1},reac::Int64)
     p = 0 # probability used for forward path
     if r < rs[1]
         vars[1] += 1 # A produced
-        p = rs[1]
+        p = rs[1] + rs[4]
         reac = 1
     elseif r < rs[1] + rs[2]
         vars[1] -= 1 # A unravels
-        p = rs[2]
+        p = rs[2] + rs[3]
         reac = 2
     elseif r < rs[1] + rs[2] + rs[3]
         vars[1] -= 1 # A decays
-        p = rs[3]
+        p = rs[3] + rs[2]
         reac = 3
     elseif r < rs[1] + rs[2] + rs[3] + rs[4]
         vars[1] += 1 # A regenerated
-        p = rs[4]
+        p = rs[4] + rs[1]
         reac = 4
     elseif r < rs[1] + rs[2] + rs[3] + rs[4] + rs[5]
         vars[2] += 1 # B produced
-        p = rs[5]
+        p = rs[5] + rs[8]
         reac = 5
     elseif r < rs[1] + rs[2] + rs[3] + rs[4] + rs[5] + rs[6]
         vars[2] -= 1 # B unravels
-        p = rs[6]
+        p = rs[6] + rs[7]
         reac = 6
     elseif r < rs[1] + rs[2] + rs[3] + rs[4] + rs[5] + rs[6] + rs[7]
         vars[2] -= 1 # B decays
-        p = rs[7]
+        p = rs[7] + rs[6]
         reac = 7
     else
         vars[2] += 1 # B regenerated
-        p = rs[8]
+        p = rs[8] + rs[5]
         reac = 8
     end
     return(vars,p,reac)
@@ -72,10 +114,14 @@ end
 function rev(rs::Array{Float64,1},reac::Int64)
     rs = rs/sum(rs)
     if reac > 0 || reac < 9
-        if reac % 2 == 0 # even rates backwards
-            return(rs[reac-1])
-        else # odd forward
-            return(rs[reac+1])
+        if reac == 2 || reac == 3 # A removed case
+            return(rs[2]+rs[3])
+        elseif reac == 1 || reac == 4 # A added case
+            return(rs[1]+rs[4])
+        elseif reac == 5 || reac == 8 # B added case
+            return(rs[5]+rs[8])
+        else # B removed case
+            return(rs[6]+rs[7])
         end
     else
         error("Invalid reaction code returned")
@@ -153,7 +199,7 @@ function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{
         for i = 1:length(pb)
             SA += log(pf[i]) - log(pb[i])
         end
-        SA = SA/(Ω*times[2])
+        SA = SA/Ω
         # check simulated trajectories remain in bounds
         if (steadA[1] - mid[1]) < 0
             if sad[1] < maxA
@@ -233,7 +279,7 @@ function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{
         for i = 1:length(pb)
             SB += log(pf[i]) - log(pb[i])
         end
-        SB = SB/(Ω*times[2])
+        SB = SB/Ω
         # check simulated trajectories remain in bounds
         if (steadB[1] - mid[1]) < 0
             if sad[1] < maxA
@@ -339,7 +385,7 @@ function main()
     # Now do gillespie simulations to find entropy productions
     N = 500 # number trajectories
     Ω = 5000
-    noits = 10000
+    noits = 100000
     SLangA = zeros(N)
     SLangB = zeros(N)
     SMastA = zeros(N)
@@ -350,10 +396,21 @@ function main()
     trajB = zeros(Int64,noits+1,2)
     tA = zeros(noits+1)
     tB = zeros(noits+1)
-    for i = 1:len
+    for i = 1#:len
         for j = 1:N
             SMastA[i], SMastB[i], trajA, trajB, tA, tB = gillespie([stead[i,1],stead[i,2]],[stead[i,5],stead[i,6]],[stead[i,3],stead[i,4]],ps[i,:],noits,Ω,pf,pb,trajA,trajB,tA,tB)
+            SLangA[i] = LangEnt(trajA/Ω,ps[i,:],tA)
+            SLangB[i] = LangEnt(trajB/Ω,ps[i,:],tB)
         end
+        pyplot()
+        histogram(SMastA)
+        savefig("../Results/Fig2Graphs/$(i)1Mast.png")
+        histogram(SMastB)
+        savefig("../Results/Fig2Graphs/$(i)2Mast.png")
+        histogram(SLangA)
+        savefig("../Results/Fig2Graphs/$(i)1Lang.png")
+        histogram(SLangB)
+        savefig("../Results/Fig2Graphs/$(i)2Lang.png")
     end
     return(nothing)
 end

@@ -346,19 +346,15 @@ function main()
     SMastB = zeros(N)
     pf = zeros(noits)
     pb = zeros(noits)
-    trajA = zeros(noits+1)
-    trajB = zeros(noits+1)
-    tA = zeros(Int64,noits+1)
-    tB = zeros(Int64,noits+1)
+    trajA = zeros(Int64,noits+1,2)
+    trajB = zeros(Int64,noits+1,2)
+    tA = zeros(noits+1)
+    tB = zeros(noits+1)
     for i = 1:len
         for j = 1:N
             SMastA[i], SMastB[i], trajA, trajB, tA, tB = gillespie([stead[i,1],stead[i,2]],[stead[i,5],stead[i,6]],[stead[i,3],stead[i,4]],ps[i,:],noits,Ω,pf,pb,trajA,trajB,tA,tB)
         end
     end
-    println(trajA)
-    println(trajB)
-    println(tA)
-    println(tB)
     return(nothing)
 end
 

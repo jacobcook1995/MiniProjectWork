@@ -111,6 +111,30 @@ function step(rates::Array{Float64,1},vars::Array{Int64,1},reac::Int64)
     return(vars,p,reac)
 end
 
+# function to advance gillespie one step
+function step(rates::Array{Float64,1},vars::Array{Int64,1})
+    r = rand()
+    rs = rates/sum(rates)
+    if r < rs[1]
+        vars[1] += 1 # A produced
+    elseif r < rs[1] + rs[2]
+        vars[1] -= 1 # A unravels
+    elseif r < rs[1] + rs[2] + rs[3]
+        vars[1] -= 1 # A decays
+    elseif r < rs[1] + rs[2] + rs[3] + rs[4]
+        vars[1] += 1 # A regenerated
+    elseif r < rs[1] + rs[2] + rs[3] + rs[4] + rs[5]
+        vars[2] += 1 # B produced
+    elseif r < rs[1] + rs[2] + rs[3] + rs[4] + rs[5] + rs[6]
+        vars[2] -= 1 # B unravels
+    elseif r < rs[1] + rs[2] + rs[3] + rs[4] + rs[5] + rs[6] + rs[7]
+        vars[2] -= 1 # B decays
+    else
+        vars[2] += 1 # B regenerated
+    end
+    return(vars)
+end
+
 # function to find reverse probability
 function rev(rs::Array{Float64,1},reac::Int64)
     rs = rs/sum(rs)
@@ -131,8 +155,7 @@ end
 
 # function to now run a gillespie simulation of the two states
 function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{Float64,1},ps::Array{Float64,1},
-                    noits::Int64,Ω::Int64,pf::Array{Float64,1},pb::Array{Float64,1},trajA::Array{Int64,2},trajB::Array{Int64,2},
-                    tA::Array{Float64,1},tB::Array{Float64,1})
+                    noits::Int64,Ω::Int64,pf::Array{Float64,1},pb::Array{Float64,1})
     # extract all parameters and then rescale
     # ps = [ k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f]
     k = ps[1]*Ω
@@ -157,7 +180,6 @@ function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{
         crossB = false
         times[1] = 0
         vars[:,1] = round.(steadA*Ω)
-        trajA[1,:] = vars[:,1]
         reac = 0
         minA = vars[1,1]
         maxA = vars[1,1]
@@ -174,10 +196,8 @@ function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{
             τ = timstep(rs)
             # update time
             times[2] = times[1] + τ
-            tA[i+1] = times[2]
             # do gillepsie step
             vars[:,2], pf[i], reac = step(rs,vars[:,1],reac)
-            trajA[i+1,:] = vars[:,2]
             # final reverse rate
             if i == noits
                 rs = rates(vars[1,end],vars[2,end],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
@@ -237,7 +257,6 @@ function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{
         crossB = false
         times[1] = 0
         vars[:,1] = round.(steadB*Ω)
-        trajB[1,:] = vars[:,1]
         reac = 0
         minA = vars[1,1]
         maxA = vars[1,1]
@@ -254,10 +273,8 @@ function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{
             τ = timstep(rs)
             # update time
             times[2] = times[1] + τ
-            tB[i+1] = times[2]
             # do gillepsie step
             vars[:,2], pf[i], reac = step(rs,vars[:,1],reac)
-            trajB[i+1,:] = vars[:,2]
             # final reverse rate
             if i == noits
                 rs = rates(vars[1,end],vars[2,end],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
@@ -309,7 +326,158 @@ function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{
             flush(stdout)
         end
     end
-    return(SA,SB,trajA,trajB,tA,tB)
+    return(SA,SB)
+end
+
+# function to now run a gillespie simulation of the two states
+function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{Float64,1},ps::Array{Float64,1},
+                    noits::Int64,Ω::Int64,trajA::Array{Int64,2},trajB::Array{Int64,2},tA::Array{Float64,1},tB::Array{Float64,1})
+    # extract all parameters and then rescale
+    # ps = [ k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f]
+    k = ps[1]*Ω
+    kmin = ps[2]
+    q = ps[3]*Ω
+    qmin = ps[4]
+    K = ps[5]
+    Kmin = ps[6]*Ω
+    Q = ps[7]
+    Qmin = ps[8]*Ω
+    r = ps[9]
+    f = ps[10]/(Ω^2)
+    # set up these gloablly
+    times = zeros(2)
+    vars = fill(0,2,2)
+    # setup for finding if left steady state
+    sad = round.(mid*Ω)
+    fin = false
+    while fin == false
+        crossA = false
+        crossB = false
+        times[1] = 0
+        vars[:,1] = round.(steadA*Ω)
+        trajA[1,:] = vars[:,1]
+        minA = vars[1,1]
+        maxA = vars[1,1]
+        minB = vars[2,1]
+        maxB = vars[2,1]
+        for i = 1:noits
+            # calculate rates
+            rs = rates(vars[1,1],vars[2,1],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+            # calculate timestep
+            τ = timstep(rs)
+            # update time
+            times[2] = times[1] + τ
+            tA[i+1] = times[2]
+            # do gillepsie step
+            vars[:,2] = step(rs,vars[:,1])
+            trajA[i+1,:] = vars[:,2]
+            # check if max and minimums should be updated
+            if vars[1,2] < minA
+                minA = vars[1,2]
+            elseif vars[1,2] > maxA
+                maxA = vars[1,2]
+            elseif vars[2,2] < minB
+                minB = vars[2,2]
+            elseif vars[2,2] > maxB
+                maxB = vars[2,2]
+            end
+            vars[:,1] = vars[:,2]
+            times[1] = times[2]
+        end
+        # check simulated trajectories remain in bounds
+        if (steadA[1] - mid[1]) < 0
+            if sad[1] < maxA
+                crossA = true
+            end
+        else
+            if sad[1] > minA
+                crossA = true
+            end
+        end
+        if (steadA[2] - mid[2]) < 0
+            if sad[2] < maxB
+                crossB = true
+            end
+        else
+            if sad[2] > minB
+                crossB = true
+            end
+        end
+        if crossA == false || crossB == false
+            fin = true
+            break
+        else
+            println(steadA)
+            println(mid)
+            flush(stdout)
+        end
+    end
+
+    # Second run for other state
+    fin = false
+    while fin == false
+        crossA = false
+        crossB = false
+        times[1] = 0
+        vars[:,1] = round.(steadB*Ω)
+        trajB[1,:] = vars[:,1]
+        minA = vars[1,1]
+        maxA = vars[1,1]
+        minB = vars[2,1]
+        maxB = vars[2,1]
+        for i = 1:noits
+            # calculate rates
+            rs = rates(vars[1,1],vars[2,1],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+            # calculate timestep
+            τ = timstep(rs)
+            # update time
+            times[2] = times[1] + τ
+            tB[i+1] = times[2]
+            # do gillepsie step
+            vars[:,2] = step(rs,vars[:,1])
+            trajB[i+1,:] = vars[:,2]
+            # check if max and minimums should be updated
+            if vars[1,2] < minA
+                minA = vars[1,2]
+            elseif vars[1,2] > maxA
+                maxA = vars[1,2]
+            elseif vars[2,2] < minB
+                minB = vars[2,2]
+            elseif vars[2,2] > maxB
+                maxB = vars[2,2]
+            end
+            vars[:,1] = vars[:,2]
+            times[1] = times[2]
+        end
+        # check simulated trajectories remain in bounds
+        if (steadB[1] - mid[1]) < 0
+            if sad[1] < maxA
+                crossA = true
+            end
+        else
+            if sad[1] > minA
+                crossA = true
+            end
+        end
+        if (steadB[2] - mid[2]) < 0
+            if sad[2] < maxB
+                crossB = true
+            end
+        else
+            if sad[2] > minB
+                crossB = true
+            end
+        end
+        if crossA == false || crossB == false
+            fin = true
+            break
+        else
+            println(steadB)
+            println(mid)
+            flush(stdout)
+        end
+    end
+    return(trajA,trajB,tA,tB)
 end
 
 # Main function
@@ -388,10 +556,10 @@ function main()
     Ω = 5000
     f = [0.0, 0.0]
     noits = 10000
-    SLangA = zeros(N)
-    SLangB = zeros(N)
-    SMastA = zeros(N)
-    SMastB = zeros(N)
+    SLangA = zeros(N,len)
+    SLangB = zeros(N,len)
+    SMastA = zeros(N,len)
+    SMastB = zeros(N,len)
     pf = zeros(noits)
     pb = zeros(noits)
     trajA = zeros(Int64,noits+1,2)
@@ -400,20 +568,35 @@ function main()
     tB = zeros(noits+1)
     for i = 1:len
         for j = 1:N
-            SMastA[j], SMastB[j], trajA, trajB, tA, tB = gillespie([stead[i,1],stead[i,2]],[stead[i,5],stead[i,6]],[stead[i,3],stead[i,4]],ps[i,:],noits,Ω,pf,pb,trajA,trajB,tA,tB)
-            SLangA[j] = LangEnt(trajA/Ω,ps[i,:],tA)
-            SLangB[j] = LangEnt(trajB/Ω,ps[i,:],tB)
+            SMastA[j,i], SMastB[j,i] = gillespie([stead[i,1],stead[i,2]],[stead[i,5],stead[i,6]],[stead[i,3],stead[i,4]],ps[i,:],noits,Ω,pf,pb)
+            trajA, trajB, tA, tB = gillespie([stead[i,1],stead[i,2]],[stead[i,5],stead[i,6]],[stead[i,3],stead[i,4]],ps[i,:],noits,Ω,trajA,trajB,tA,tB)
+            SLangA[j,i] = LangEnt(trajA/Ω,ps[i,:],tA)
+            SLangB[j,i] = LangEnt(trajB/Ω,ps[i,:],tB)
         end
-        pyplot()
-        # histogram(SMastA,label="")
-        # savefig("../Results/Fig2Graphs/$(i)1MastStead.png")
-        # histogram(SMastB,label="")
-        # savefig("../Results/Fig2Graphs/$(i)2MastStead.png")
-        histogram(SLangA,label="")
-        savefig("../Results/Fig2Graphs/$(i)1LangStead.png")
-        histogram(SLangB,label="")
-        savefig("../Results/Fig2Graphs/$(i)2LangStead.png")
     end
+    # Now write out data on the steady states
+    for i = 1:len
+        outfile = "../Results/Fig2Data/Stead$(i)$(ARGS[1]).csv"
+        out_file = open(outfile, "w")
+        for j = 1:N
+            line = "$(SLangA[j,i]),$(SLangB[j,i]),$(SMastA[j,i]),$(SMastB[j,i])\n"
+            write(out_file,line)
+        end
+        close(out_file)
+    end
+    return(nothing)
+end
+
+function plotting()
+    pyplot()
+    histogram(SMastA,label="")
+    savefig("../Results/Fig2Graphs/$(i)1MastStead.png")
+    histogram(SMastB,label="")
+    savefig("../Results/Fig2Graphs/$(i)2MastStead.png")
+    histogram(SLangA,label="")
+    savefig("../Results/Fig2Graphs/$(i)1LangStead.png")
+    histogram(SLangB,label="")
+    savefig("../Results/Fig2Graphs/$(i)2LangStead.png")
     return(nothing)
 end
 

@@ -25,6 +25,7 @@ end
 
 # vector of forces
 function f!(f::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
+    Ω = 5000
     f[1] = ps[1]*ps[9]/(ps[9]+ps[10]*x[2]*x[2]) - ps[2]*x[1] - ps[5]*x[1] + ps[6]
     f[2] = ps[3]*ps[9]/(ps[9]+ps[10]*x[1]*x[1]) - ps[4]*x[2] - ps[7]*x[2] + ps[8]
     return(f)
@@ -115,13 +116,13 @@ function rev(rs::Array{Float64,1},reac::Int64)
     rs = rs/sum(rs)
     if reac > 0 || reac < 9
         if reac == 2 || reac == 3 # A removed case
-            return(rs[2]+rs[3])
-        elseif reac == 1 || reac == 4 # A added case
             return(rs[1]+rs[4])
+        elseif reac == 1 || reac == 4 # A added case
+            return(rs[2]+rs[3])
         elseif reac == 5 || reac == 8 # B added case
-            return(rs[5]+rs[8])
-        else # B removed case
             return(rs[6]+rs[7])
+        else # B removed case
+            return(rs[5]+rs[8])
         end
     else
         error("Invalid reaction code returned")
@@ -385,7 +386,8 @@ function main()
     # Now do gillespie simulations to find entropy productions
     N = 500 # number trajectories
     Ω = 5000
-    noits = 100000
+    f = [0.0, 0.0]
+    noits = 10000
     SLangA = zeros(N)
     SLangB = zeros(N)
     SMastA = zeros(N)
@@ -396,21 +398,21 @@ function main()
     trajB = zeros(Int64,noits+1,2)
     tA = zeros(noits+1)
     tB = zeros(noits+1)
-    for i = 1#:len
+    for i = 1:len
         for j = 1:N
-            SMastA[i], SMastB[i], trajA, trajB, tA, tB = gillespie([stead[i,1],stead[i,2]],[stead[i,5],stead[i,6]],[stead[i,3],stead[i,4]],ps[i,:],noits,Ω,pf,pb,trajA,trajB,tA,tB)
-            SLangA[i] = LangEnt(trajA/Ω,ps[i,:],tA)
-            SLangB[i] = LangEnt(trajB/Ω,ps[i,:],tB)
+            SMastA[j], SMastB[j], trajA, trajB, tA, tB = gillespie([stead[i,1],stead[i,2]],[stead[i,5],stead[i,6]],[stead[i,3],stead[i,4]],ps[i,:],noits,Ω,pf,pb,trajA,trajB,tA,tB)
+            SLangA[j] = LangEnt(trajA/Ω,ps[i,:],tA)
+            SLangB[j] = LangEnt(trajB/Ω,ps[i,:],tB)
         end
         pyplot()
-        histogram(SMastA)
-        savefig("../Results/Fig2Graphs/$(i)1Mast.png")
-        histogram(SMastB)
-        savefig("../Results/Fig2Graphs/$(i)2Mast.png")
-        histogram(SLangA)
-        savefig("../Results/Fig2Graphs/$(i)1Lang.png")
-        histogram(SLangB)
-        savefig("../Results/Fig2Graphs/$(i)2Lang.png")
+        # histogram(SMastA,label="")
+        # savefig("../Results/Fig2Graphs/$(i)1MastStead.png")
+        # histogram(SMastB,label="")
+        # savefig("../Results/Fig2Graphs/$(i)2MastStead.png")
+        histogram(SLangA,label="")
+        savefig("../Results/Fig2Graphs/$(i)1LangStead.png")
+        histogram(SLangB,label="")
+        savefig("../Results/Fig2Graphs/$(i)2LangStead.png")
     end
     return(nothing)
 end

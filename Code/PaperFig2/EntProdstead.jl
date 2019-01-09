@@ -588,16 +588,81 @@ function main()
 end
 
 function plotting()
-    pyplot()
-    histogram(SMastA,label="")
-    savefig("../Results/Fig2Graphs/$(i)1MastStead.png")
-    histogram(SMastB,label="")
-    savefig("../Results/Fig2Graphs/$(i)2MastStead.png")
-    histogram(SLangA,label="")
-    savefig("../Results/Fig2Graphs/$(i)1LangStead.png")
-    histogram(SLangB,label="")
-    savefig("../Results/Fig2Graphs/$(i)2LangStead.png")
+    println("Compiled, Starting script.")
+    flush(stdout)
+    # First check that an argument for naming has been provided
+    if length(ARGS) == 0
+        println("Error: Need to provide an argument to name output with.")
+        return(nothing)
+    end
+    # Check there is a file of parameters to be read
+    infile = "../Results/Fig2Data/$(ARGS[1])para.csv"
+    if ~isfile(infile)
+        println("Error: No file of parameters to be read.")
+        return(nothing)
+    end
+    # now find length of this parameter file
+    len = countlines(infile)
+    pyplot() # activate pyplot
+    # check that the first input file exists
+    infile = "../Results/Fig2Data/Stead1$(ARGS[1]).csv"
+    if ~isfile(infile)
+        println("Error: 1st relevant data file is missing.")
+        return(nothing)
+    end
+    # use first file to set length of data
+    len2 = countlines(infile)
+    SLangA = zeros(len,len2)
+    SLangB = zeros(len,len2)
+    SMastA = zeros(len,len2)
+    SMastB = zeros(len,len2)
+    for i = 1#:len
+        # should do some checks on data here
+        infile = "../Results/Fig2Data/Stead$(i)$(ARGS[1]).csv"
+        if ~isfile(infile)
+            println("Error: $(i)th relevant data file is missing.")
+            return(nothing)
+        end
+        # use first file to set length of data
+        len3 = countlines(infile)
+        if len3 != len2
+            println("Error: Length of $(i)th relevant data file does not match with 1st.")
+            return(nothing)
+        end
+        # Now read data from this file
+        open(infile, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,5)
+                j = 1
+                for l = 1:L
+                    if line[l] == ','
+                        j += 1
+                        comma[j] = l
+                    end
+                end
+                comma[end] = L+1
+                SLangA[i,k] = parse(Float64,line[(comma[1]+1):(comma[2]-1)])
+                SLangB[i,k] = parse(Float64,line[(comma[2]+1):(comma[3]-1)])
+                SMastA[i,k] = parse(Float64,line[(comma[3]+1):(comma[4]-1)])
+                SMastB[i,k] = parse(Float64,line[(comma[4]+1):(comma[5]-1)])
+                k += 1
+            end
+        end
+        histogram(SMastA[i,:],label="",)
+        savefig("../Results/Fig2Graphs/$(i)1MastStead.png")
+        histogram(SMastB[i,:],label="")
+        savefig("../Results/Fig2Graphs/$(i)2MastStead.png")
+        histogram(SLangA[i,:],label="")
+        savefig("../Results/Fig2Graphs/$(i)1LangStead.png")
+        histogram(SLangB[i,:],label="")
+        savefig("../Results/Fig2Graphs/$(i)2LangStead.png")
+    end
     return(nothing)
 end
 
-@time main()
+@time plotting()
+# @time main()

@@ -246,11 +246,13 @@ function main()
     B = model(rangeB,pB)
     # actually visulise the histograms
     pyplot()
+    Lx = latexstring("Time\\,\\tau")
+    Ly = L"P(\tau)"
     bar(hA,label="",linecolor=:blue,dpi=300,fillalpha=1.0,fillcolor=:blue)
-    plot!(rangeA,A,label="",xaxis=false,yaxis=false,grid=false)
+    plot!(rangeA,A,label="",grid=false,xlabel=Lx,ylabel=Ly,xticks=false,yticks=false,guidefontsize=20)
     savefig("../Results/wA.png")
     bar(hB,label="",linecolor=:blue,dpi=300,fillalpha=1.0,fillcolor=:blue)
-    plot!(rangeB,B,label="",xaxis=false,yaxis=false,grid=false)
+    plot!(rangeB,B,label="",grid=false,xlabel=Lx,ylabel=Ly,xticks=false,yticks=false,guidefontsize=20)
     savefig("../Results/wB.png")
     return(nothing)
 end

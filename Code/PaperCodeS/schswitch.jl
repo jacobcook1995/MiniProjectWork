@@ -112,12 +112,12 @@ function main()
     fin2 = round(Int64,fin1)
     # now run gillespie
     noits = 50000
-    pyplot()
     Xs, ts = gillespie(k1,K1,k2,K2,B,noits,star2,Ω)
-    plot(ts,Xs,xlabel="t",ylabel="X",title="1D Schlögl",label="",dpi=300)
-    hline!([star1],color=:red,label="low state")
-    hline!([mid1],color=:yellow,label="saddle")
-    hline!([fin1],color=:green,label="high state")
+    pyplot()
+    plot(ts,Xs,xlabel="Time t",ylabel="Copy number X",title="1D Schlögl",titlefontsize=20,label="",dpi=300)
+    hline!([star1],color=:black,linestyle=:dash,label="low state")
+    hline!([mid1],color=:black,linestyle=:dot,label="saddle")
+    hline!([fin1],color=:black,linestyle=:solid,label="high state")
     savefig("../Results/SchSwitch.png")
     return(nothing)
 end

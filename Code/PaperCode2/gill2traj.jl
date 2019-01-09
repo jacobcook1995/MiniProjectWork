@@ -333,16 +333,16 @@ function plots()
     end
     # switch to PyPlot
     pyplot()
-    # Define relevant latex strings
-    LatS = latexstring("\\Omega = $(Ω)")
+    L1 = L"\bullet\rightarrow\circ"
+    L2 = L"\circ\rightarrow\bullet"
     # Then plot graphs
-    plot(ABf[:,2]/Ω,ABf[:,1]/Ω,label="to high A",title="2D Toggle Switch",legendtitle=LatS,dpi=300)
-    plot!(ABb[:,2]/Ω,ABb[:,1]/Ω,label="to high B",xlabel="A",ylabel="B")
-    scatter!([star2[2]/Ω], [star2[1]/Ω], seriescolor = :green, label="")
-    scatter!([mid2[2]/Ω], [mid2[1]/Ω], seriescolor = :orange, label="")
-    scatter!([fin2[2]/Ω], [fin2[1]/Ω], seriescolor = :red, label="")
+    plot(ABf[:,2],ABf[:,1],label=L1,title="2D Toggle Switch",dpi=300,titlefontsize=20,legendfontsize=12)
+    plot!(ABb[:,2],ABb[:,1],label=L2,xlabel="Copy number A",ylabel="Copy number B")
+    scatter!([star2[2]],[star2[1]],markersize=6,markercolor=:black,label="")
+    scatter!([mid2[2]],[mid2[1]],markersize=5,markercolor=:black,markershape=:x,label="")
+    scatter!([fin2[2]],[fin2[1]],markersize=6,markercolor=:white,label="")
     savefig("../Results/switch.png")
 end
 
-@time main()
-# @time plots()
+# @time main()
+@time plots()

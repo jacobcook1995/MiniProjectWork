@@ -616,7 +616,10 @@ function plotting()
     SLangB = zeros(len,len2)
     SMastA = zeros(len,len2)
     SMastB = zeros(len,len2)
-    for i = 1#:len
+    # Make latex strings to be used in plots
+    LM = L"\Delta S_{M}"
+    LL = L"\Delta S_{L}"
+    for i = 1:len
         # should do some checks on data here
         infile = "../Results/Fig2Data/Stead$(i)$(ARGS[1]).csv"
         if ~isfile(infile)
@@ -652,13 +655,17 @@ function plotting()
                 k += 1
             end
         end
-        histogram(SMastA[i,:],label="",)
+        histogram(SMastA[i,:],label="")
+        plot!(xlabel=LM,ylabel="Number of Trajectories",dpi=300)
         savefig("../Results/Fig2Graphs/$(i)1MastStead.png")
         histogram(SMastB[i,:],label="")
+        plot!(xlabel=LM,ylabel="Number of Trajectories",dpi=300)
         savefig("../Results/Fig2Graphs/$(i)2MastStead.png")
         histogram(SLangA[i,:],label="")
+        plot!(xlabel=LL,ylabel="Number of Trajectories",dpi=300)
         savefig("../Results/Fig2Graphs/$(i)1LangStead.png")
         histogram(SLangB[i,:],label="")
+        plot!(xlabel=LL,ylabel="Number of Trajectories",dpi=300)
         savefig("../Results/Fig2Graphs/$(i)2LangStead.png")
     end
     return(nothing)

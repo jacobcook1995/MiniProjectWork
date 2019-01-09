@@ -552,10 +552,10 @@ function main()
         end
     end
     # Now do gillespie simulations to find entropy productions
-    N = 500 # number trajectories
+    N = 5000 # number trajectories
     Ω = 5000
     f = [0.0, 0.0]
-    noits = 10000
+    noits = 100000
     SLangA = zeros(N,len)
     SLangB = zeros(N,len)
     SMastA = zeros(N,len)

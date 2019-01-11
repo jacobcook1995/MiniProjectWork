@@ -336,7 +336,7 @@ function plots()
     L1 = L"\bullet\rightarrow\circ"
     L2 = L"\circ\rightarrow\bullet"
     # Then plot graphs
-    plot(ABf[:,2],ABf[:,1],label=L1,title="2D Toggle Switch",dpi=300,titlefontsize=20,legendfontsize=12)
+    plot(ABf[:,2],ABf[:,1],label=L1,title="2D Toggle Switch",dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=15)
     plot!(ABb[:,2],ABb[:,1],label=L2,xlabel="Copy number A",ylabel="Copy number B")
     scatter!([star2[2]],[star2[1]],markersize=6,markercolor=:black,label="")
     scatter!([mid2[2]],[mid2[1]],markersize=5,markercolor=:black,markershape=:x,label="")

@@ -114,7 +114,7 @@ function main()
     noits = 50000
     Xs, ts = gillespie(k1,K1,k2,K2,B,noits,star2,Ω)
     pyplot()
-    plot(ts,Xs,xlabel="Time t",ylabel="Copy number X",title="1D Schlögl",titlefontsize=20,label="",dpi=300)
+    plot(ts,Xs,xlabel="Time t",ylabel="Copy number X",title="1D Schlögl",titlefontsize=20,label="",dpi=300,guidefontsize=16,legendfontsize=12)
     hline!([star1],color=:black,linestyle=:dash,label="low state")
     hline!([mid1],color=:black,linestyle=:dot,label="saddle")
     hline!([fin1],color=:black,linestyle=:solid,label="high state")

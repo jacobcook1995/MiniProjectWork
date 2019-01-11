@@ -376,27 +376,26 @@ function main()
         for j = 1:2
             d = 2*(j-1)+4*(i-1)
             entp = LangEnt(traj[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1]/N)
-            plot(traj[1:end-1,1+d],entp,label=LatS,dpi=300,legend=:best)
-            plot!(xlabel="A",ylabel="Ent Prod")
-            scatter!([steads[i,1+4*(j-1)]],[0.0],color=:green,label="Start")
-            scatter!([steads[i,3]],[0.0],color=:yellow,label="Saddle")
-            scatter!([steads[i,5-4*(j-1)]],[0.0],color=:red,label="End")
+            plot(traj[1:end-1,1+d],entp,label=LatS,dpi=300,legend=:best,title="Path Entropy Production: Langevin")
+            plot!(xlabel="Concentration A",ylabel=LatS,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+            scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
+            scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
+            scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
             savefig("../Results/Fig2Graphs/$(i)$(j)LangEnt.png")
         end
     end
     LatS2 = L"\Delta S_{M}"
     Ω = 5000
-    LatS3 = latexstring("\\Omega = $(Ω)")
     red = 250 # batch size
     for i = 1:len
         for j = 1:2
             d = 2*(j-1)+4*(i-1)
             entp2, As = MastEnt(traj[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1],Ω,red)
-            plot(As/Ω,entp2/Ω,label=LatS2,dpi=300,legend=:best)
-            plot!(xlabel="A",ylabel="Ent Prod",legendtitle=LatS3)
-            scatter!([steads[i,1+4*(j-1)]],[0.0],color=:green,label="Start")
-            scatter!([steads[i,3]],[0.0],color=:yellow,label="Saddle")
-            scatter!([steads[i,5-4*(j-1)]],[0.0],color=:red,label="End")
+            plot(As/Ω,entp2/Ω,label=LatS2,dpi=300,legend=:best,title="Path Entropy Production: Reduced Master Eq")
+            plot!(xlabel="Concentration A",ylabel=LatS2,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+            scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
+            scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
+            scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
             savefig("../Results/Fig2Graphs/$(i)$(j)MastEnt.png")
         end
     end

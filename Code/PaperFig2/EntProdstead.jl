@@ -603,7 +603,6 @@ function plotting()
     end
     # now find length of this parameter file
     len = countlines(infile)
-    pyplot() # activate pyplot
     # check that the first input file exists
     infile = "../Results/Fig2Data/Stead1$(ARGS[1]).csv"
     if ~isfile(infile)
@@ -655,17 +654,53 @@ function plotting()
                 k += 1
             end
         end
-        histogram(SMastA[i,:],label="")
-        plot!(xlabel=LM,ylabel="Number of Trajectories",dpi=300)
+        # now stage to find values to make bins
+        maxA = minA = maxB = minB = 0
+        maxMA = maximum(SMastA)
+        maxLA = maximum(SLangA)
+        if maxMA > maxLA
+            maxA = maxMA
+        else
+            maxA = maxLA
+        end
+        minMA = minimum(SMastA)
+        minLA = minimum(SLangA)
+        if minMA < minLA
+            minA = minMA
+        else
+            minA = minLA
+        end
+        maxMB = maximum(SMastB)
+        maxLB = maximum(SLangB)
+        if maxMB > maxLB
+            maxB = maxMB
+        else
+            maxB = maxLB
+        end
+        minMB = minimum(SMastB)
+        minLB = minimum(SLangB)
+        if minMB < minLB
+            minB = minMB
+        else
+            minB = minLB
+        end
+        # Now use to setup bins
+        Nbins = 500
+        binsA = range(minA,stop=maxA,length=Nbins)
+        binsB = range(minB,stop=maxB,length=Nbins)
+        # Now carry out plotting
+        pyplot() # activate pyplot
+        histogram(SMastA[i,:],bins=binsA,label="")
+        plot!(xlabel=LM,ylabel="Number of Trajectories",dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
         savefig("../Results/Fig2Graphs/$(i)1MastStead.png")
-        histogram(SMastB[i,:],label="")
-        plot!(xlabel=LM,ylabel="Number of Trajectories",dpi=300)
+        histogram(SMastB[i,:],bins=binsB,label="")
+        plot!(xlabel=LM,ylabel="Number of Trajectories",dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
         savefig("../Results/Fig2Graphs/$(i)2MastStead.png")
-        histogram(SLangA[i,:],label="")
-        plot!(xlabel=LL,ylabel="Number of Trajectories",dpi=300)
+        histogram(SLangA[i,:],bins=binsA,label="")
+        plot!(xlabel=LL,ylabel="Number of Trajectories",dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
         savefig("../Results/Fig2Graphs/$(i)1LangStead.png")
-        histogram(SLangB[i,:],label="")
-        plot!(xlabel=LL,ylabel="Number of Trajectories",dpi=300)
+        histogram(SLangB[i,:],bins=binsB,label="")
+        plot!(xlabel=LL,ylabel="Number of Trajectories",dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
         savefig("../Results/Fig2Graphs/$(i)2LangStead.png")
     end
     return(nothing)

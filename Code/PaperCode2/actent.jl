@@ -287,11 +287,11 @@ function main()
     for i = 1:l
         for j = 1:2
             if j == 1
-                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2B.csv"
-                outfile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BD.csv"
+                infile = "../Results/Fig3Data/Traj2/$(i)$(ARGS[1])A2B.csv"
+                outfile = "../Results/Fig3Data/Traj2/$(i)$(ARGS[1])A2BD.csv"
             else
-                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2A.csv"
-                outfile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AD.csv"
+                infile = "../Results/Fig3Data/Traj2/$(i)$(ARGS[1])B2A.csv"
+                outfile = "../Results/Fig3Data/Traj2/$(i)$(ARGS[1])B2AD.csv"
             end
             # check if file
             if isfile(infile)

@@ -540,18 +540,20 @@ function main()
         end
     end
     # preallocate to store paths
-    NG = 600
+    NG = 1200#600
     Nmid = convert(Int64, ceil((NG+1)/2))
     path1 = zeros(NG+1,2)
     path2 = zeros(NG+1,2)
     println(sum(steads[2,:]))
     # run the stability analysis for each of the hundred steady states
-    for i = 52#1:l
+    for i = 66#1:l
         println("Run number: $(i)")
         flush(stdout)
         # pick appropriate Δτ for simulation, this still requires more testing
-        if minimum(steads[i,:]) <= 0.01
+        if minimum(steads[i,:]) <= 0.025
             Δτ = 0.001
+        elseif minimum(steads[i,:]) <= 0.1
+            Δτ = 0.005
         elseif sum(steads[i,:]) >= 100.0
             Δτ = 0.1
         else

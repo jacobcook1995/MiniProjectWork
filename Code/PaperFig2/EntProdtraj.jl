@@ -221,12 +221,12 @@ end
 
 # A function to find and plot the langevin entropy productions of the various trajectories
 function LangEnt(traj::Array{Float64,2},ps::Array{Float64,1},dt::Float64)
-    entp = zeros(size(traj,1)-1)
+    entp = zeros(size(traj,1)-1,2)
     f = [0.0; 0.0]
     D = [0.0 0.0; 0.0 0.0]
     fs = zeros(size(traj,1),2)
     qdots = zeros(size(traj,1),2)
-    for i = 1:length(entp)
+    for i = 1:size(entp,1)
         qdot = (traj[i+1,:] .- traj[i,:])/(dt)
         # and need to find midpoint
         posA = (traj[i+1,1] + traj[i,1])/(2)
@@ -238,19 +238,24 @@ function LangEnt(traj::Array{Float64,2},ps::Array{Float64,1},dt::Float64)
         for j = 1:2
             for k = 1:2
                 if D[j,k] != 0
-                    entp[i] += 2*qdot[j]*f[k]*dt/D[j,k]
+                    entp[i,j] += 2*qdot[j]*f[k]*dt/D[j,k]
                 end
             end
         end
     end
-    # plot(fs[:,1])
-    # savefig("../Results/Fig2Graphs/fA.png")
-    # plot(fs[:,2])
-    # savefig("../Results/Fig2Graphs/fB.png")
-    # plot(qdots[:,1])
-    # savefig("../Results/Fig2Graphs/qdotA.png")
-    # plot(qdots[:,2])
-    # savefig("../Results/Fig2Graphs/qdotB.png")
+    plot(entp[:,1])
+    savefig("../Results/Fig2Graphs/entA.png")
+    plot(entp[:,2])
+    savefig("../Results/Fig2Graphs/entB.png")
+    plot(fs[:,1])
+    savefig("../Results/Fig2Graphs/fA.png")
+    plot(fs[:,2])
+    savefig("../Results/Fig2Graphs/fB.png")
+    plot(qdots[:,1])
+    savefig("../Results/Fig2Graphs/qdotA.png")
+    plot(qdots[:,2])
+    savefig("../Results/Fig2Graphs/qdotB.png")
+    entp = sum(entp,dims=2)
     return(entp)
 end
 
@@ -260,6 +265,7 @@ function probs(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q:
     rates = [ k*r/(r+f*star[2]^2), kmin*star[1], K*star[1], Kmin, q*r/(r+f*star[1]^2), qmin*star[2], Q*star[2], Qmin ]
     # not actually possible to distinguish two processes, which will effect the probabilities
     if fin[1] - star[1] == 0
+        A = false
         if fin[2] - star[2] == 1
             P = (rates[5] + rates[8])/sum(rates)
         elseif fin[2] - star[2] == -1
@@ -268,6 +274,7 @@ function probs(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q:
             error()
         end
     else
+        A = true
         if fin[1] - star[1] == 1
             P = (rates[1] + rates[4])/sum(rates)
         elseif fin[1] - star[1] == -1
@@ -276,7 +283,7 @@ function probs(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q:
             error()
         end
     end
-    return(P)
+    return(P,A)
 end
 
 # A function to find and plot the reduced master equation entropy productions of the various trajectories
@@ -417,12 +424,20 @@ function MastEnt(traj::Array{Float64,2},ps::Array{Float64,1},T::Float64,Ω::Int6
     len = length(ts)-1
     Pf = zeros(len)
     Pb = zeros(len)
+    Af = fill(false,len)
+    Ab = fill(false,len)
     for i = 2:len+1
-        Pf[i-1] = probs(path[i-1,:],path[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
-        Pb[i-1] = probs(backp[i-1,:],backp[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        Pf[i-1], Af[i-1] = probs(path[i-1,:],path[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        Pb[i-1], Ab[i-1] = probs(backp[i-1,:],backp[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
     end
     entp = log.(Pf./Pb[end:-1:1])
-    # Now should rebin the entropy data into the appropraite segments
+    PfA = Pf[Af]
+    PbA = Pb[Ab]
+    PfB = Pf[.~Af]
+    PbB = Pb[.~Ab]
+    entpA = log.(PfA./PbA[end:-1:1])
+    entpB = log.(PfB./PbB[end:-1:1])
+    # Now should rebin the entropy data into the appropriate segments
     len2 = size(traj,1)-1
     entsr = zeros(len2)
     inds = zeros(Int64,len2)
@@ -445,7 +460,28 @@ function MastEnt(traj::Array{Float64,2},ps::Array{Float64,1},T::Float64,Ω::Int6
     end
     # finally extract the path in A
     entp = entsr
-    return(entp)
+    # attempt to sum A and B reasonably
+    entsrA = zeros(len2)
+    entsrB = zeros(len2)
+    posA = 0
+    posB = 0
+    for i = 1:len2-1
+        δA = round(Int64,abs(traj[i+1,1] - traj[i,1]))
+        δB = round(Int64,abs(traj[i+1,2] - traj[i,2]))
+        if posA + δA > length(entsrA)
+            δA -= 1
+        end
+        if posB + δB > length(entsrB)
+            δB -= 1
+        end
+        entsrA[i] = sum(entpA[(posA+1):(posA+δA)])
+        entsrB[i] = sum(entpB[(posB+1):(posB+δB)])
+        posA += δA
+        posB += δB
+    end
+    entpA = entsrA
+    entpB = entsrB
+    return(entp,entpA,entpB)
 end
 
 # main function
@@ -610,8 +646,8 @@ function main()
     LatS = L"\Delta S_{L}"
     pyplot()
     Ω = 5000
-    for i = 1:len
-        for j = 1:2
+    for i = 2#1:len
+        for j = 2#1:2
             d = 2*(j-1)+4*(i-1)
             entp = LangEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1]/N)
             println("$(i),$(j),$(sum(entp)),$(Act[2*(i-1)+j,4])")
@@ -624,10 +660,10 @@ function main()
         end
     end
     LatS2 = L"\Delta S_{M}"
-    for i = 1:len
-        for j = 1:2
+    for i = 2#1:len
+        for j = 2#1:2
             d = 2*(j-1)+4*(i-1)
-            entp2 = MastEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1],Ω)
+            entp2, entpA, entpB = MastEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1],Ω)
             println("$(i),$(j),$(sum(entp2)/Ω)")
             plot(traj2[1:end-1,1+d],entp2/(Ω),label=LatS2,dpi=300,legend=:best,title="Reduced Master Eq")
             plot!(xlabel="Concentration A",ylabel=LatS2,titlefontsize=20,guidefontsize=16,legendfontsize=12)
@@ -635,6 +671,12 @@ function main()
             scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
             scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
             savefig("../Results/Fig2Graphs/$(i)$(j)MastEnt.png")
+            plot(entpA/Ω)
+            savefig("../Results/Fig2Graphs/entAM.png")
+            plot(entpB/Ω)
+            savefig("../Results/Fig2Graphs/entBM.png")
+            println("$(i),$(j),$(sum(entpA)/Ω)")
+            println("$(i),$(j),$(sum(entpB)/Ω)")
         end
     end
     return(nothing)

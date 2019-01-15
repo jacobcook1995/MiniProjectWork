@@ -280,7 +280,7 @@ function probs(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q:
 end
 
 # A function to find and plot the reduced master equation entropy productions of the various trajectories
-function MastEnt(traj::Array{Float64,2},ps::Array{Float64,1},T::Float64,Ω::Int64,red::Int64)
+function MastEnt(traj::Array{Float64,2},ps::Array{Float64,1},T::Float64,Ω::Int64)
     k = ps[1]
     kmin = ps[2]
     q = ps[3]
@@ -422,18 +422,30 @@ function MastEnt(traj::Array{Float64,2},ps::Array{Float64,1},T::Float64,Ω::Int6
         Pb[i-1] = probs(backp[i-1,:],backp[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
     end
     entp = log.(Pf./Pb[end:-1:1])
-    len2 = floor(Int64,len/red)+1
+    # Now should rebin the entropy data into the appropraite segments
+    len2 = size(traj,1)-1
     entsr = zeros(len2)
-    As = zeros(len2)
+    inds = zeros(Int64,len2)
+    # find index to sum up to for each one
     for i = 1:len2-1
-        As[i] = sum(path[(1+(red*(i-1))):(red*i),1])/red
-        entsr[i] = sum(entp[(1+(red*(i-1))):(red*i)])
+        point = round.(Int64,traj[i+1,:])
+        ind = findall((path[:,1].==point[1]) .& (path[:,2].==point[2]))
+        if length(ind) == 1
+            inds[i] = ind[1]
+        else
+            println("Seems like the path is crossing itself")
+            error()
+        end
     end
-    entsr[end] = sum(entp[(red*(len2-1)+1):end])
-    As[end] = sum(path[(red*(len2-1)+1):end,1])/length(path[(red*(len2-1)+1):end,1])
+    inds[end] = length(entp)
+    # then sum entropies into appropraite sections
+    entsr[1] = sum(entp[1:inds[1]])
+    for i = 1:len2-1
+        entsr[i+1] = sum(entp[inds[i]:inds[i+1]])
+    end
     # finally extract the path in A
     entp = entsr
-    return(entp,As)
+    return(entp)
 end
 
 # main function
@@ -598,36 +610,31 @@ function main()
     LatS = L"\Delta S_{L}"
     pyplot()
     Ω = 5000
-    red = 250 # batch sizes
     for i = 1:len
         for j = 1:2
             d = 2*(j-1)+4*(i-1)
             entp = LangEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1]/N)
-            println(length(entp))
-            # cumsum!(entp, entp; dims=1)
-            # println("$(i),$(j),$(sum(entp)),$(Act[2*(i-1)+j,4])")
-            # plot(traj2[:,1+d],entp,label=LatS,dpi=300,legend=:best,title="Langevin")
-            # plot!(xlabel="Concentration A",ylabel=LatS,titlefontsize=20,guidefontsize=16,legendfontsize=12)
-            # scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
-            # scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
-            # scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
-            # savefig("../Results/Fig2Graphs/$(i)$(j)LangEnt.png")
+            println("$(i),$(j),$(sum(entp)),$(Act[2*(i-1)+j,4])")
+            plot(traj2[1:end-1,1+d],entp,label=LatS,dpi=300,legend=:best,title="Langevin")
+            plot!(xlabel="Concentration A",ylabel=LatS,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+            scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
+            scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
+            scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
+            savefig("../Results/Fig2Graphs/$(i)$(j)LangEnt.png")
         end
     end
     LatS2 = L"\Delta S_{M}"
     for i = 1:len
         for j = 1:2
             d = 2*(j-1)+4*(i-1)
-            entp2, As = MastEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1],Ω,red)
-            println(length(entp2))
-            # cumsum!(entp2, entp2; dims=1)
-            # println("$(i),$(j),$(sum(entp2)/Ω)")
-            # plot(As/Ω,entp2/(Ω),label=LatS2,dpi=300,legend=:best,title="Reduced Master Eq")
-            # plot!(xlabel="Concentration A",ylabel=LatS2,titlefontsize=20,guidefontsize=16,legendfontsize=12)
-            # scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
-            # scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
-            # scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
-            # savefig("../Results/Fig2Graphs/$(i)$(j)MastEnt.png")
+            entp2 = MastEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1],Ω)
+            println("$(i),$(j),$(sum(entp2)/Ω)")
+            plot(traj2[1:end-1,1+d],entp2/(Ω),label=LatS2,dpi=300,legend=:best,title="Reduced Master Eq")
+            plot!(xlabel="Concentration A",ylabel=LatS2,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+            scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
+            scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
+            scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
+            savefig("../Results/Fig2Graphs/$(i)$(j)MastEnt.png")
         end
     end
     return(nothing)

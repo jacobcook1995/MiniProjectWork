@@ -219,20 +219,11 @@ function f!(f::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
     return(f)
 end
 
-# vector of forces
-function f!(f::Array{Float64,1},x::Array{Int64,1},ps::Array{Float64,1})
-    f[1] = ps[1]*ps[9]/(ps[9]+ps[10]*x[2]*(x[2]-1)) - ps[2]*x[1] - ps[5]*x[1] + ps[6]
-    f[2] = ps[3]*ps[9]/(ps[9]+ps[10]*x[1]*(x[1]-1)) - ps[4]*x[2] - ps[7]*x[2] + ps[8]
-    return(f)
-end
-
 # A function to find and plot the langevin entropy productions of the various trajectories
 function LangEnt(traj::Array{Float64,2},ps::Array{Float64,1},dt::Float64)
-    entp = zeros(size(traj,1)-1,2)
+    entp = zeros(size(traj,1)-1)
     f = [0.0; 0.0]
     D = [0.0 0.0; 0.0 0.0]
-    fs = zeros(size(traj,1),2)
-    qdots = zeros(size(traj,1),2)
     for i = 1:size(entp,1)
         qdot = (traj[i+1,:] .- traj[i,:])/(dt)
         # and need to find midpoint
@@ -240,31 +231,14 @@ function LangEnt(traj::Array{Float64,2},ps::Array{Float64,1},dt::Float64)
         posB = (traj[i+1,2] + traj[i,2])/(2)
         f = f!(f,[posA,posB],ps)
         D = D!(D,[posA,posB],ps)
-        fs[i,:] = f
-        qdots[i,:] = qdot
         for j = 1:2
             for k = 1:2
                 if D[j,k] != 0
-                    entp[i,j] += 2*qdot[j]*f[k]*dt/D[j,k]
+                    entp[i] += 2*qdot[j]*f[k]*dt/D[j,k]
                 end
             end
         end
     end
-    println("fA_L = $(sum(fs[:,1]))")
-    println("fB_L = $(sum(fs[:,2]))")
-    plot(entp[:,1])
-    savefig("../Results/Fig2Graphs/entA.png")
-    plot(entp[:,2])
-    savefig("../Results/Fig2Graphs/entB.png")
-    plot(fs[:,1])
-    savefig("../Results/Fig2Graphs/fA.png")
-    plot(fs[:,2])
-    savefig("../Results/Fig2Graphs/fB.png")
-    plot(qdots[:,1])
-    savefig("../Results/Fig2Graphs/qdotA.png")
-    plot(qdots[:,2])
-    savefig("../Results/Fig2Graphs/qdotB.png")
-    entp = sum(entp,dims=2)
     return(entp)
 end
 
@@ -274,7 +248,6 @@ function probs(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q:
     rates = [ k*r/(r+f*star[2]^2), kmin*star[1], K*star[1], Kmin, q*r/(r+f*star[1]^2), qmin*star[2], Q*star[2], Qmin ]
     # not actually possible to distinguish two processes, which will effect the probabilities
     if fin[1] - star[1] == 0
-        A = false
         if fin[2] - star[2] == 1
             P = (rates[5] + rates[8])/sum(rates)
         elseif fin[2] - star[2] == -1
@@ -283,7 +256,6 @@ function probs(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q:
             error()
         end
     elseif fin[2] - star[2] == 0
-        A = true
         if fin[1] - star[1] == 1
             P = (rates[1] + rates[4])/sum(rates)
         elseif fin[1] - star[1] == -1
@@ -295,7 +267,7 @@ function probs(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q:
         println("Error: Appears step is in both directions")
         error()
     end
-    return(P,A)
+    return(P)
 end
 
 # A function to find and plot the reduced master equation entropy productions of the various trajectories
@@ -437,19 +409,11 @@ function MastEnt(traj::Array{Float64,2},ps::Array{Float64,1},T::Float64,Ω::Int6
     len = length(ts)-1
     Pf = zeros(len)
     Pb = zeros(len)
-    Af = fill(false,len)
-    Ab = fill(false,len)
     for i = 2:len+1
-        Pf[i-1], Af[i-1] = probs(path[i-1,:],path[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
-        Pb[i-1], Ab[i-1] = probs(backp[i-1,:],backp[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        Pf[i-1] = probs(path[i-1,:],path[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        Pb[i-1] = probs(backp[i-1,:],backp[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
     end
     entp = log.(Pf./Pb[end:-1:1])
-    PfA = Pf[Af]
-    PbA = Pb[Ab]
-    PfB = Pf[.~Af]
-    PbB = Pb[.~Ab]
-    entpA = log.(PfA./PbA[end:-1:1])
-    entpB = log.(PfB./PbB[end:-1:1])
     # Now should rebin the entropy data into the appropriate segments
     len2 = size(traj,1)-1
     entsr = zeros(len2)
@@ -477,71 +441,7 @@ function MastEnt(traj::Array{Float64,2},ps::Array{Float64,1},T::Float64,Ω::Int6
     end
     # finally extract the path in A
     entp = entsr
-    # attempt to sum A and B reasonably
-    entsrA = zeros(len2)
-    entsrB = zeros(len2)
-    frA = zeros(len2)
-    frB = zeros(len2)
-    posA = 0
-    posB = 0
-    # make qdot variables
-    fA = zeros(length(entpA))
-    fB = zeros(length(entpB))
-    Af2 = fill(false,len+1)
-    Af2[1] = true
-    Af2[2:end] = Af
-    Af3 = fill(false,len+1)
-    Af3[1] = true
-    Af3[2:end] = .~Af
-    tsA = ts[Af2]
-    tsB = ts[Af3]
-    pathA = path[Af2,:]
-    pathB = path[Af3,:]
-    # now average these velocities
-    f = [0.0,0.0]
-    for i = 1:length(tsA)-1
-        f = f!(f,pathA[i,:],ps)
-        fA[i] = f[1]#(pathA[i+1] - pathA[i])/(tsA[i+1] - tsA[i])
-    end
-    for i = 1:length(tsB)-1
-        f = f!(f,pathB[i,:],ps)
-        fB[i] = f[2]#(pathB[i+1] - pathB[i])/(tsB[i+1] - tsB[i])
-    end
-    for i = 1:len2-1
-        δA = round(Int64,abs(traj[i+1,1] - traj[i,1]))
-        δB = round(Int64,abs(traj[i+1,2] - traj[i,2]))
-        if posA + δA > length(entpA)
-            δA -= 1
-        end
-        if posB + δB > length(entpB)
-            δB -= 1
-        end
-        entsrA[i] = sum(entpA[(posA+1):(posA+δA)])
-        entsrB[i] = sum(entpB[(posB+1):(posB+δB)])
-        if δA != 0
-            frA[i] = sum(fA[(posA+1):(posA+δA)])/δA
-        end
-        if δB != 0
-            frB[i] = sum(fB[(posB+1):(posB+δB)])/δB
-        end
-        posA += δA
-        posB += δB
-    end
-    # finally match entropy vectors
-    entpA = entsrA
-    entpB = entsrB
-    fA = frA
-    fB = frB
-    println("fA_M = $(sum(fA)/Ω)")
-    println("fB_M = $(sum(fB)/Ω)")
-    # p1 = 400#90
-    # p2 = 401#210
-    # println(path[inds[p1-1]:inds[p2-1],:])
-    # plot(traj[p1:p2,1],traj[p1:p2,2],dpi=300)
-    # plot!(path[inds[p1-1]:inds[p2-1],1],path[inds[p1-1]:inds[p2-1],2])
-    # savefig("../Results/Fig2Graphs/test.png")
-    # error()
-    return(entp,entpA,entpB,fA,fB)
+    return(entp)
 end
 
 # main function
@@ -704,42 +604,28 @@ function main()
     end
     # Now calculate and plot langevin entropy productions
     LatS = L"\Delta S_{L}"
+    LatS2 = L"\Delta S_{M}"
     pyplot()
     Ω = 5000
-    for i = 1#1:len
-        for j = 1#1:2
+    for i = 1:len
+        for j = 1:2
             d = 2*(j-1)+4*(i-1)
             entp = LangEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1]/N)
             println("$(i),$(j),$(sum(entp)),$(Act[2*(i-1)+j,4])")
+            entp2 = MastEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1],Ω)
+            println("$(i),$(j),$(sum(entp2)/Ω)")
             plot(traj2[1:end-1,1+d],entp,label=LatS,dpi=300,legend=:best,title="Langevin")
             plot!(xlabel="Concentration A",ylabel=LatS,titlefontsize=20,guidefontsize=16,legendfontsize=12)
             scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
             scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
             scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
             savefig("../Results/Fig2Graphs/$(i)$(j)LangEnt.png")
-        end
-    end
-    LatS2 = L"\Delta S_{M}"
-    for i = 1#1:len
-        for j = 1#1:2
-            d = 2*(j-1)+4*(i-1)
-            entp2, entpA, entpB, fA, fB = MastEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1],Ω)
-            println("$(i),$(j),$(sum(entp2)/Ω)")
             plot(traj2[1:end-1,1+d],entp2/(Ω),label=LatS2,dpi=300,legend=:best,title="Reduced Master Eq")
             plot!(xlabel="Concentration A",ylabel=LatS2,titlefontsize=20,guidefontsize=16,legendfontsize=12)
             scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
             scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
             scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
             savefig("../Results/Fig2Graphs/$(i)$(j)MastEnt.png")
-            plot(entpA/Ω)
-            savefig("../Results/Fig2Graphs/entAM.png")
-            plot(entpB/Ω)
-            savefig("../Results/Fig2Graphs/entBM.png")
-            plot(fA/Ω)
-            savefig("../Results/Fig2Graphs/qdotAM.png")
-            plot(fB/Ω)
-            savefig("../Results/Fig2Graphs/qdotBM.png")
-            println("$(i),$(j),$(sum(entpA)/Ω + sum(entpB)/Ω)")
         end
     end
     return(nothing)

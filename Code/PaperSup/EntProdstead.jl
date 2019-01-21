@@ -490,7 +490,7 @@ function main()
         return(nothing)
     end
     # Check there is a file of parameters to be read
-    infile = "../Results/Fig2Data/$(ARGS[1])para.csv"
+    infile = "../Results/SupData/$(ARGS[1])para.csv"
     if ~isfile(infile)
         println("Error: No file of parameters to be read.")
         return(nothing)
@@ -521,7 +521,7 @@ function main()
         end
     end
     # Check there is a file of steady states to be read
-    infile = "../Results/Fig2Data/$(ARGS[1])stead.csv"
+    infile = "../Results/SupData/$(ARGS[1])stead.csv"
     if ~isfile(infile)
         println("Error: No file of steady states to be read.")
         return(nothing)
@@ -576,7 +576,7 @@ function main()
     end
     # Now write out data on the steady states
     for i = 1:len
-        outfile = "../Results/Fig2Data/Stead$(i)$(ARGS[1]).csv"
+        outfile = "../Results/SupData/Stead$(i)$(ARGS[1]).csv"
         out_file = open(outfile, "w")
         for j = 1:N
             line = "$(SLangA[j,i]),$(SLangB[j,i]),$(SMastA[j,i]),$(SMastB[j,i])\n"
@@ -596,7 +596,7 @@ function plotting()
         return(nothing)
     end
     # Check there is a file of parameters to be read
-    infile = "../Results/Fig2Data/$(ARGS[1])para.csv"
+    infile = "../Results/SupData/$(ARGS[1])para.csv"
     if ~isfile(infile)
         println("Error: No file of parameters to be read.")
         return(nothing)
@@ -604,7 +604,7 @@ function plotting()
     # now find length of this parameter file
     len = countlines(infile)
     # check that the first input file exists
-    infile = "../Results/Fig2Data/Stead1$(ARGS[1]).csv"
+    infile = "../Results/SupData/Stead1$(ARGS[1]).csv"
     if ~isfile(infile)
         println("Error: 1st relevant data file is missing.")
         return(nothing)
@@ -620,7 +620,7 @@ function plotting()
     LL = L"\Delta S_{L}"
     for i = 1:len
         # should do some checks on data here
-        infile = "../Results/Fig2Data/Stead$(i)$(ARGS[1]).csv"
+        infile = "../Results/SupData/Stead$(i)$(ARGS[1]).csv"
         if ~isfile(infile)
             println("Error: $(i)th relevant data file is missing.")
             return(nothing)
@@ -692,16 +692,16 @@ function plotting()
         pyplot() # activate pyplot
         histogram(SMastA[i,:],bins=binsA,label="",title="Reduced Master Eq")
         plot!(xlabel=LM,ylabel="Number of Trajectories",dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
-        savefig("../Results/Fig2Graphs/$(i)1MastStead.png")
+        savefig("../Results/SupGraphs/$(i)1MastStead.png")
         histogram(SMastB[i,:],bins=binsB,label="",title="Reduced Master Eq")
         plot!(xlabel=LM,ylabel="Number of Trajectories",dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
-        savefig("../Results/Fig2Graphs/$(i)2MastStead.png")
+        savefig("../Results/SupGraphs/$(i)2MastStead.png")
         histogram(SLangA[i,:],bins=binsA,label="",title="Langevin")
         plot!(xlabel=LL,ylabel="Number of Trajectories",dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
-        savefig("../Results/Fig2Graphs/$(i)1LangStead.png")
+        savefig("../Results/SupGraphs/$(i)1LangStead.png")
         histogram(SLangB[i,:],bins=binsB,label="",title="Langevin")
         plot!(xlabel=LL,ylabel="Number of Trajectories",dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
-        savefig("../Results/Fig2Graphs/$(i)2LangStead.png")
+        savefig("../Results/SupGraphs/$(i)2LangStead.png")
     end
     return(nothing)
 end

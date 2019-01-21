@@ -454,7 +454,7 @@ function main()
         return(nothing)
     end
     # Check there is a file of parameters to be read
-    infile = "../Results/Fig2Data/$(ARGS[1])para.csv"
+    infile = "../Results/SupData/$(ARGS[1])para.csv"
     if ~isfile(infile)
         println("Error: No file of parameters to be read.")
         return(nothing)
@@ -490,9 +490,9 @@ function main()
     for i = 1:len
         for j = 1:2
             if j == 1
-                infile = "../Results/Fig2Data/$(i)$(ARGS[1])A2B.csv"
+                infile = "../Results/SupData/$(i)$(ARGS[1])A2B.csv"
             else
-                infile = "../Results/Fig2Data/$(i)$(ARGS[1])B2A.csv"
+                infile = "../Results/SupData/$(i)$(ARGS[1])B2A.csv"
             end
             w = 2
             open(infile, "r") do in_file
@@ -546,9 +546,9 @@ function main()
     for i = 1:len
         for j = 1:2
             if j == 1
-                infile = "../Results/Fig2Data/$(i)$(ARGS[1])A2BD.csv"
+                infile = "../Results/SupData/$(i)$(ARGS[1])A2BD.csv"
             else
-                infile = "../Results/Fig2Data/$(i)$(ARGS[1])B2AD.csv"
+                infile = "../Results/SupData/$(i)$(ARGS[1])B2AD.csv"
             end
             open(infile, "r") do in_file
                 # Single line file so doesn't matter
@@ -572,7 +572,7 @@ function main()
         end
     end
     # Check there is a file of steady states to be read
-    infile = "../Results/Fig2Data/$(ARGS[1])stead.csv"
+    infile = "../Results/SupData/$(ARGS[1])stead.csv"
     if ~isfile(infile)
         println("Error: No file of steady states to be read.")
         return(nothing)
@@ -619,13 +619,13 @@ function main()
             scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
             scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
             scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
-            savefig("../Results/Fig2Graphs/$(i)$(j)LangEnt.png")
+            savefig("../Results/SupGraphs/$(i)$(j)LangEnt.png")
             plot(traj2[1:end-1,1+d],entp2/(Ω),label=LatS2,dpi=300,legend=:best,title="Reduced Master Eq")
             plot!(xlabel="Concentration A",ylabel=LatS2,titlefontsize=20,guidefontsize=16,legendfontsize=12)
             scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
             scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
             scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
-            savefig("../Results/Fig2Graphs/$(i)$(j)MastEnt.png")
+            savefig("../Results/SupGraphs/$(i)$(j)MastEnt.png")
         end
     end
     return(nothing)

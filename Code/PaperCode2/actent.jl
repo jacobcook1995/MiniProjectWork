@@ -7,6 +7,7 @@
 # Date: December 2018
 
 using SymEngine
+using Plots
 
 # make a symbolic diffusion matrix
 function Ds()
@@ -284,6 +285,11 @@ function main()
         end
     end
     # 2 for loops to loop over every file
+    # plot(title="Good Idea?")
+    # Act = [0.0,0.0]
+    # ΔS = [0.0,0.0]
+    # Actr = [0.0,0.0]
+    # ΔSr = [0.0,0.0]
     for i = 1:l
         for j = 1:2
             if j == 1
@@ -340,6 +346,8 @@ function main()
                 # now use a function that takes the time discretised path and
                 # finds the action in a more conventional manner and then can also get entropy production from this
                 Act, ΔS = act(path2,Tp,b,Dmin)
+                # Act[j], ΔS[j] = act(path2,Tp,b,Dmin)
+                # Actr[j], ΔSr[j] = act(path2[end:-1:1,:],Tp,b,Dmin)
                 # and write out the new data to a new file
                 out_file = open(outfile, "w")
                 line = "$(Tp),$(ActS),$(Act),$(ΔS)\n"
@@ -353,7 +361,16 @@ function main()
                 end
             end
         end
+        # if i == 56
+        #     println(2*(Act[1]-Act[2]))
+        #     println(ΔS[2]-ΔS[1])
+        # end
+        # scatter!([Act[2]-Act[1]],[Actr[1]-Actr[2]],label="")
+        # scatter!([ΔS[2]-ΔS[1]],2*[Act[1]-Act[2]],label="")
     end
+    # x = -15.0:0.01:12.0
+    # plot!(x,x,label="")
+    # savefig("../Results/GoodIdea.png")
     return(nothing)
 end
 

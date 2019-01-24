@@ -460,7 +460,7 @@ function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,ss1::Arra
         end
         # Now overwrite old x
         x = xn
-        if δ <= 0.000000005#0.00000000005
+        if δ <= 0.00000000005#0.00000000005
             convrg = true
             print("$(l) steps to converge\n")
             flush(stdout)
@@ -540,13 +540,12 @@ function main()
         end
     end
     # preallocate to store paths
-    NG = 1200#600
+    NG = 600
     Nmid = convert(Int64, ceil((NG+1)/2))
     path1 = zeros(NG+1,2)
     path2 = zeros(NG+1,2)
-    println(sum(steads[2,:]))
     # run the stability analysis for each of the hundred steady states
-    for i = 66#1:l
+    for i = 56#1:l
         println("Run number: $(i)")
         flush(stdout)
         # pick appropriate Δτ for simulation, this still requires more testing

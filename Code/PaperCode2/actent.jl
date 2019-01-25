@@ -221,6 +221,8 @@ function act(x::Array{Float64,2},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::A
     # temporary bs and Dmins to store values
     bt = Array{Float64,1}(undef,2)
     Dm = Array{Float64,2}(undef,2,2)
+    ΔSf = zeros(N)
+    Af = zeros(N)
     for i = 1:N
         # need to find velocity for each point
         qdot = (x[i+1,:] .- x[i,:])/(dt)
@@ -231,17 +233,19 @@ function act(x::Array{Float64,2},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::A
         for j = 1:2
             bt[j] = subs(b[j],A=>posA,B=>posB) |> float
             for k = 1:2
-                Dm[j,k] = subs(Dmin[j,k],A=>posA,B=>posB,y1=>qdot[1],y2=>qdot[2]) |> float
+                Dm[j,k] = subs(Dmin[j,k],A=>posA,B=>posB) |> float
             end
         end
         # now calculate the update to A and ΔS from this point
         for j = 1:2
             for k = 1:2
-                Ac += 0.5*(qdot[j] - bt[j])*Dm[j,k]*(qdot[k] - bt[k])*dt
-                ΔS += 2*qdot[j]*Dm[j,k]*bt[k]*dt
+                Af[i] += 0.5*(qdot[j] - bt[j])*Dm[j,k]*(qdot[k] - bt[k])*dt
+                ΔSf[i] += 2*qdot[j]*Dm[j,k]*bt[k]*dt
             end
         end
     end
+    ΔS = sum(ΔSf)
+    Ac = sum(Af)
     return(Ac,ΔS)
 end
 
@@ -285,19 +289,14 @@ function main()
         end
     end
     # 2 for loops to loop over every file
-    # plot(title="Good Idea?")
-    # Act = [0.0,0.0]
-    # ΔS = [0.0,0.0]
-    # Actr = [0.0,0.0]
-    # ΔSr = [0.0,0.0]
     for i = 1:l
         for j = 1:2
             if j == 1
-                infile = "../Results/Fig3Data/Traj2/$(i)$(ARGS[1])A2B.csv"
-                outfile = "../Results/Fig3Data/Traj2/$(i)$(ARGS[1])A2BD.csv"
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2B.csv"
+                outfile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BD.csv"
             else
-                infile = "../Results/Fig3Data/Traj2/$(i)$(ARGS[1])B2A.csv"
-                outfile = "../Results/Fig3Data/Traj2/$(i)$(ARGS[1])B2AD.csv"
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2A.csv"
+                outfile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AD.csv"
             end
             # check if file
             if isfile(infile)
@@ -346,8 +345,6 @@ function main()
                 # now use a function that takes the time discretised path and
                 # finds the action in a more conventional manner and then can also get entropy production from this
                 Act, ΔS = act(path2,Tp,b,Dmin)
-                # Act[j], ΔS[j] = act(path2,Tp,b,Dmin)
-                # Actr[j], ΔSr[j] = act(path2[end:-1:1,:],Tp,b,Dmin)
                 # and write out the new data to a new file
                 out_file = open(outfile, "w")
                 line = "$(Tp),$(ActS),$(Act),$(ΔS)\n"
@@ -361,16 +358,7 @@ function main()
                 end
             end
         end
-        # if i == 56
-        #     println(2*(Act[1]-Act[2]))
-        #     println(ΔS[2]-ΔS[1])
-        # end
-        # scatter!([Act[2]-Act[1]],[Actr[1]-Actr[2]],label="")
-        # scatter!([ΔS[2]-ΔS[1]],2*[Act[1]-Act[2]],label="")
     end
-    # x = -15.0:0.01:12.0
-    # plot!(x,x,label="")
-    # savefig("../Results/GoodIdea.png")
     return(nothing)
 end
 

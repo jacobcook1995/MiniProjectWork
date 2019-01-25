@@ -322,7 +322,7 @@ function plotting()
         println("Error: Need to provide an argument to name output with.")
         return(nothing)
     elseif length(ARGS) == 1
-        println("Error: Need to provide an Integer to choose a file of")
+        println("Error: Need to provide an Integer to choose a file with.")
         return(nothing)
     end
     # Check integer has been provided
@@ -480,11 +480,11 @@ function plotting()
     hline!(p1,[steads[N,3]],color=:black,linestyle=:dash,label="Low")
     hline!(p1,[steads[N,2]],color=:black,linestyle=:dot,label="Saddle")
     hline!(p1,[steads[N,1]],color=:black,linestyle=:solid,label="High")
-    savefig(p1,"../Results/Fig2Graphs/SchPath.png")
+    savefig(p1,"../Results/Fig2Graphs/SchPath$(ARGS[2]).png")
     scatter!(p2,[steads[N,1]],[0.0],markersize=6,markercolor=:black,label="")
     scatter!(p2,[steads[N,2]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
     scatter!(p2,[steads[N,3]],[0.0],markersize=6,markercolor=:white,label="")
-    savefig(p2,"../Results/Fig2Graphs/SchAct.png")
+    savefig(p2,"../Results/Fig2Graphs/SchAct$(ARGS[2]).png")
     return(nothing)
 end
 

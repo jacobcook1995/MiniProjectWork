@@ -8,6 +8,9 @@
 # Date: December 2018
 
 using SymEngine
+using LaTeXStrings
+using Plots
+import PyPlot
 
 # make a symbolic diffusion matrix
 function Ds()
@@ -187,8 +190,8 @@ function act(x::Array{Float64,1},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::A
     # find time step etc
     N = size(x,1)-1
     dt = Tp/(N)
-    Ac = 0
-    ΔS = 0
+    Acf = zeros(N)
+    ΔSf = zeros(N)
     X, y = symbols("X y")
     # temporary bs and Dmins to store values
     bt = Array{Float64,1}(undef,1)
@@ -202,10 +205,12 @@ function act(x::Array{Float64,1},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::A
         bt[1] = subs(b[1],X=>posX) |> float
         Dm[1,1] = subs(Dmin[1,1],X=>posX,y=>qdot) |> float
         # now calculate the update to A and ΔS from this point
-        Ac += 0.5*(qdot - bt[1])*Dm[1,1]*(qdot - bt[1])*dt
-        ΔS += 2*qdot*Dm[1,1]*bt[1]*dt
+        Acf[i] += 0.5*(qdot - bt[1])*Dm[1,1]*(qdot - bt[1])*dt
+        ΔSf[i] += 2*qdot*Dm[1,1]*bt[1]*dt
     end
-    return(Ac,ΔS)
+    Ac = sum(Acf)
+    ΔS = sum(ΔSf)
+    return(Ac,ΔS,Acf,ΔSf)
 end
 
 function main()
@@ -309,4 +314,179 @@ function main()
     return(nothing)
 end
 
-@time main()
+function plotting()
+    println("Compiled, Starting plotting script.")
+    flush(stdout)
+    # First check that an argument for naming has been provided
+    if length(ARGS) == 0
+        println("Error: Need to provide an argument to name output with.")
+        return(nothing)
+    elseif length(ARGS) == 1
+        println("Error: Need to provide an Integer to choose a file of")
+        return(nothing)
+    end
+    # Check integer has been provided
+    N = 0
+    int = true
+    for i = 1:length(ARGS[2])
+        if ~isnumeric(ARGS[2][i])
+            int = false
+            break
+        end
+    end
+    if int == true
+         N = parse(Int64,ARGS[2])
+    else
+        println("Error: Must provide an integer file number.")
+        return(nothing)
+    end
+    # Check there is a file of parameters to be read
+    infile = "../Results/Fig3DataS/$(ARGS[1])paraS.csv"
+    if ~isfile(infile)
+        println("Error: No file of parameters to be read.")
+        return(nothing)
+    end
+    # now read in parameters
+    l = countlines(infile)
+    if N > l
+        println("Error: File number provided is too large")
+        return(nothing)
+    end
+    w = 4
+    ps = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                ps[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Check there is a file of steady states to be read
+    infile = "../Results/Fig3DataS/$(ARGS[1])steadS.csv"
+    if ~isfile(infile)
+        println("Error: No file of steady states to be read.")
+        return(nothing)
+    end
+    # now read in steady states
+    l = countlines(infile)
+    w = 3
+    steads = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                steads[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # 2 for loops to loop over every file
+    pyplot()
+    p1 = plot(dpi=300,title="Schlögl Paths",xlabel="Time (t)",ylabel="Concentration x")
+    plot!(p1,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+    p2 = plot(dpi=300,title="Schlögl Action and Entropy Productions",xlabel="Concentration x")
+    plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions")
+    for i = N
+        for j = 1:2
+            if j == 1
+                infile = "../Results/Fig3DataS/Traj/$(i)$(ARGS[1])h2l.csv"
+            else
+                infile = "../Results/Fig3DataS/Traj/$(i)$(ARGS[1])l2h.csv"
+            end
+            # check if file
+            if isfile(infile)
+                # now should read in path
+                l = countlines(infile)
+                w = 1
+                path = zeros(l)
+                open(infile, "r") do in_file
+                    # Use a for loop to process the rows in the input file one-by-one
+                    k = 1
+                    for line in eachline(in_file)
+                        # just parse entire line
+                        path[k] = parse(Float64,line[1:end])
+                        k += 1
+                    end
+                end
+                # generate symbolic objects
+                ϑ, λ, b, Dmin = gensyms(ps[i,:])
+                # define NG and Nmid and use to find variables
+                NG = NM = l - 1
+                Nmid = convert(Int64, ceil((NG+1)/2))
+                x, xprim, λs, ϑs, λprim = genvars(path,λ,ϑ,NG,Nmid)
+                # use function Ŝ to find the action associated with this path
+                λs[1] = λs[2]
+                λs[Nmid] = (λs[Nmid+1] + λs[Nmid-1])/2
+                λs[end] = λs[end-1]
+                # find and save action from geometric method
+                S = Ŝ(x,xprim,λs,ϑs,λprim,NG)
+                ActS = sum(S)
+                tims2 = times(x,xprim,λs,ϑs,λprim,NG)
+                # save time of path
+                Tp = tims2[end]
+                path2 = timdis(tims2,x,NG,NM)
+                # Okay now what to plot both graphs on same figure
+                if j == 1
+                    plot!(p1,tims2,path2,label="High to Low")
+                else
+                    plot!(p1,tims2,path2,label="Low to High")
+                end
+                # now use a function that takes the time discretised path and
+                # finds the action in a more conventional manner and then can also get entropy production from this
+                Act, ΔS, Af, ΔSf = act(path2,Tp,b,Dmin)
+                if j == 1
+                    plot!(p2,path2[1:end-1],Af,label=L"A\,\bullet\rightarrow\circ")
+                    plot!(p2,path2[1:end-1],ΔSf,label=L"\Delta S\,\bullet\rightarrow\circ")
+                else
+                    plot!(p2,path2[1:end-1],Af,label=L"A\,\circ\rightarrow\bullet")
+                    plot!(p2,path2[1:end-1],ΔSf,label=L"\Delta S\,\circ\rightarrow\bullet")
+                end
+            else # Tell users about missing files
+                if j == 1
+                    println("No high to low path for $(i)")
+                else
+                    println("No low to high path for $(i)")
+                end
+            end
+        end
+    end
+    # add lines and then save
+    hline!(p1,[steads[N,3]],color=:black,linestyle=:dash,label="Low")
+    hline!(p1,[steads[N,2]],color=:black,linestyle=:dot,label="Saddle")
+    hline!(p1,[steads[N,1]],color=:black,linestyle=:solid,label="High")
+    savefig(p1,"../Results/Fig2Graphs/SchPath.png")
+    scatter!(p2,[steads[N,1]],[0.0],markersize=6,markercolor=:black,label="")
+    scatter!(p2,[steads[N,2]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
+    scatter!(p2,[steads[N,3]],[0.0],markersize=6,markercolor=:white,label="")
+    savefig(p2,"../Results/Fig2Graphs/SchAct.png")
+    return(nothing)
+end
+
+# @time main()
+@time plotting()

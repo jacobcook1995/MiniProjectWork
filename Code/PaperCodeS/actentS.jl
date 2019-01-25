@@ -410,7 +410,7 @@ function plotting()
     pyplot()
     p1 = plot(dpi=300,title="Schlögl Paths",xlabel="Time (t)",ylabel="Concentration x")
     plot!(p1,titlefontsize=20,guidefontsize=16,legendfontsize=12)
-    p2 = plot(dpi=300,title="Schlögl Action and Entropy Productions",xlabel="Concentration x")
+    p2 = plot(dpi=300,title="Schlögl Action Contributions",xlabel="Concentration x")
     plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions")
     for i = N
         for j = 1:2

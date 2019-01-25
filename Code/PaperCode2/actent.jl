@@ -7,7 +7,9 @@
 # Date: December 2018
 
 using SymEngine
+using LaTeXStrings
 using Plots
+import PyPlot
 
 # make a symbolic diffusion matrix
 function Ds()
@@ -246,7 +248,7 @@ function act(x::Array{Float64,2},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::A
     end
     ΔS = sum(ΔSf)
     Ac = sum(Af)
-    return(Ac,ΔS)
+    return(Ac,ΔS,Af,ΔSf)
 end
 
 function main()
@@ -362,4 +364,182 @@ function main()
     return(nothing)
 end
 
-@time main()
+function plotting()
+    println("Compiled, Starting plotting script.")
+    flush(stdout)
+    # First check that an argument for naming has been provided
+    if length(ARGS) == 0
+        println("Error: Need to provide an argument to name output with.")
+        return(nothing)
+    elseif length(ARGS) == 1
+        println("Error: Need to provide an Integer to choose a file with.")
+        return(nothing)
+    end
+    # Check integer has been provided
+    N = 0
+    int = true
+    for i = 1:length(ARGS[2])
+        if ~isnumeric(ARGS[2][i])
+            int = false
+            break
+        end
+    end
+    if int == true
+         N = parse(Int64,ARGS[2])
+    else
+        println("Error: Must provide an integer file number.")
+        return(nothing)
+    end
+    # Check there is a file of parameters to be read
+    infile = "../Results/Fig3Data/$(ARGS[1])para.csv"
+    if ~isfile(infile)
+        println("Error: No file of parameters to be read.")
+        return(nothing)
+    end
+    # now read in parameters
+    l = countlines(infile)
+    w = 10
+    ps = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                ps[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Check there is a file of steady states to be read
+    infile = "../Results/Fig3Data/$(ARGS[1])stead.csv"
+    if ~isfile(infile)
+        println("Error: No file of steady states to be read.")
+        return(nothing)
+    end
+    # now read in steady states
+    l = countlines(infile)
+    w = 6
+    steads = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                steads[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # 2 for loops to loop over every file
+    pyplot()
+    p1 = plot(dpi=300,title="Toggle Switch Paths",xlabel="Concentration a",ylabel="Concentration b")
+    plot!(p1,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+    p2 = plot(dpi=300,title="Toggle Switch Action Contributions",xlabel="Concentration a")
+    plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions")
+    for i = N
+        for j = 1:2
+            if j == 1
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2B.csv"
+            else
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2A.csv"
+            end
+            # check if file
+            if isfile(infile)
+                # now should read in path
+                l = countlines(infile)
+                w = 2
+                path = zeros(l,w)
+                open(infile, "r") do in_file
+                    # Use a for loop to process the rows in the input file one-by-one
+                    k = 1
+                    for line in eachline(in_file)
+                        # parse line by finding commas
+                        L = length(line)
+                        comma = fill(0,w+1)
+                        m = 1
+                        for i = 1:L
+                            if line[i] == ','
+                                m += 1
+                                comma[m] = i
+                            end
+                        end
+                        comma[end] = L+1
+                        for i = 1:w
+                            path[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                        end
+                        k += 1
+                    end
+                end
+                # generate symbolic objects
+                ϑ, λ, b, Dmin = gensyms(ps[i,:])
+                # define NG and Nmid and use to find variables
+                NG = NM = l - 1
+                Nmid = convert(Int64, ceil((NG+1)/2))
+                x, xprim, λs, ϑs, λprim = genvars(path,λ,ϑ,NG,Nmid)
+                # use function Ŝ to find the action associated with this path
+                λs[1] = λs[2]
+                λs[Nmid] = (λs[Nmid+1] + λs[Nmid-1])/2
+                λs[end] = λs[end-1]
+                # find and save action from geometric method
+                S = Ŝ(x,xprim,λs,ϑs,λprim,NG)
+                ActS = sum(S)
+                tims2 = times(x,xprim,λs,ϑs,λprim,NG)
+                # save time of path
+                Tp = tims2[end]
+                path2 = timdis(tims2,x,NG,NM)
+                if j == 1
+                    plot!(p1,path2[:,1],path2[:,2],label=L"\circ\rightarrow\bullet")
+                else
+                    plot!(p1,path2[:,1],path2[:,2],label=L"\bullet\rightarrow\circ")
+                end
+                # now use a function that takes the time discretised path and
+                # finds the action in a more conventional manner and then can also get entropy production from this
+                Act, ΔS, Af, ΔSf = act(path2,Tp,b,Dmin)
+                if j == 1
+                    plot!(p2,path2[1:end-1,1],Af,label="A")
+                    plot!(p2,path2[1:end-1,1],ΔSf,label="B")
+                else
+                    plot!(p2,path2[1:end-1,1],Af,label="C")
+                    plot!(p2,path2[1:end-1,1],ΔSf,label="D")
+                end
+            else # Tell users about missing files
+                if j == 1
+                    println("No A to B path for $(i)")
+                else
+                    println("No B to A path for $(i)")
+                end
+            end
+        end
+    end
+    scatter!(p1,[steads[N,1]],[steads[N,2]],markersize=6,markercolor=:white,label="")
+    scatter!(p1,[steads[N,3]],[steads[N,4]],markersize=5,markercolor=:black,markershape=:x,label="")
+    scatter!(p1,[steads[N,5]],[steads[N,6]],markersize=6,markercolor=:black,label="")
+    savefig(p1,"../Results/Fig2Graphs/TogPath$(ARGS[2]).png")
+    savefig(p2,"../Results/Fig2Graphs/TogAct$(ARGS[2]).png")
+    return(nothing)
+end
+
+# @time main()
+@time plotting()

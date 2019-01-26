@@ -458,6 +458,11 @@ function plotting()
     plot!(p1,titlefontsize=20,guidefontsize=16,legendfontsize=12)
     p2 = plot(dpi=300,title="Toggle Switch Action Contributions",xlabel="Concentration a")
     plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions")
+    Act = [0.0,0.0]
+    ΔS = [0.0,0.0]
+    Af = zeros(600,2)
+    ΔSf = zeros(600,2)
+    path2 = zeros(601,2)
     for i = N
         for j = 1:2
             if j == 1
@@ -516,13 +521,11 @@ function plotting()
                 end
                 # now use a function that takes the time discretised path and
                 # finds the action in a more conventional manner and then can also get entropy production from this
-                Act, ΔS, Af, ΔSf = act(path2,Tp,b,Dmin)
+                Act[j], ΔS[j], Af[:,j], ΔSf[:,j] = act(path2,Tp,b,Dmin)
                 if j == 1
-                    plot!(p2,path2[1:end-1,1],Af,label="A")
-                    plot!(p2,path2[1:end-1,1],ΔSf,label="B")
+                    plot!(p2,path2[1:end-1,1],Af[:,j],label=L"A_{\circ\rightarrow\bullet}")
                 else
-                    plot!(p2,path2[1:end-1,1],Af,label="C")
-                    plot!(p2,path2[1:end-1,1],ΔSf,label="D")
+                    plot!(p2,path2[1:end-1,1],Af[:,j],label=L"A_{\bullet\rightarrow\circ}")
                 end
             else # Tell users about missing files
                 if j == 1
@@ -537,6 +540,11 @@ function plotting()
     scatter!(p1,[steads[N,3]],[steads[N,4]],markersize=5,markercolor=:black,markershape=:x,label="")
     scatter!(p1,[steads[N,5]],[steads[N,6]],markersize=6,markercolor=:black,label="")
     savefig(p1,"../Results/Fig2Graphs/TogPath$(ARGS[2]).png")
+    plot!(p2,path2[1:end-1,1],(Af[:,2]-Af[end:-1:1,1]),label=L"A_{\bullet\rightarrow\circ} - A_{\circ\rightarrow\bullet}")
+    plot!(p2,path2[1:end-1,1],ΔSf[end:-1:1,1]-ΔSf[:,2],label=L"ΔS_{\circ\rightarrow\bullet} - ΔS_{\bullet\rightarrow\circ}")
+    scatter!(p2,[steads[N,1]],[0.0],markersize=6,markercolor=:white,label="")
+    scatter!(p2,[steads[N,3]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
+    scatter!(p2,[steads[N,5]],[0.0],markersize=6,markercolor=:black,label="")
     savefig(p2,"../Results/Fig2Graphs/TogAct$(ARGS[2]).png")
     return(nothing)
 end

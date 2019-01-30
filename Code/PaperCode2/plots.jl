@@ -193,24 +193,24 @@ function main()
             wrong = vcat(wrong,i)
         end
     end
-    pyplot()
+    pyplot(dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
     # scatter([ent[:,3]],[Ds[:,1]],label="")
     # scatter!([ent[:,4]],[Ds[:,3]],label="")
     # plot!(xlabel=L"\dot{S}",ylabel=L"mag(D)",title="Magnitude of D vs Entropy Production")
     # savefig("../Results/DvsEntProd.png")
     # scatter([ent[:,3].-ent[:,4]],[Ds[:,1]./Ds[:,3]],label="")
-    # plot!(xlabel=L"\dot{S}_{h}-\dot{S}_{l}",ylabel=L"mag(D_{h})/mag(D_{l})",title="Ratio of D vs Entropy Production diff")
+    # plot!(xlabel=L"\dot{S}_{h}-\dot{S}_{l}",ylabel=L"mag(D_{h})/mag(D_{l})",title="Ratio of D vs Steady State Ent Prod Diff")
     # savefig("../Results/DiffDvsEntProd.png")
     # scatter([ent[:,1].-ent[:,2]],[ent[:,3].-ent[:,4]],label="")
     # plot!(xlabel=L"\dot{S}_{h,prod}-\dot{S}_{l,prod}",ylabel=L"\dot{S}_h - \dot{S}_l",title="Diff in Entropy vs Production")
     # savefig("../Results/DifferProds.png")
-    # Plot entropies against Schnakenberg entropy production
+    # # Plot entropies against Schnakenberg entropy production
     # scatter([ent[:,3]],[shent[:,1]],label="")
     # scatter!([ent[:,4]],[shent[:,2]],label="")
     # plot!(xlabel=L"\dot{S}",ylabel=L"S",title="Ent vs Ent Prod")
     # savefig("../Results/EntvsSchnak.png")
     # scatter([ent[:,3].-ent[:,4]],[shent[:,1].-shent[:,2]],label="")
-    # plot!(xlabel=L"\dot{S}_h-\dot{S}_l",ylabel=L"S_h - S_l",title="Diff in Entropy vs Production")
+    # plot!(xlabel=L"\dot{S}_h-\dot{S}_l",ylabel=L"S_h - S_l",title="Difference in Entropy vs Production")
     # savefig("../Results/DiffEnt.png")
     # # plot scatter graph of the wrong points
     # plot(xlabel="Ent Prod Rate Term",ylabel="Ent Prod Rate Traj",title="Mismatched points")
@@ -277,36 +277,47 @@ function main()
         end
     end
     # # plot change in action vs entropy produced
-    # plot(xlabel="Difference in Entropy Produced",ylabel="Difference in Actions",title="Action Difference vs Difference in Entropy Produced")
+    # xlab = L"ΔS_{h\rightarrow l} - ΔS_{l\rightarrow h}"
+    # ylab = L"A_{h\rightarrow l} - A_{l\rightarrow h}"
+    # plot(xlabel=xlab,ylabel=ylab,title="Diff Action vs Diff Entropy Produced")
     # for i = 1:l
     #     if datayn[i] == true
-    #         scatter!([acts[i,4]-acts[i,8]],[acts[i,2]-acts[i,6]],label="",color=:blue)
+    #         scatter!([acts[i,4]-acts[i,8]],[acts[i,2]-acts[i,6]],label="")
     #     end
     # end
     # savefig("../Results/DiffActvsDiffEntProd.png")
     # plot(xlabel="Entropy Produced",ylabel="Action",title="Action vs Entropy Produced")
     # for i = 1:l
     #     if datayn[i] == true
-    #         scatter!([acts[i,4],acts[i,8]],[acts[i,2],acts[i,6]],label="",color=:blue)
+    #         scatter!([acts[i,4],acts[i,8]],[acts[i,2],acts[i,6]],label="")
     #     end
     # end
     # savefig("../Results/ActvsEntProd.png")
     # plot(xlabel="Approx Action",ylabel="Action",title="Action vs Approx Action")
     # for i = 1:l
     #     if datayn[i] == true
-    #         scatter!([acts[i,3],acts[i,7]],[acts[i,2],acts[i,6]],label="",color=:blue)
+    #         scatter!([acts[i,3],acts[i,7]],[acts[i,2],acts[i,6]],label="")
     #     end
     # end
     # savefig("../Results/ActvsActapprox.png")
     # # now try to get log ratio of rate of switching to plot against differences in entropy production
     # lab = L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}"
-    # plot(xlabel="Difference in Entropy Production",ylabel=lab,title="Log ratio of switching vs Diff in Entropy Production")
+    # plot(xlabel=L"\dot{S}_h - \dot{S}_l",ylabel=lab,title="Log ratio of switching vs Ent Prod Diff")
     # for i = 1:l
     #     if datayn[i] == true
-    #         scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="",color=:blue)
+    #         scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="")
     #     end
     # end
     # savefig("../Results/LogStabvsDiffEnt.png")
+    # now plot differnce in entropy production along path vs differnce at steady states
+    # lab = L"ΔS_{h\rightarrow l} - ΔS_{l\rightarrow h}"
+    # plot(xlabel=L"\dot{S}_h - \dot{S}_l",ylabel=lab,title="Diff in Path Ent Prod vs Steady State")
+    # for i = 1:l
+    #     if datayn[i] == true
+    #         scatter!([ent[i,3]-ent[i,4]],[acts[i,4]-acts[i,8]],label="")
+    #     end
+    # end
+    # savefig("../Results/PathvsState.png")
     return(nothing)
 end
 

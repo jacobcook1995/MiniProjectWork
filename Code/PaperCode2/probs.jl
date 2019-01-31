@@ -178,8 +178,18 @@ function main()
     probs = zeros(l,2)
     Ωs = zeros(l)
     noits = 100000000
-    thresh = 5000
-    for i = 1:l
+    thresh = 1000000
+    # everything over 50 don't know
+    # have succesfully run 3,11,19,65,92,99
+    # worth trying 1,5,8,9,12,22,24,25,26,28,29,37,39,45,47,48,49
+    # need to speed up 2,4,6,7,10,13,14,15,16,17,18,20,21,23,27,30,31,32,33,34,35,36,37,38,40,41,42,43,44,46,50
+    # inds = [1,5,8]
+    # inds = [9,12,22]
+    # inds = [24,25,26]
+    # inds = [28,29,37]
+    # inds = [39,45,47]
+    inds = [48,49]
+    for i = inds
         # need a step here to ensure that a resonable volume system is simulated
         println("Run $(i)")
         flush(stdout)
@@ -194,13 +204,16 @@ function main()
             Ωs[i] = 0.75
         elseif tot >= 5.0
             Ωs[i] = 1.0
+        elseif tot >= 2.2
+            Ωs[i] = 5.0
         elseif tot >= 2.0
-            Ωs[i] = 2.0
+            Ωs[i] = 7.5
         else
-            Ωs[i] = 3.0
+            Ωs[i] = 10.0
         end
         repeat = false
         probs[i,1], probs[i,2], N, T = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
+        println(N/thresh)
         if N < thresh
             repeat = true
         end
@@ -216,6 +229,7 @@ function main()
             probs[i,2] = (probs[i,2]*T + plt*τ)/(T+τ)
             T += τ
             N += n
+            println(N/thresh)
             if N > thresh
                 repeat = false
             end
@@ -223,11 +237,46 @@ function main()
     end
     # now output data
     outfile = "../Results/Fig3Data/$(ARGS[1])probs.csv"
+    # Should have a step here so that I can replace lines
+    temprobs = zeros(l,3)
+    if isfile(outfile)
+        # now read in steady states
+        l = countlines(outfile)
+        w = 3
+        steads = zeros(l,w)
+        open(outfile, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w
+                    temprobs[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+    end
+    for i = 1:l
+        if ~any(x->x==i, inds)
+            probs[i,:] = temprobs[i,1:2]
+            Ωs[i] = temprobs[i,3]
+        end
+    end
     out_file = open(outfile, "w")
     for i = 1:l
         line = "$(probs[i,1]),$(probs[i,2]),$(Ωs[i])\n"
         write(out_file,line)
-    end
+    # end
     return(nothing)
 end
 

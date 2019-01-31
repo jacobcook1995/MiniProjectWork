@@ -318,6 +318,49 @@ function main()
     #     end
     # end
     # savefig("../Results/PathvsState.png")
+    # Final section to read in probs and make a plot, this is necessarily rough at this point
+    # Check there is a file of entropies to be read
+    infile = "../Results/Fig3Data/$(ARGS[1])probs.csv"
+    if ~isfile(infile)
+        println("Error: No file of probabilities to be read.")
+        return(nothing)
+    end
+    # now read in entropies
+    l = countlines(infile)
+    w = 3
+    probs = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                probs[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    ind = [3,11,19,65,92,99]
+    p1 = plot(title="Placeholder")
+    p2 = plot(title="Residuals")
+    for i = ind
+        scatter!(p1,[probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="$(i)")
+        scatter!(p2,[probs[i,3]*(acts[i,2]-acts[i,6])-log(probs[i,1]/probs[i,2])],[0.0],label="$(i)")
+    end
+    x = -3.2:0.01:1.1
+    plot!(p1,x,x,label="")
+    savefig(p1,"../Results/test.png")
+    savefig(p2,"../Results/resid.png")
     return(nothing)
 end
 

@@ -350,14 +350,20 @@ function main()
             k += 1
         end
     end
-    ind = [3,11,19,65,92,99]
+    # now need to select inds based on whether probailities have been found yet
+    ind = Array{Int64,1}(undef,0)
+    for i = 1:l
+        if probs[i,3] != 0.0
+            ind = vcat(ind,i)
+        end
+    end
     p1 = plot(title="Placeholder")
     p2 = plot(title="Residuals")
     for i = ind
-        scatter!(p1,[probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="$(i)")
-        scatter!(p2,[probs[i,3]*(acts[i,2]-acts[i,6])-log(probs[i,1]/probs[i,2])],[0.0],label="$(i)")
+        scatter!(p1,[probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="")
+        scatter!(p2,[probs[i,3]*(acts[i,2]-acts[i,6])-log(probs[i,1]/probs[i,2])],[0.0],label="")
     end
-    x = -3.2:0.01:1.1
+    x = -7.5:0.1:4.5
     plot!(p1,x,x,label="")
     savefig(p1,"../Results/test.png")
     savefig(p2,"../Results/resid.png")

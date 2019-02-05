@@ -11,6 +11,8 @@ using LaTeXStrings
 using PyCall
 pygui(:qt5)
 import PyPlot
+using StatsPlots
+using DataFrames
 
 function main()
     println("Compiled, Starting script.")
@@ -201,6 +203,9 @@ function main()
     # scatter([ent[:,3].-ent[:,4]],[Ds[:,1]./Ds[:,3]],label="")
     # plot!(xlabel=L"\dot{S}_{h}-\dot{S}_{l}",ylabel=L"mag(D_{h})/mag(D_{l})",title="Ratio of D vs Steady State Ent Prod Diff")
     # savefig("../Results/DiffDvsEntProd.png")
+    # scatter([shent[:,1].-shent[:,2]],[Ds[:,1]./Ds[:,3]],label="")
+    # plot!(xlabel=L"S_{h}-S_{l}",ylabel=L"mag(D_{h})/mag(D_{l})",title="Ratio of D vs Steady State Ent Diff")
+    # savefig("../Results/DiffDvsEnt.png")
     # scatter([ent[:,1].-ent[:,2]],[ent[:,3].-ent[:,4]],label="")
     # plot!(xlabel=L"\dot{S}_{h,prod}-\dot{S}_{l,prod}",ylabel=L"\dot{S}_h - \dot{S}_l",title="Diff in Entropy vs Production")
     # savefig("../Results/DifferProds.png")
@@ -209,7 +214,7 @@ function main()
     # scatter!([ent[:,4]],[shent[:,2]],label="")
     # plot!(xlabel=L"\dot{S}",ylabel=L"S",title="Ent vs Ent Prod")
     # savefig("../Results/EntvsSchnak.png")
-    # scatter([ent[:,3].-ent[:,4]],[shent[:,1].-shent[:,2]],label="")
+    # scatter([ent[:,3].-ent[:,4]],[shent[:,1].-shent[:,2]],label="",ylim=(-100,100))
     # plot!(xlabel=L"\dot{S}_h-\dot{S}_l",ylabel=L"S_h - S_l",title="Difference in Entropy vs Production")
     # savefig("../Results/DiffEnt.png")
     # # plot scatter graph of the wrong points
@@ -357,34 +362,96 @@ function main()
             ind = vcat(ind,i)
         end
     end
-    # p1 = plot(title="Placeholder")
+    # p1 = plot(title="Predicted vs Actual Occupation")
     # p2 = plot(title="Residuals")
     # for i = ind
     #     scatter!(p1,[probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="")
     #     scatter!(p2,[probs[i,3]*(acts[i,2]-acts[i,6])-log(probs[i,1]/probs[i,2])],[0.0],label="")
     # end
     # x = -7.5:0.1:4.5
-    # plot!(p1,x,x,label="")
-    # savefig(p1,"../Results/test.png")
+    # plot!(p1,x,x,label="",xlabel=L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}",ylabel=L"\ln{\frac{p_{h}}{p_{l}}}")
+    # savefig(p1,"../Results/Linear.png")
     # savefig(p2,"../Results/resid.png")
     # now try to get log ratio of state probailities to plot against differences in entropy production
-    lab = L"\ln{\frac{p_{h}}{p_{l}}}"
-    plot(xlabel=L"\dot{S}_h - \dot{S}_l",ylabel=lab,title="Log ratio of state probs vs Ent Prod Diff")
-    for i = ind
-        if datayn[i] == true
-            scatter!([ent[i,3]-ent[i,4]],[log(probs[i,2]/probs[i,1])/probs[i,3]],label="")
+    # lab = L"\ln{\frac{p_{h}}{p_{l}}}"
+    # plot(xlabel=L"\dot{S}_h - \dot{S}_l",ylabel=lab,title="Log ratio of state probs vs Ent Prod Diff")
+    # for i = ind
+    #     if datayn[i] == true
+    #         scatter!([ent[i,3]-ent[i,4]],[log(probs[i,2]/probs[i,1])/probs[i,3]],label="")
+    #     end
+    # end
+    # savefig("../Results/LogProbvsDiffEnt.png")
+    # # now try to get log ratio of rate of switching to plot against differences in entropy production
+    # lab = L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}"
+    # plot(xlabel=L"\dot{S}_h - \dot{S}_l",ylabel=lab,title="Log ratio of switching vs Ent Prod Diff")
+    # for i = ind
+    #     if datayn[i] == true
+    #         scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="")
+    #     end
+    # end
+    # savefig("../Results/LogStabvsDiffEnt.png")
+    # Now read in my two written data csvs for trajctories
+    infile1 = "../Results/Fig3Data/Traj/2testA2BMast.csv"
+    infile2 = "../Results/Fig3Data/Traj//2testB2AMast.csv"
+    w = 101
+    mastf = zeros(100,10)
+    open(infile1, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w-1
+                mastf[i,k] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
         end
     end
-    savefig("../Results/LogProbvsDiffEnt.png")
-    # now try to get log ratio of rate of switching to plot against differences in entropy production
-    lab = L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}"
-    plot(xlabel=L"\dot{S}_h - \dot{S}_l",ylabel=lab,title="Log ratio of switching vs Ent Prod Diff")
-    for i = ind
-        if datayn[i] == true
-            scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="")
+    mastb = zeros(100,10)
+    open(infile2, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w-1
+                mastb[i,k] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
         end
     end
-    savefig("../Results/LogStabvsDiffEnt.png")
+    # do box plot of forward data first
+    df = DataFrame(a=mastf[:,1],b=mastf[:,2],c=mastf[:,3],d=mastf[:,4],e=mastf[:,5],f=mastf[:,6],g=mastf[:,7],h=mastf[:,8],i=mastf[:,9],j=mastf[:,10])
+    @df df boxplot([:a :b :c :d :e :f :g :h :i :j],label=["" "" "" "" "" "" "" "" "" ""])
+    hline!([acts[2,4]],label = L"\Delta S",xlabel=L"\Omega",ylabel="Entropy Produced")
+    savefig("../Results/test.png")
+    df = DataFrame(a=mastb[:,1],b=mastb[:,2],c=mastb[:,3],d=mastb[:,4],e=mastb[:,5],f=mastb[:,6],g=mastb[:,7],h=mastb[:,8],i=mastb[:,9],j=mastb[:,10])
+    @df df boxplot([:a :b :c :d :e :f :g :h :i :j],label=["" "" "" "" "" "" "" "" "" ""])
+    hline!([acts[2,8]],label = L"\Delta S",xlabel=L"\Omega",ylabel="Entropy Produced")
+    savefig("../Results/test2.png")
+    mast = mastf .- mastb
+    df = DataFrame(a=mast[:,1],b=mast[:,2],c=mast[:,3],d=mast[:,4],e=mast[:,5],f=mast[:,6],g=mast[:,7],h=mast[:,8],i=mast[:,9],j=mast[:,10])
+    @df df boxplot([:a :b :c :d :e :f :g :h :i :j],label=["" "" "" "" "" "" "" "" "" ""])
+    hline!([acts[2,4]-acts[2,8]],label = L"\Delta S",xlabel=L"\Omega",ylabel="Entropy Produced")
+    savefig("../Results/test3.png")
     return(nothing)
 end
 

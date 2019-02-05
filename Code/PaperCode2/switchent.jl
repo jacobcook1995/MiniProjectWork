@@ -57,6 +57,11 @@ function gillespie(ps::Array{Float64,1},star::Array{Int64,1},fin::Array{Int64,1}
     Qmin = ps[8]
     r = ps[9]
     f = ps[10]
+    if star[1] > fin[1]
+        highA = true
+    else
+        highA = false
+    end
     # rescale constants appropraitly
     Kmin = Kmin*Ω
     Qmin = Qmin*Ω
@@ -83,7 +88,10 @@ function gillespie(ps::Array{Float64,1},star::Array{Int64,1},fin::Array{Int64,1}
         ABf[:,j] = ABf0
         reacs[j-1] = reac0
         # stopping condition
-        if ABf0[1] <= fin[1] && ABf0[2] >= fin[2]
+        if highA == true && ABf0[1] <= fin[1] && ABf0[2] >= fin[2]
+            swit = true
+            forj = j
+        elseif highA == false && ABf0[1] >= fin[1] && ABf0[2] <= fin[2]
             swit = true
             forj = j
         elseif j >= L # overflow condition
@@ -102,7 +110,10 @@ function gillespie(ps::Array{Float64,1},star::Array{Int64,1},fin::Array{Int64,1}
     fori = 1
     # now search for sensible starting point for trajectories
     for i = forj:(-1):2
-        if ABf2[1,i] >= star[1] && ABf2[2,i] <= star[2]
+        if highA == true && ABf2[1,i] >= star[1] && ABf2[2,i] <= star[2]
+            fori = i
+            break
+        elseif highA == false && ABf2[1,i] <= star[1] && ABf2[2,i] >= star[2]
             fori = i
             break
         end
@@ -253,8 +264,6 @@ function main()
         for j = 1:len
             line *= "$(entpf[j+(i-1)*len]),"
         end
-        # remove surplus ,
-        line = line[1:end-1]
         # add a new line and volume
         line *= "$(Ωs[i])\n"
         write(out_file,line)
@@ -268,8 +277,6 @@ function main()
         for j = 1:len
             line *= "$(entpb[j+(i-1)*len]),"
         end
-        # remove surplus ,
-        line = line[1:end-1]
         # add a new line and volume
         line *= "$(Ωs[i])\n"
         write(out_file,line)

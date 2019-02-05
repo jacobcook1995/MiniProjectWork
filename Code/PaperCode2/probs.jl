@@ -183,12 +183,6 @@ function main()
     # have succesfully run 1,3,5,8,9,11,12,19,22,24,25,26,28,29,37,39,45,47,48,49,65,92,99
     # need to speed up 2,4,6,7,10,13,14,15,16,17,18,20,21,23,27,30,31,32,33,34,35,36,37,38,40,41,42,43,44,46,50
     # need 2 speed up 51,52,53,55,56,57,58,62,63,67,69,70,74,76,78,79,81,83,85,86,87,88,89,90,93,94,95,98,100
-    # inds = [54,59,60]
-    # inds = [61,64,66]
-    # inds = [68,71,72]
-    # inds = [73,75,77]
-    # inds = [80,82,84]
-    inds = [91,96,97]
     for i = inds
         # need a step here to ensure that a resonable volume system is simulated
         println("Run $(i)")

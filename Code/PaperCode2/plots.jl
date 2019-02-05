@@ -357,16 +357,34 @@ function main()
             ind = vcat(ind,i)
         end
     end
-    p1 = plot(title="Placeholder")
-    p2 = plot(title="Residuals")
+    # p1 = plot(title="Placeholder")
+    # p2 = plot(title="Residuals")
+    # for i = ind
+    #     scatter!(p1,[probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="")
+    #     scatter!(p2,[probs[i,3]*(acts[i,2]-acts[i,6])-log(probs[i,1]/probs[i,2])],[0.0],label="")
+    # end
+    # x = -7.5:0.1:4.5
+    # plot!(p1,x,x,label="")
+    # savefig(p1,"../Results/test.png")
+    # savefig(p2,"../Results/resid.png")
+    # now try to get log ratio of state probailities to plot against differences in entropy production
+    lab = L"\ln{\frac{p_{h}}{p_{l}}}"
+    plot(xlabel=L"\dot{S}_h - \dot{S}_l",ylabel=lab,title="Log ratio of state probs vs Ent Prod Diff")
     for i = ind
-        scatter!(p1,[probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="")
-        scatter!(p2,[probs[i,3]*(acts[i,2]-acts[i,6])-log(probs[i,1]/probs[i,2])],[0.0],label="")
+        if datayn[i] == true
+            scatter!([ent[i,3]-ent[i,4]],[log(probs[i,2]/probs[i,1])/probs[i,3]],label="")
+        end
     end
-    x = -7.5:0.1:4.5
-    plot!(p1,x,x,label="")
-    savefig(p1,"../Results/test.png")
-    savefig(p2,"../Results/resid.png")
+    savefig("../Results/LogProbvsDiffEnt.png")
+    # now try to get log ratio of rate of switching to plot against differences in entropy production
+    lab = L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}"
+    plot(xlabel=L"\dot{S}_h - \dot{S}_l",ylabel=lab,title="Log ratio of switching vs Ent Prod Diff")
+    for i = ind
+        if datayn[i] == true
+            scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="")
+        end
+    end
+    savefig("../Results/LogStabvsDiffEnt.png")
     return(nothing)
 end
 

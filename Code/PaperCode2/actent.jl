@@ -46,6 +46,20 @@ function bs()
     return(b)
 end
 
+# vector of in forces
+function f1!(f::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
+    f[1] = ps[1]*ps[9]/(ps[9]+ps[10]*x[2]*x[2]) - ps[2]*x[1]
+    f[2] = ps[3]*ps[9]/(ps[9]+ps[10]*x[1]*x[1]) - ps[4]*x[2]
+    return(f)
+end
+
+# vector of out forces
+function f2!(f::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
+    f[1] = ps[5]*x[1] - ps[6]
+    f[2] = ps[7]*x[2] - ps[8]
+    return(f)
+end
+
 # function to find a symbolic equation for λ the determenistic speed
 function λs()
     y1, y2 = symbols("y1 y2")
@@ -213,19 +227,29 @@ function timdis(ts::Array{Float64,1},x::Array{Float64,2},NG::Int64,NM::Int64)
 end
 
 # function to take time discretised path and return Action and total entropy production based on it
-function act(x::Array{Float64,2},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::Array{SymEngine.Basic,2})
+function act(x::Array{Float64,2},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::Array{SymEngine.Basic,2},ps::Array{Float64,1},Ns::Int64)
     # find time step etc
     N = size(x,1)-1
     dt = Tp/(N)
     Ac = 0
     ΔS = 0
     A, B, y1, y2 = symbols("A B y1 y2")
+    desd = false
+    f1 = [0.0,0.0]
+    f2 = [0.0,0.0]
     # temporary bs and Dmins to store values
     bt = Array{Float64,1}(undef,2)
     Dm = Array{Float64,2}(undef,2,2)
     ΔSf = zeros(N)
     Af = zeros(N)
+    KE = zeros(N)
+    PE = zeros(N)
+    prods = zeros(N)
+    flows = zeros(N)
     for i = 1:N
+        if i == Ns
+            desd = true
+        end
         # need to find velocity for each point
         qdot = (x[i+1,:] .- x[i,:])/(dt)
         # and need to find midpoint
@@ -238,17 +262,28 @@ function act(x::Array{Float64,2},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::A
                 Dm[j,k] = subs(Dmin[j,k],A=>posA,B=>posB) |> float
             end
         end
+        f1 = f1!(f1,[posA,posB],ps)
+        f2 = f2!(f2,[posA,posB],ps)
         # now calculate the update to A and ΔS from this point
         for j = 1:2
             for k = 1:2
                 Af[i] += 0.5*(qdot[j] - bt[j])*Dm[j,k]*(qdot[k] - bt[k])*dt
                 ΔSf[i] += 2*qdot[j]*Dm[j,k]*bt[k]*dt
+                KE[i] += 0.5*qdot[j]*Dm[j,k]*qdot[k]*dt
+                PE[i] += 0.5*bt[j]*Dm[j,k]*bt[k]*dt
+                if desd == false
+                    prods[i] += 4*f1[j]*Dm[j,k]*f2[k]*dt
+                    flows[i] += 2*(f1[j]*Dm[j,k]*f1[k] + f2[j]*Dm[j,k]*f2[k])*dt
+                else
+                    prods[i] += 2*(f1[j]*Dm[j,k]*f1[k] + f2[j]*Dm[j,k]*f2[k])*dt
+                    flows[i] += 4*f1[j]*Dm[j,k]*f2[k]*dt
+                end
             end
         end
     end
     ΔS = sum(ΔSf)
     Ac = sum(Af)
-    return(Ac,ΔS,Af,ΔSf)
+    return(Ac,ΔS,Af,ΔSf,KE,PE,prods,flows)
 end
 
 function main()
@@ -458,10 +493,14 @@ function plotting()
     plot!(p1,titlefontsize=20,guidefontsize=16,legendfontsize=12)
     p2 = plot(dpi=300,title="Toggle Switch Action Contributions",xlabel="Concentration a")
     plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions")
+    p3 = plot(dpi=300,title="Toggle Switch f Term Contributions",xlabel="Concentration a")
+    plot!(p3,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions")
     Act = [0.0,0.0]
     ΔS = [0.0,0.0]
     Af = zeros(600,2)
     ΔSf = zeros(600,2)
+    KE = zeros(600,2)
+    PE = zeros(600,2)
     path2 = zeros(601,2)
     for i = N
         for j = 1:2
@@ -515,17 +554,47 @@ function plotting()
                 Tp = tims2[end]
                 path2 = timdis(tims2,x,NG,NM)
                 if j == 1
-                    plot!(p1,path2[:,1],path2[:,2],label=L"\circ\rightarrow\bullet")
+                    plot!(p1,path2[:,1],path2[:,2],label=L"A\rightarrow B")
                 else
-                    plot!(p1,path2[:,1],path2[:,2],label=L"\bullet\rightarrow\circ")
+                    plot!(p1,path2[:,1],path2[:,2],label=L"B\rightarrow A")
+                end
+                # find point that path reaches saddle Ns
+                Ns = 0
+                if path2[1,:] == [steads[N,1],steads[N,2]]
+                    for i = 1:length(path2)
+                        if path2[i,1] <= steads[N,3] && path2[i,2] >= steads[N,4]
+                            Ns = i
+                            break
+                        end
+                    end
+                elseif path2[1,:] == [steads[N,5],steads[N,6]]
+                    for i = 1:length(path2)
+                        if path2[i,1] >= steads[N,3] && path2[i,2] <= steads[N,4]
+                            Ns = i
+                            break
+                        end
+                    end
+                else
+                    println("Error: Should start at sone of the two points")
+                    error()
                 end
                 # now use a function that takes the time discretised path and
                 # finds the action in a more conventional manner and then can also get entropy production from this
-                Act[j], ΔS[j], Af[:,j], ΔSf[:,j] = act(path2,Tp,b,Dmin)
+                Act[j], ΔS[j], Af[:,j], ΔSf[:,j], KE[:,j], PE[:,j], prods, flows = act(path2,Tp,b,Dmin,ps[i,:],Ns)
                 if j == 1
-                    plot!(p2,path2[1:end-1,1],Af[:,j],label=L"A_{\circ\rightarrow\bullet}")
+                    plot!(p2,path2[1:end-1,1],Af[:,j],label=L"\mathcal{A}_{A\rightarrow B}",color=:blue,style=:dash)
+                    plot!(p2,path2[1:end-1,1],PE[:,j],label=L"PE_{A\rightarrow B}",color=:yellow,style=:dash)
+                    plot!(p2,path2[1:end-1,1],KE[:,j],label=L"KE_{A\rightarrow B}",color=:orange,style=:dash)
+                    plot!(p3,path2[1:end-1,1],prods,label="prods A→B")
+                    plot!(p3,path2[1:end-1,1],flows,label="flows A→B")
+                    plot!(p3,path2[1:end-1,1],prods.-flows,label="prods-flows A→B")
                 else
-                    plot!(p2,path2[1:end-1,1],Af[:,j],label=L"A_{\bullet\rightarrow\circ}")
+                    plot!(p2,path2[1:end-1,1],Af[:,j],label=L"\mathcal{A}_{B\rightarrow A}",color=:blue)
+                    plot!(p2,path2[1:end-1,1],PE[:,j],label=L"PE_{B\rightarrow A}",color=:yellow)
+                    plot!(p2,path2[1:end-1,1],KE[:,j],label=L"KE_{B\rightarrow A}",color=:orange)
+                    plot!(p3,path2[1:end-1,1],prods,label="prods B→A")
+                    plot!(p3,path2[1:end-1,1],flows,label="flows B→A")
+                    plot!(p3,path2[1:end-1,1],prods.-flows,label="prods-flows B→A")
                 end
             else # Tell users about missing files
                 if j == 1
@@ -539,13 +608,15 @@ function plotting()
     scatter!(p1,[steads[N,1]],[steads[N,2]],markersize=6,markercolor=:white,label="")
     scatter!(p1,[steads[N,3]],[steads[N,4]],markersize=5,markercolor=:black,markershape=:x,label="")
     scatter!(p1,[steads[N,5]],[steads[N,6]],markersize=6,markercolor=:black,label="")
+    annotate!(p1,[(steads[N,5]+0.1,steads[N,6],text("A",20)),(steads[N,1],steads[N,2]+0.15,text("B",20))])
     savefig(p1,"../Results/Fig2Graphs/TogPath$(ARGS[2]).png")
-    plot!(p2,path2[1:end-1,1],(Af[:,2]-Af[end:-1:1,1]),label=L"A_{\bullet\rightarrow\circ} - A_{\circ\rightarrow\bullet}")
-    plot!(p2,path2[1:end-1,1],ΔSf[end:-1:1,1]-ΔSf[:,2],label=L"ΔS_{\circ\rightarrow\bullet} - ΔS_{\bullet\rightarrow\circ}")
+    plot!(p2,path2[1:end-1,1],(Af[:,2]-Af[end:-1:1,1]),label=L"\mathcal{A}_{B\rightarrow A} - \mathcal{A}_{A\rightarrow B}",color=:red,style=:dash)
+    plot!(p2,path2[1:end-1,1],ΔSf[end:-1:1,1]-ΔSf[:,2],label=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",color=:red)
     scatter!(p2,[steads[N,1]],[0.0],markersize=6,markercolor=:white,label="")
     scatter!(p2,[steads[N,3]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
     scatter!(p2,[steads[N,5]],[0.0],markersize=6,markercolor=:black,label="")
     savefig(p2,"../Results/Fig2Graphs/TogAct$(ARGS[2]).png")
+    savefig(p3,"../Results/Fig2Graphs/TogfTerms$(ARGS[2]).png")
     return(nothing)
 end
 

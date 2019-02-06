@@ -236,11 +236,12 @@ function main()
         end
     end
     # now calulate entropy productions of switching
-    Ωs = [1,2,3,4,5,6,7,8,9,10] # Should choose 10 different volume values
-    I = 2 # picking parameter value to look at
+    Ωs = [5] # Should choose 10 different volume values
+    I = 48 # picking parameter value to look at
     len = 100 # run 100 for each, forward and backward
-    entpf = zeros(1000)
-    entpb = zeros(1000)
+    entpf = zeros(len*length(Ωs))
+    entpb = zeros(len*length(Ωs))
+    # 3,11,13,19,32,48
     for i = 1:length(Ωs)
         star = round.(Int64,Ωs[i]*[steads[I,1],steads[I,2]])
         fin = round.(Int64,Ωs[i]*[steads[I,5],steads[I,6]])

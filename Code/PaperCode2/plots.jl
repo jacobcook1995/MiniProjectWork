@@ -13,6 +13,7 @@ pygui(:qt5)
 import PyPlot
 using StatsPlots
 using DataFrames
+using Statistics
 
 function main()
     println("Compiled, Starting script.")
@@ -390,68 +391,145 @@ function main()
     #     end
     # end
     # savefig("../Results/LogStabvsDiffEnt.png")
-    # Now read in my two written data csvs for trajctories
-    infile1 = "../Results/Fig3Data/Traj/2testA2BMast.csv"
-    infile2 = "../Results/Fig3Data/Traj//2testB2AMast.csv"
-    w = 101
-    mastf = zeros(100,10)
-    open(infile1, "r") do in_file
-        # Use a for loop to process the rows in the input file one-by-one
-        k = 1
-        for line in eachline(in_file)
-            # parse line by finding commas
-            L = length(line)
-            comma = fill(0,w+1)
-            j = 1
-            for i = 1:L
-                if line[i] == ','
-                    j += 1
-                    comma[j] = i
+    # # Now read in my two written data csvs for trajctories
+    # infile1 = "../Results/Fig3Data/Traj/2testA2BMas.csv"
+    # infile2 = "../Results/Fig3Data/Traj//2testB2AMas.csv"
+    # w = 101
+    # mastf = zeros(100,10)
+    # open(infile1, "r") do in_file
+    #     # Use a for loop to process the rows in the input file one-by-one
+    #     k = 1
+    #     for line in eachline(in_file)
+    #         # parse line by finding commas
+    #         L = length(line)
+    #         comma = fill(0,w+1)
+    #         j = 1
+    #         for i = 1:L
+    #             if line[i] == ','
+    #                 j += 1
+    #                 comma[j] = i
+    #             end
+    #         end
+    #         comma[end] = L+1
+    #         for i = 1:w-1
+    #             mastf[i,k] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+    #         end
+    #         k += 1
+    #     end
+    # end
+    # mastb = zeros(100,10)
+    # open(infile2, "r") do in_file
+    #     # Use a for loop to process the rows in the input file one-by-one
+    #     k = 1
+    #     for line in eachline(in_file)
+    #         # parse line by finding commas
+    #         L = length(line)
+    #         comma = fill(0,w+1)
+    #         j = 1
+    #         for i = 1:L
+    #             if line[i] == ','
+    #                 j += 1
+    #                 comma[j] = i
+    #             end
+    #         end
+    #         comma[end] = L+1
+    #         for i = 1:w-1
+    #             mastb[i,k] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+    #         end
+    #         k += 1
+    #     end
+    # end
+    # # do box plot of forward data first
+    # df = DataFrame(a=mastf[:,1],b=mastf[:,2],c=mastf[:,3],d=mastf[:,4],e=mastf[:,5],f=mastf[:,6],g=mastf[:,7],h=mastf[:,8],i=mastf[:,9],j=mastf[:,10])
+    # @df df boxplot([:a :b :c :d :e :f :g :h :i :j],label=["" "" "" "" "" "" "" "" "" ""])
+    # hline!([acts[2,4]],label = L"\Delta S",xlabel=L"\Omega",ylabel="Entropy Produced",title="Ent Prod A→B")
+    # savefig("../Results/A2B.png")
+    # df = DataFrame(a=mastb[:,1],b=mastb[:,2],c=mastb[:,3],d=mastb[:,4],e=mastb[:,5],f=mastb[:,6],g=mastb[:,7],h=mastb[:,8],i=mastb[:,9],j=mastb[:,10])
+    # @df df boxplot([:a :b :c :d :e :f :g :h :i :j],label=["" "" "" "" "" "" "" "" "" ""])
+    # hline!([acts[2,8]],label = L"\Delta S",xlabel=L"\Omega",ylabel="Entropy Produced",title="Ent Prod B→A")
+    # savefig("../Results/B2A.png")
+    # a = (sum(mastf[:,1])-sum(mastb[:,1]))/100
+    # b = (sum(mastf[:,2])-sum(mastb[:,2]))/100
+    # c = (sum(mastf[:,3])-sum(mastb[:,3]))/100
+    # d = (sum(mastf[:,4])-sum(mastb[:,4]))/100
+    # e = (sum(mastf[:,5])-sum(mastb[:,5]))/100
+    # f = (sum(mastf[:,6])-sum(mastb[:,6]))/100
+    # g = (sum(mastf[:,7])-sum(mastb[:,7]))/100
+    # h = (sum(mastf[:,8])-sum(mastb[:,8]))/100
+    # i = (sum(mastf[:,9])-sum(mastb[:,9]))/100
+    # j = (sum(mastf[:,10])-sum(mastb[:,10]))/100
+    # scatter([1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0],[a b c d e f g h i j],label="",xlabel=L"\Omega",ylabel=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}")
+    # hline!([acts[2,4]-acts[2,8]],label="",title="Diff Ent Prod")
+    # savefig("../Results/Diff.png")
+    # Now do graph of different
+    p1 = plot(title="A→B",xlabel="Entropy Prod Langevin",ylabel="Entropy Prod Master")
+    p2 = plot(title="B→A",xlabel="Entropy Prod Langevin",ylabel="Entropy Prod Master")
+    p3 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",xlabel="Langevin",ylabel="Master")
+    I = [2,3,11,13,19,32,48]
+    for i = I
+        infile1 = "../Results/Fig3Data/Traj/$(i)testA2BMast.csv"
+        infile2 = "../Results/Fig3Data/Traj/$(i)testB2AMast.csv"
+        # Extract forward data
+        w = 101
+        mastf = zeros(w-1)
+        open(infile1, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
                 end
-            end
-            comma[end] = L+1
-            for i = 1:w-1
-                mastf[i,k] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-            end
-            k += 1
-        end
-    end
-    mastb = zeros(100,10)
-    open(infile2, "r") do in_file
-        # Use a for loop to process the rows in the input file one-by-one
-        k = 1
-        for line in eachline(in_file)
-            # parse line by finding commas
-            L = length(line)
-            comma = fill(0,w+1)
-            j = 1
-            for i = 1:L
-                if line[i] == ','
-                    j += 1
-                    comma[j] = i
+                comma[end] = L+1
+                for i = 1:w-1
+                    mastf[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
                 end
+                k += 1
             end
-            comma[end] = L+1
-            for i = 1:w-1
-                mastb[i,k] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-            end
-            k += 1
         end
+        # Then extract backwards data
+        mastb = zeros(w-1)
+        open(infile2, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w-1
+                    mastb[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+        # Now need to extract averages and standard deviations and plot against other data
+        mf = mean(mastf)
+        mb = mean(mastb)
+        sdf = stdm(mastf,mf;corrected=true)/sqrt(w-1)
+        sdb = stdm(mastb,mb;corrected=true)/sqrt(w-1)
+        m = mf - mb
+        sd = sqrt(sdf^2 + sdb^2)
+        plot!(p1,[acts[i,4]],[mf],yerror=sdf,label="")
+        plot!(p2,[acts[i,8]],[mb],yerror=sdb,label="")
+        plot!(p3,[acts[i,4]-acts[i,8]],[m],yerror=sd,label="")
     end
-    # do box plot of forward data first
-    df = DataFrame(a=mastf[:,1],b=mastf[:,2],c=mastf[:,3],d=mastf[:,4],e=mastf[:,5],f=mastf[:,6],g=mastf[:,7],h=mastf[:,8],i=mastf[:,9],j=mastf[:,10])
-    @df df boxplot([:a :b :c :d :e :f :g :h :i :j],label=["" "" "" "" "" "" "" "" "" ""])
-    hline!([acts[2,4]],label = L"\Delta S",xlabel=L"\Omega",ylabel="Entropy Produced")
-    savefig("../Results/test.png")
-    df = DataFrame(a=mastb[:,1],b=mastb[:,2],c=mastb[:,3],d=mastb[:,4],e=mastb[:,5],f=mastb[:,6],g=mastb[:,7],h=mastb[:,8],i=mastb[:,9],j=mastb[:,10])
-    @df df boxplot([:a :b :c :d :e :f :g :h :i :j],label=["" "" "" "" "" "" "" "" "" ""])
-    hline!([acts[2,8]],label = L"\Delta S",xlabel=L"\Omega",ylabel="Entropy Produced")
-    savefig("../Results/test2.png")
-    mast = mastf .- mastb
-    df = DataFrame(a=mast[:,1],b=mast[:,2],c=mast[:,3],d=mast[:,4],e=mast[:,5],f=mast[:,6],g=mast[:,7],h=mast[:,8],i=mast[:,9],j=mast[:,10])
-    @df df boxplot([:a :b :c :d :e :f :g :h :i :j],label=["" "" "" "" "" "" "" "" "" ""])
-    hline!([acts[2,4]-acts[2,8]],label = L"\Delta S",xlabel=L"\Omega",ylabel="Entropy Produced")
-    savefig("../Results/test3.png")
+    savefig(p1,"../Results/MultA2B.png")
+    savefig(p2,"../Results/MultB2A.png")
+    savefig(p3,"../Results/MultDiff.png")
     return(nothing)
 end
 

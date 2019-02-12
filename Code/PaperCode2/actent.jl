@@ -491,11 +491,11 @@ function plotting()
     # 2 for loops to loop over every file
     pyplot()
     p1 = plot(dpi=300,title="Toggle Switch Paths",xlabel="Concentration a",ylabel="Concentration b")
-    plot!(p1,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+    plot!(p1,titlefontsize=20,guidefontsize=16,legendfontsize=12,tickfontsize=14)
     p2 = plot(dpi=300,title="Toggle Switch Action Contributions",xlabel="Concentration a")
-    plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions")
+    plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions",tickfontsize=14)
     p3 = plot(dpi=300,title="Toggle Switch f Term Contributions",xlabel="Concentration a")
-    plot!(p3,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions")
+    plot!(p3,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions",tickfontsize=14)
     Act = [0.0,0.0]
     ΔS = [0.0,0.0]
     Af = zeros(600,2)
@@ -555,9 +555,11 @@ function plotting()
                 Tp = tims2[end]
                 path2 = timdis(tims2,x,NG,NM)
                 if j == 1
-                    plot!(p1,path2[:,1],path2[:,2],label=L"A\rightarrow B")
+                    plot!(p1,path2[:,1],path2[:,2],label=L"A\rightarrow B",color=1)
+                    plot!(p1,path2[515:516,1],path2[515:516,2],arrow=0.4,label="",color=1)
                 else
-                    plot!(p1,path2[:,1],path2[:,2],label=L"B\rightarrow A")
+                    plot!(p1,path2[:,1],path2[:,2],label=L"B\rightarrow A",color=2)
+                    plot!(p1,path2[85:86,1],path2[85:86,2],arrow=0.4,label="",color=2)
                 end
                 # find point that path reaches saddle Ns
                 Ns = 0
@@ -609,7 +611,7 @@ function plotting()
     scatter!(p1,[steads[N,1]],[steads[N,2]],markersize=6,markercolor=:white,label="")
     scatter!(p1,[steads[N,3]],[steads[N,4]],markersize=5,markercolor=:black,markershape=:x,label="")
     scatter!(p1,[steads[N,5]],[steads[N,6]],markersize=6,markercolor=:black,label="")
-    annotate!(p1,[(steads[N,5]+0.1,steads[N,6],text("A",20)),(steads[N,1],steads[N,2]+0.15,text("B",20))])
+    annotate!(p1,[(steads[N,5]+0.1,steads[N,6],text("B",20)),(steads[N,1],steads[N,2]+0.15,text("A",20))])
     savefig(p1,"../Results/Fig2Graphs/TogPath$(ARGS[2]).png")
     plot!(p2,path2[1:end-1,1],(Af[:,2]-Af[end:-1:1,1]),label=L"\mathcal{A}_{B\rightarrow A} - \mathcal{A}_{A\rightarrow B}",color=:red,style=:dash)
     plot!(p2,path2[1:end-1,1],ΔSf[end:-1:1,1]-ΔSf[:,2],label=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",color=:red)

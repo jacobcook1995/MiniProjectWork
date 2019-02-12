@@ -443,11 +443,11 @@ function plotting()
     # 2 for loops to loop over every file
     pyplot()
     p1 = plot(dpi=300,title="Schlögl Paths",xlabel="Time (t)",ylabel="Concentration x")
-    plot!(p1,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+    plot!(p1,titlefontsize=20,guidefontsize=16,legendfontsize=12,tickfontsize=14)
     p2 = plot(dpi=300,title="Schlögl Action Contributions",xlabel="Concentration x")
-    plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions")
+    plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions",tickfontsize=14)
     p3 = plot(dpi=300,title="Schlögl f Term Contributions",xlabel="Concentration x")
-    plot!(p3,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Contributions")
+    plot!(p3,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Contributions",tickfontsize=14)
     for i = N
         for j = 1:2
             if j == 1
@@ -487,11 +487,15 @@ function plotting()
                 # save time of path
                 Tp = tims2[end]
                 path2 = timdis(tims2,x,NG,NM)
-                # Okay now what to plot both graphs on same figure
                 if j == 1
-                    plot!(p1,tims2,path2,label="High → Low")
+                    plot!(p1,tims2,path2,label="High → Low",color=1)
+                    # now want to add arrows along the path indicating directions
+                    plot!(p1,tims2[100:101],path2[100:101],arrow=0.4,color=1,label="")
+                    plot!(p1,tims2[450:451],path2[450:451],arrow=0.4,color=1,label="")
                 else
-                    plot!(p1,tims2,path2,label="Low → High")
+                    plot!(p1,tims2,path2,label="Low → High",color=2)
+                    plot!(p1,tims2[150:151],path2[150:151],arrow=0.4,color=2,label="")
+                    plot!(p1,tims2[500:501],path2[500:501],arrow=0.4,color=2,label="")
                 end
                 # find point that path reaches saddle Ns
                 Ns = 0
@@ -546,7 +550,7 @@ function plotting()
     hline!(p1,[steads[N,3]],color=:black,linestyle=:dash,label="")
     hline!(p1,[steads[N,2]],color=:black,linestyle=:dot,label="Saddle")
     hline!(p1,[steads[N,1]],color=:black,linestyle=:solid,label="")
-    annotate!(p1,[(2.5,steads[N,3]+0.15,text("A",20)),(2.5,steads[N,1]-0.15,text("B",20))])
+    annotate!(p1,[(2.5,steads[N,3]+0.2,text("A",20)),(2.5,steads[N,1]-0.2,text("B",20))])
     savefig(p1,"../Results/Fig2Graphs/SchPath$(ARGS[2]).png")
     scatter!(p2,[steads[N,1]],[0.0],markersize=6,markercolor=:black,label="")
     scatter!(p2,[steads[N,2]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")

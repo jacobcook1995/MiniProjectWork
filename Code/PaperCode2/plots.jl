@@ -458,7 +458,17 @@ function main()
     # h = (sum(mastf[:,8])-sum(mastb[:,8]))/100
     # i = (sum(mastf[:,9])-sum(mastb[:,9]))/100
     # j = (sum(mastf[:,10])-sum(mastb[:,10]))/100
-    # scatter([1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0],[a b c d e f g h i j],label="",xlabel=L"\Omega",ylabel=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}")
+    # Ωss = [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0]
+    # means = [a b c d e f g h i j]
+    # errors = zeros(10)
+    # for i = 1:10
+    #     mf = mean(mastf[:,i])
+    #     mb = mean(mastb[:,i])
+    #     sdf = stdm(mastf[:,i],mf;corrected=true)/sqrt(w-1)
+    #     sdb = stdm(mastb,mb;corrected=true)/sqrt(w-1)
+    #     errors[i] = sqrt(sdf^2 + sdb^2)
+    # end
+    # plot(Ωss,means,yerror=errors,label="",xlabel=L"\Omega",ylabel=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}")
     # hline!([acts[2,4]-acts[2,8]],label="",title="Diff Ent Prod")
     # savefig("../Results/Diff.png")
     # Now do graph of different
@@ -527,6 +537,13 @@ function main()
         plot!(p2,[acts[i,8]],[mb],yerror=sdb,label="")
         plot!(p3,[acts[i,4]-acts[i,8]],[m],yerror=sd,label="")
     end
+    # add linear lines
+    x1 = -0.25:0.01:1.25
+    plot!(p1,x1,x1,label="")
+    x2 = -0.5:0.1:1.5
+    plot!(p2,x2,x2,label="")
+    x3 = -1.0:0.1:1.5
+    plot!(p3,x3,x3,label="")
     savefig(p1,"../Results/MultA2B.png")
     savefig(p2,"../Results/MultB2A.png")
     savefig(p3,"../Results/MultDiff.png")

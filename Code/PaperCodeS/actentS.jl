@@ -444,10 +444,12 @@ function plotting()
     pyplot()
     p1 = plot(dpi=300,title="Schlögl Paths",xlabel="Time (t)",ylabel="Concentration x")
     plot!(p1,titlefontsize=20,guidefontsize=16,legendfontsize=12,tickfontsize=14)
+    mag1 = 10.0^3
+    Smag1 = L"(10^{-3}\,1/\Omega)"
     p2 = plot(dpi=300,title="Schlögl Action Contributions",xlabel="Concentration x")
-    plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions",tickfontsize=14)
-    p3 = plot(dpi=300,title="Schlögl f Term Contributions",xlabel="Concentration x")
-    plot!(p3,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Contributions",tickfontsize=14)
+    plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions $(Smag1)",tickfontsize=14)
+    p3 = plot(dpi=300,title="Schlögl Production and Flow Terms",xlabel="Concentration x")
+    plot!(p3,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions $(Smag1)",tickfontsize=14)
     for i = N
         for j = 1:2
             if j == 1
@@ -521,21 +523,21 @@ function plotting()
                 # finds the action in a more conventional manner and then can also get entropy production from this
                 Act, ΔS, Af, ΔSf, KE, PE, prods, flows = act(path2,Tp,b,Dmin,ps[i,:],Ns)
                 if j == 1
-                    plot!(p2,path2[1:end-1],Af,label=L"\mathcal{A}_{B\rightarrow A}",color=:blue,style=:dash)
-                    plot!(p2,path2[1:end-1],ΔSf,label=L"\Delta S_{B\rightarrow A}",color=:red,style=:dash)
-                    plot!(p2,path2[1:end-1],KE,label=L"KE_{B\rightarrow A}",color=:yellow,style=:dash)
-                    plot!(p2,path2[1:end-1],PE,label=L"PE_{B\rightarrow A}",color=:orange,style=:dash)
-                    plot!(p3,path2[1:end-1],prods,label="prods A→B")
-                    plot!(p3,path2[1:end-1],flows,label="flows A→B")
-                    plot!(p3,path2[1:end-1],prods.-flows,label="prods-flows A→B")
+                    plot!(p2,path2[1:end-1],Af*mag1,label="",color=1,style=:dash)
+                    plot!(p2,path2[1:end-1],ΔSf*mag1,label="",color=2,style=:dash)
+                    plot!(p2,path2[1:end-1],KE*mag1,label="",color=3,style=:dash)
+                    plot!(p2,path2[1:end-1],PE*mag1,label="",color=4,style=:dash)
+                    plot!(p3,path2[1:end-1],prods*mag1,label="",color=1,style=:dash)
+                    plot!(p3,path2[1:end-1],flows*mag1,label="",color=2,style=:dash)
+                    plot!(p3,path2[1:end-1],(prods.-flows)*mag1,label="",color=3,style=:dash)
                 else
-                    plot!(p2,path2[1:end-1],Af,label=L"\mathcal{A}_{A\rightarrow B}",color=:blue)
-                    plot!(p2,path2[1:end-1],ΔSf,label=L"\Delta S_{A\rightarrow B}",color=:red)
-                    plot!(p2,path2[1:end-1],KE,label=L"KE_{A\rightarrow B}",color=:yellow)
-                    plot!(p2,path2[1:end-1],PE,label=L"PE_{A\rightarrow B}",color=:orange)
-                    plot!(p3,path2[1:end-1],prods,label="prods B→A")
-                    plot!(p3,path2[1:end-1],flows,label="flows B→A")
-                    plot!(p3,path2[1:end-1],prods.-flows,label="prods-flows B→A")
+                    plot!(p2,path2[1:end-1],Af*mag1,label=L"\mathcal{A}",color=1)
+                    plot!(p2,path2[1:end-1],ΔSf*mag1,label=L"\Delta S",color=2)
+                    plot!(p2,path2[1:end-1],KE*mag1,label=L"KE",color=3)
+                    plot!(p2,path2[1:end-1],PE*mag1,label=L"PE",color=4)
+                    plot!(p3,path2[1:end-1],prods*mag1,label=L"EP",color=1)
+                    plot!(p3,path2[1:end-1],flows*mag1,label=L"EF",color=2)
+                    plot!(p3,path2[1:end-1],(prods.-flows)*mag1,label=L"(EP-EF)",color=3)
                 end
             else # Tell users about missing files
                 if j == 1
@@ -555,7 +557,11 @@ function plotting()
     scatter!(p2,[steads[N,1]],[0.0],markersize=6,markercolor=:black,label="")
     scatter!(p2,[steads[N,2]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
     scatter!(p2,[steads[N,3]],[0.0],markersize=6,markercolor=:white,label="")
+    plot!(p2,ylims=(-8.0,8.0))
     savefig(p2,"../Results/Fig2Graphs/SchAct$(ARGS[2]).png")
+    scatter!(p3,[steads[N,1]],[0.0],markersize=6,markercolor=:black,label="")
+    scatter!(p3,[steads[N,2]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
+    scatter!(p3,[steads[N,3]],[0.0],markersize=6,markercolor=:white,label="")
     savefig(p3,"../Results/Fig2Graphs/SchfTerms$(ARGS[2]).png")
     return(nothing)
 end

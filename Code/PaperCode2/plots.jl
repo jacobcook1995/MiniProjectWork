@@ -197,7 +197,7 @@ function main()
             wrong = vcat(wrong,i)
         end
     end
-    pyplot(dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+    pyplot(dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12,tickfontsize=14)
     # scatter([ent[:,3]],[Ds[:,1]],label="")
     # scatter!([ent[:,4]],[Ds[:,3]],label="")
     # plot!(xlabel=L"\dot{S}",ylabel=L"mag(D)",title="Magnitude of D vs Entropy Production")
@@ -216,9 +216,9 @@ function main()
     # scatter!([ent[:,4]],[shent[:,2]],label="")
     # plot!(xlabel=L"\dot{S}",ylabel=L"S",title="Ent vs Ent Prod")
     # savefig("../Results/EntvsSchnak.png")
-    # scatter([ent[:,3].-ent[:,4]],[shent[:,1].-shent[:,2]],label="",ylim=(-10,10))
-    # plot!(xlabel=L"\dot{S}_h-\dot{S}_l",ylabel=L"S_h - S_l",title=L"\Delta S\;vs\;\Delta\dot{S}",top_margin=8.0mm)
-    # savefig("../Results/DiffEnt.png")
+    scatter([ent[:,3].-ent[:,4]],[shent[:,1].-shent[:,2]],label="",ylim=(-10,10))
+    plot!(xlabel=L"\dot{S}_h-\dot{S}_l",ylabel=L"S_h - S_l",title=L"\Delta S\;vs\;\Delta\dot{S}",top_margin=8.0mm)
+    savefig("../Results/DiffEnt.png")
     # # plot scatter graph of the wrong points
     # plot(xlabel="Ent Prod Rate Term",ylabel="Ent Prod Rate Traj",title="Mismatched points")
     # for i = 1:length(wrong)
@@ -283,16 +283,16 @@ function main()
             end
         end
     end
-    # # plot change in action vs entropy produced
-    # xlab = L"ΔS_{h\rightarrow l} - ΔS_{l\rightarrow h}"
-    # ylab = L"\mathcal{A}_{h\rightarrow l} - \mathcal{A}_{l\rightarrow h}"
-    # plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S")
-    # for i = 1:l
-    #     if datayn[i] == true
-    #         scatter!([acts[i,4]-acts[i,8]],[acts[i,2]-acts[i,6]],label="",color=1)
-    #     end
-    # end
-    # savefig("../Results/DiffActvsDiffEntProd.png")
+    # plot change in action vs entropy produced
+    xlab = L"ΔS_{h\rightarrow l} - ΔS_{l\rightarrow h}"
+    ylab = L"\mathcal{A}_{h\rightarrow l} - \mathcal{A}_{l\rightarrow h}"
+    plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S")
+    for i = 1:l
+        if datayn[i] == true
+            scatter!([acts[i,4]-acts[i,8]],[acts[i,2]-acts[i,6]],label="",color=1)
+        end
+    end
+    savefig("../Results/DiffActvsDiffEntProd.png")
     # plot(xlabel="Entropy Produced",ylabel="Action",title="Action vs Entropy Produced")
     # for i = 1:l
     #     if datayn[i] == true
@@ -312,7 +312,7 @@ function main()
     # labx = L"\dot{S}_h - \dot{S}_l"
     # plot(xlabel=labx,ylabel=lab,title="$(lab) vs $(labx)")
     # for i = 1:l
-    #     if datayn[i] == true &&
+    #     if datayn[i] == true
     #         scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="",color=1)
     #     end
     # end
@@ -365,26 +365,26 @@ function main()
             ind = vcat(ind,i)
         end
     end
-    # p1 = plot(title=L"\ln{\frac{p_{h}}{p_{l}}}\;vs\;\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}")
+    p1 = plot(title=L"\ln{\frac{p_{h}}{p_{l}}}\;vs\;\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}")
     # p2 = plot(title="Residuals")
-    # for i = ind
-    #     scatter!(p1,[probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="",color=1)
+    for i = ind
+        scatter!(p1,[probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="",color=1)
     #     scatter!(p2,[probs[i,3]*(acts[i,2]-acts[i,6])-log(probs[i,1]/probs[i,2])],[0.0],label="")
-    # end
-    # x = -7.5:0.1:4.5
-    # plot!(p1,x,x,label="",xlabel=L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}",ylabel=L"\ln{\frac{p_{h}}{p_{l}}}")
-    # savefig(p1,"../Results/Linear.png")
+    end
+    x = -7.5:0.1:4.5
+    plot!(p1,x,x,label="",xlabel=L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}",ylabel=L"\ln{\frac{p_{h}}{p_{l}}}")
+    savefig(p1,"../Results/Linear.png")
     # savefig(p2,"../Results/resid.png")
     # now try to get log ratio of state probailities to plot against differences in entropy production
-    # ylab = L"\ln{\frac{p_{h}}{p_{l}}}"
-    # xlab = L"\dot{S}_h - \dot{S}_l"
-    # plot(xlabel=xlab,ylabel=ylab,title="$(ylab) vs $(xlab)")
-    # for i = ind
-    #     if datayn[i] == true
-    #         scatter!([ent[i,3]-ent[i,4]],[log(probs[i,2]/probs[i,1])/probs[i,3]],label="",color=1)
-    #     end
-    # end
-    # savefig("../Results/LogProbvsDiffEnt.png")
+    ylab = L"\ln{\frac{p_{h}}{p_{l}}}"
+    xlab = L"\dot{S}_h - \dot{S}_l"
+    plot(xlabel=xlab,ylabel=ylab,title="$(ylab) vs $(xlab)")
+    for i = ind
+        if datayn[i] == true
+            scatter!([ent[i,3]-ent[i,4]],[log(probs[i,2]/probs[i,1])/probs[i,3]],label="",color=1)
+        end
+    end
+    savefig("../Results/LogProbvsDiffEnt.png")
     # # now try to get log ratio of rate of switching to plot against differences in entropy production
     # lab = L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}"
     # plot(xlabel=L"\dot{S}_h - \dot{S}_l",ylabel=lab,title="Log ratio of switching vs Ent Prod Diff")
@@ -477,13 +477,14 @@ function main()
     # Now do graph of different
     p1 = plot(title="A→B",xlabel="Entropy Prod Langevin",ylabel="Entropy Prod Master")
     p2 = plot(title="B→A",xlabel="Entropy Prod Langevin",ylabel="Entropy Prod Master")
-    p3 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",xlabel="Langevin",ylabel="Master")
+    p3 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",xlabel="E_P",ylabel="Master")
     I = [2,3,11,13,19,32,48]
     for i = I
         infile1 = "../Results/Fig3Data/Traj/$(i)testA2BMast.csv"
         infile2 = "../Results/Fig3Data/Traj/$(i)testB2AMast.csv"
         # Extract forward data
-        w = 101
+        ne = 101
+        w = ne
         mastf = zeros(w-1)
         open(infile1, "r") do in_file
             # Use a for loop to process the rows in the input file one-by-one
@@ -529,23 +530,72 @@ function main()
                 k += 1
             end
         end
+        # now read in productions and flows for foward and backwards paths
+        infile1 = "../Results/Fig3Data/Traj/$(i)testA2Bpf.csv"
+        infile2 = "../Results/Fig3Data/Traj/$(i)testB2Apf.csv"
+        # Extract forward data
+        w = 2
+        pff = zeros(w)
+        open(infile1, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w
+                    pff[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+        pfb = zeros(w)
+        open(infile2, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w
+                    pfb[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
         # Now need to extract averages and standard deviations and plot against other data
         mf = mean(mastf)
         mb = mean(mastb)
-        sdf = stdm(mastf,mf;corrected=true)/sqrt(w-1)
-        sdb = stdm(mastb,mb;corrected=true)/sqrt(w-1)
+        sdf = stdm(mastf,mf;corrected=true)/sqrt(ne-1)
+        sdb = stdm(mastb,mb;corrected=true)/sqrt(ne-1)
         m = mf - mb
         sd = sqrt(sdf^2 + sdb^2)
-        plot!(p1,[acts[i,4]],[mf],yerror=sdf,label="")
-        plot!(p2,[acts[i,8]],[mb],yerror=sdb,label="")
-        plot!(p3,[acts[i,4]-acts[i,8]],[m],yerror=sd,label="")
+        plot!(p1,[pff[1]],[mf],yerror=sdf,label="")
+        plot!(p2,[pfb[1]],[mb],yerror=sdb,label="")
+        plot!(p3,[pff[1]-pfb[1]],[m],yerror=sd,label="")
     end
     # add linear lines
-    x1 = -0.25:0.01:1.25
+    x1 = -0.0:1.0:800.0
     plot!(p1,x1,x1,label="")
-    x2 = -0.5:0.1:1.5
+    x2 = -0.0:1.0:800.0
     plot!(p2,x2,x2,label="")
-    x3 = -1.0:0.1:1.5
+    x3 = -8.0:0.1:4.0
     plot!(p3,x3,x3,label="")
     savefig(p1,"../Results/MultA2B.png")
     savefig(p2,"../Results/MultB2A.png")

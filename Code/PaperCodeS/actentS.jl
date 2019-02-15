@@ -208,6 +208,8 @@ function act(x::Array{Float64,1},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::A
     PE = zeros(N)
     prods = zeros(N)
     flows = zeros(N)
+    fs = zeros(N)
+    qs = zeros(N)
     X, y = symbols("X y")
     desd = false
     f1 = 0.0
@@ -234,6 +236,8 @@ function act(x::Array{Float64,1},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::A
         ΔSf[i] += 2*qdot*Dm[1,1]*bt[1]*dt
         KE[i] += 0.5*qdot*Dm[1,1]*qdot*dt
         PE[i] += 0.5*bt[1]*Dm[1,1]*bt[1]*dt
+        fs[i] += bt[1]
+        qs[i] += qdot
         if desd == false
             prods[i] += 4*f1*Dm[1,1]*f2*dt
             flows[i] += 2*(f1*Dm[1,1]*f1 + f2*Dm[1,1]*f2)*dt
@@ -244,7 +248,7 @@ function act(x::Array{Float64,1},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::A
     end
     Ac = sum(Acf)
     ΔS = sum(ΔSf)
-    return(Ac,ΔS,Acf,ΔSf,KE,PE,prods,flows)
+    return(Ac,ΔS,Acf,ΔSf,KE,PE,prods,flows,fs,qs)
 end
 
 function main()
@@ -449,7 +453,9 @@ function plotting()
     p2 = plot(dpi=300,title="Schlögl Action Contributions",xlabel="Concentration x")
     plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions $(Smag1)",tickfontsize=14)
     p3 = plot(dpi=300,title="Schlögl Production and Flow Terms",xlabel="Concentration x")
+    qlab = L"\dot{q}"
     plot!(p3,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions $(Smag1)",tickfontsize=14)
+    p4 = plot(dpi=300,title="Comparison of f and $(qlab) for Schlögl model",xlabel="Concentration x",ylabel="Magnitude (Copy Number/s)")
     for i = N
         for j = 1:2
             if j == 1
@@ -521,7 +527,7 @@ function plotting()
                 end
                 # now use a function that takes the time discretised path and
                 # finds the action in a more conventional manner and then can also get entropy production from this
-                Act, ΔS, Af, ΔSf, KE, PE, prods, flows = act(path2,Tp,b,Dmin,ps[i,:],Ns)
+                Act, ΔS, Af, ΔSf, KE, PE, prods, flows, fs, qs = act(path2,Tp,b,Dmin,ps[i,:],Ns)
                 if j == 1
                     plot!(p2,path2[1:end-1],Af*mag1,label="",color=1,style=:dash)
                     plot!(p2,path2[1:end-1],ΔSf*mag1,label="",color=2,style=:dash)
@@ -530,6 +536,8 @@ function plotting()
                     plot!(p3,path2[1:end-1],prods*mag1,label="",color=1,style=:dash)
                     plot!(p3,path2[1:end-1],flows*mag1,label="",color=2,style=:dash)
                     plot!(p3,path2[1:end-1],(prods.-flows)*mag1,label="",color=3,style=:dash)
+                    plot!(p4,path2[1:end-1],fs,label=L"f",color=1)
+                    plot!(p4,path2[1:end-1],qs,label=L"\dot{q}",color=2)
                 else
                     plot!(p2,path2[1:end-1],Af*mag1,label=L"\mathcal{A}",color=1)
                     plot!(p2,path2[1:end-1],ΔSf*mag1,label=L"\Delta S",color=2)
@@ -563,6 +571,10 @@ function plotting()
     scatter!(p3,[steads[N,2]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
     scatter!(p3,[steads[N,3]],[0.0],markersize=6,markercolor=:white,label="")
     savefig(p3,"../Results/Fig2Graphs/SchfTerms$(ARGS[2]).png")
+    scatter!(p4,[steads[N,1]],[0.0],markersize=6,markercolor=:black,label="")
+    scatter!(p4,[steads[N,2]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
+    scatter!(p4,[steads[N,3]],[0.0],markersize=6,markercolor=:white,label="")
+    savefig(p4,"../Results/Fig2Graphs/Schtest$(ARGS[2]).png")
     return(nothing)
 end
 

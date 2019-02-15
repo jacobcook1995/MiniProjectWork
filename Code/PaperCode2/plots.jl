@@ -312,7 +312,7 @@ function main()
     # labx = L"\dot{S}_h - \dot{S}_l"
     # plot(xlabel=labx,ylabel=lab,title="$(lab) vs $(labx)")
     # for i = 1:l
-    #     if datayn[i] == true
+    #     if datayn[i] == true &&
     #         scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="",color=1)
     #     end
     # end
@@ -376,11 +376,12 @@ function main()
     # savefig(p1,"../Results/Linear.png")
     # savefig(p2,"../Results/resid.png")
     # now try to get log ratio of state probailities to plot against differences in entropy production
-    # lab = L"\ln{\frac{p_{h}}{p_{l}}}"
-    # plot(xlabel=L"\dot{S}_h - \dot{S}_l",ylabel=lab,title="Log ratio of state probs vs Ent Prod Diff")
+    # ylab = L"\ln{\frac{p_{h}}{p_{l}}}"
+    # xlab = L"\dot{S}_h - \dot{S}_l"
+    # plot(xlabel=xlab,ylabel=ylab,title="$(ylab) vs $(xlab)")
     # for i = ind
     #     if datayn[i] == true
-    #         scatter!([ent[i,3]-ent[i,4]],[log(probs[i,2]/probs[i,1])/probs[i,3]],label="")
+    #         scatter!([ent[i,3]-ent[i,4]],[log(probs[i,2]/probs[i,1])/probs[i,3]],label="",color=1)
     #     end
     # end
     # savefig("../Results/LogProbvsDiffEnt.png")

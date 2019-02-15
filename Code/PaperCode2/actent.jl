@@ -330,10 +330,12 @@ function main()
         for j = 1:2
             if j == 1
                 infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2B.csv"
-                outfile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BD.csv"
+                outfile1 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BD.csv"
+                outfile2 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2Bpf.csv"
             else
                 infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2A.csv"
-                outfile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AD.csv"
+                outfile1 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AD.csv"
+                outfile2 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2Apf.csv"
             end
             # check if file
             if isfile(infile)
@@ -382,12 +384,17 @@ function main()
                 Ns = 300 # fudge
                 # now use a function that takes the time discretised path and
                 # finds the action in a more conventional manner and then can also get entropy production from this
-                Act, ΔS = act(path2,Tp,b,Dmin,ps[i,:],Ns)
+                # Act, ΔS = act(path2,Tp,b,Dmin,ps[i,:],Ns)
+                Act, ΔS, _, _, _, _, prods, flows = act(path2,Tp,b,Dmin,ps[i,:],Ns)
                 # and write out the new data to a new file
-                out_file = open(outfile, "w")
-                line = "$(Tp),$(ActS),$(Act),$(ΔS)\n"
-                write(out_file, line)
-                close(out_file)
+                out_file1 = open(outfile1, "w")
+                line1 = "$(Tp),$(ActS),$(Act),$(ΔS)\n"
+                write(out_file1,line1)
+                close(out_file1)
+                out_file2 = open(outfile2, "w")
+                line2 = "$(sum(prods)),$(sum(flows))\n"
+                write(out_file2,line2)
+                close(out_file2)
             else # Tell users about missing files
                 if j == 1
                     println("No A to B path for $(i)")
@@ -628,5 +635,5 @@ function plotting()
     return(nothing)
 end
 
-# @time main()
-@time plotting()
+@time main()
+# @time plotting()

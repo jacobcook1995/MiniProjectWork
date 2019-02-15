@@ -14,6 +14,7 @@ import PyPlot
 using StatsPlots
 using DataFrames
 using Statistics
+using Plots.PlotMeasures
 
 function main()
     println("Compiled, Starting script.")
@@ -215,8 +216,8 @@ function main()
     # scatter!([ent[:,4]],[shent[:,2]],label="")
     # plot!(xlabel=L"\dot{S}",ylabel=L"S",title="Ent vs Ent Prod")
     # savefig("../Results/EntvsSchnak.png")
-    # scatter([ent[:,3].-ent[:,4]],[shent[:,1].-shent[:,2]],label="",ylim=(-100,100))
-    # plot!(xlabel=L"\dot{S}_h-\dot{S}_l",ylabel=L"S_h - S_l",title="Difference in Entropy vs Production")
+    # scatter([ent[:,3].-ent[:,4]],[shent[:,1].-shent[:,2]],label="",ylim=(-10,10))
+    # plot!(xlabel=L"\dot{S}_h-\dot{S}_l",ylabel=L"S_h - S_l",title=L"\Delta S\;vs\;\Delta\dot{S}",top_margin=8.0mm)
     # savefig("../Results/DiffEnt.png")
     # # plot scatter graph of the wrong points
     # plot(xlabel="Ent Prod Rate Term",ylabel="Ent Prod Rate Traj",title="Mismatched points")
@@ -284,11 +285,11 @@ function main()
     end
     # # plot change in action vs entropy produced
     # xlab = L"ΔS_{h\rightarrow l} - ΔS_{l\rightarrow h}"
-    # ylab = L"A_{h\rightarrow l} - A_{l\rightarrow h}"
-    # plot(xlabel=xlab,ylabel=ylab,title="Diff Action vs Diff Entropy Produced")
+    # ylab = L"\mathcal{A}_{h\rightarrow l} - \mathcal{A}_{l\rightarrow h}"
+    # plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S")
     # for i = 1:l
     #     if datayn[i] == true
-    #         scatter!([acts[i,4]-acts[i,8]],[acts[i,2]-acts[i,6]],label="")
+    #         scatter!([acts[i,4]-acts[i,8]],[acts[i,2]-acts[i,6]],label="",color=1)
     #     end
     # end
     # savefig("../Results/DiffActvsDiffEntProd.png")
@@ -308,10 +309,11 @@ function main()
     # savefig("../Results/ActvsActapprox.png")
     # # now try to get log ratio of rate of switching to plot against differences in entropy production
     # lab = L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}"
-    # plot(xlabel=L"\dot{S}_h - \dot{S}_l",ylabel=lab,title="Log ratio of switching vs Ent Prod Diff")
+    # labx = L"\dot{S}_h - \dot{S}_l"
+    # plot(xlabel=labx,ylabel=lab,title="$(lab) vs $(labx)")
     # for i = 1:l
     #     if datayn[i] == true
-    #         scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="")
+    #         scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="",color=1)
     #     end
     # end
     # savefig("../Results/LogStabvsDiffEnt.png")
@@ -363,10 +365,10 @@ function main()
             ind = vcat(ind,i)
         end
     end
-    # p1 = plot(title="Predicted vs Actual Occupation")
+    # p1 = plot(title=L"\ln{\frac{p_{h}}{p_{l}}}\;vs\;\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}")
     # p2 = plot(title="Residuals")
     # for i = ind
-    #     scatter!(p1,[probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="")
+    #     scatter!(p1,[probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="",color=1)
     #     scatter!(p2,[probs[i,3]*(acts[i,2]-acts[i,6])-log(probs[i,1]/probs[i,2])],[0.0],label="")
     # end
     # x = -7.5:0.1:4.5

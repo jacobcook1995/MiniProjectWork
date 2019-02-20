@@ -617,6 +617,7 @@ function plotting()
             end
         end
     end
+    # Start plotting here
     scatter!(p1,[steads[N,1]],[steads[N,2]],markersize=6,markercolor=:white,label="")
     scatter!(p1,[steads[N,3]],[steads[N,4]],markersize=5,markercolor=:black,markershape=:x,label="")
     scatter!(p1,[steads[N,5]],[steads[N,6]],markersize=6,markercolor=:black,label="",legendfontrotation=90.0)

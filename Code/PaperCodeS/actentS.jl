@@ -456,6 +456,7 @@ function plotting()
     qlab = L"\dot{q}"
     plot!(p3,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions $(Smag1)",tickfontsize=14)
     p4 = plot(dpi=300,title="Comparison of f and $(qlab) for Schlögl model",xlabel="Concentration x",ylabel="Magnitude (Copy Number/s)")
+    p5 = plot(dpi=300,grid=false,ticks=false,xaxis=false,yaxis=false)
     for i = N
         for j = 1:2
             if j == 1
@@ -538,14 +539,17 @@ function plotting()
                     plot!(p3,path2[1:end-1],(prods.-flows)*mag1,label="",color=3,style=:dash)
                     plot!(p4,path2[1:end-1],fs,label=L"f",color=1)
                     plot!(p4,path2[1:end-1],qs,label=L"\dot{q}",color=2)
+                    plot!(p5,path2[1:end-1],fs,label="",color=1)
+                    plot!(p5,path2[1:end-1],qs,label="",color=2)
+                    annotate!(p5,[(path2[68],fs[68]-0.5,text(L"f",20)),(path2[68],qs[68]+0.5,text(L"\dot{q}",20))])
                 else
                     plot!(p2,path2[1:end-1],Af*mag1,label=L"\mathcal{A}",color=1)
                     plot!(p2,path2[1:end-1],ΔSf*mag1,label=L"\Delta S",color=2)
-                    plot!(p2,path2[1:end-1],KE*mag1,label=L"KE",color=3)
-                    plot!(p2,path2[1:end-1],PE*mag1,label=L"PE",color=4)
-                    plot!(p3,path2[1:end-1],prods*mag1,label=L"EP",color=1)
-                    plot!(p3,path2[1:end-1],flows*mag1,label=L"EF",color=2)
-                    plot!(p3,path2[1:end-1],(prods.-flows)*mag1,label=L"(EP-EF)",color=3)
+                    plot!(p2,path2[1:end-1],KE*mag1,label="KE",color=3)
+                    plot!(p2,path2[1:end-1],PE*mag1,label="PE",color=4)
+                    plot!(p3,path2[1:end-1],prods*mag1,label="EP",color=1)
+                    plot!(p3,path2[1:end-1],flows*mag1,label="EF",color=2)
+                    plot!(p3,path2[1:end-1],(prods.-flows)*mag1,label="EP-EF",color=3)
                 end
             else # Tell users about missing files
                 if j == 1
@@ -574,7 +578,11 @@ function plotting()
     scatter!(p4,[steads[N,1]],[0.0],markersize=6,markercolor=:black,label="")
     scatter!(p4,[steads[N,2]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
     scatter!(p4,[steads[N,3]],[0.0],markersize=6,markercolor=:white,label="")
-    savefig(p4,"../Results/Fig2Graphs/Schtest$(ARGS[2]).png")
+    savefig(p4,"../Results/Fig2Graphs/Schfqdot$(ARGS[2]).png")
+    scatter!(p5,[steads[N,1]],[0.0],markersize=6,markercolor=:black,label="")
+    scatter!(p5,[steads[N,2]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
+    scatter!(p5,[steads[N,3]],[0.0],markersize=6,markercolor=:white,label="")
+    savefig(p5,"../Results/Fig2Graphs/Schredfqdot$(ARGS[2]).png")
     return(nothing)
 end
 

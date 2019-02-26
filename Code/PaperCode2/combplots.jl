@@ -309,6 +309,11 @@ function main()
         end
     end
     # now read in probabilities for Schlögl model
+    infile = "../Results/Fig3DataS/$(ARGS[2])probsS.csv"
+    if ~isfile(infile)
+        println("Error: No file of Schlögl probabilities to be read.")
+        return(nothing)
+    end
     l = countlines(infile)
     w = 3
     Sprobs = zeros(l,w)

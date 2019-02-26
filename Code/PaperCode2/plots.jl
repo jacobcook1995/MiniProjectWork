@@ -307,16 +307,6 @@ function main()
     #     end
     # end
     # savefig("../Results/ActvsActapprox.png")
-    # # now try to get log ratio of rate of switching to plot against differences in entropy production
-    # lab = L"\ln{\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}}}"
-    # labx = L"\dot{S}_h - \dot{S}_l"
-    # plot(xlabel=labx,ylabel=lab,title="$(lab) vs $(labx)")
-    # for i = 1:l
-    #     if datayn[i] == true
-    #         scatter!([ent[i,3]-ent[i,4]],[acts[i,6]-acts[i,2]],label="",color=1)
-    #     end
-    # end
-    # savefig("../Results/LogStabvsDiffEnt.png")
     # now plot differnce in entropy production along path vs differnce at steady states
     # lab = L"ΔS_{h\rightarrow l} - ΔS_{l\rightarrow h}"
     # plot(xlabel=L"\dot{S}_h - \dot{S}_l",ylabel=lab,title="Diff in Path Ent Prod vs Steady State")
@@ -333,7 +323,7 @@ function main()
         println("Error: No file of probabilities to be read.")
         return(nothing)
     end
-    # now read in entropies
+    # now read in probabilities
     l = countlines(infile)
     w = 3
     probs = zeros(l,w)

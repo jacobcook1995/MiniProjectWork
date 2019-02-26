@@ -332,9 +332,10 @@ function main()
                 # save time of path
                 Tp = tims2[end]
                 path2 = timdis(tims2,x,NG,NM)
+                Ns = convert(Int64,NM/2)
                 # now use a function that takes the time discretised path and
                 # finds the action in a more conventional manner and then can also get entropy production from this
-                Act, ΔS = act(path2,Tp,b,Dmin)
+                Act, ΔS = act(path2,Tp,b,Dmin,ps[i,:],Ns)
                 # and write out the new data to a new file
                 out_file = open(outfile, "w")
                 line = "$(Tp),$(ActS),$(Act),$(ΔS)\n"

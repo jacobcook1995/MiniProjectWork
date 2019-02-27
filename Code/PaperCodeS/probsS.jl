@@ -36,7 +36,7 @@ function step(rates::Array{Float64,1},vars::Int64)
     return(vars)
 end
 
-function gillespie(stead::Float64,mid::Float64,ps::Array{Float64,1},noits::Int64,Ω::Float64)
+function gillespie(stead1::Float64,mid::Float64,stead2::Float64,ps::Array{Float64,1},noits::Int64,Ω::Float64)
     # extract all parameters and then rescale
     # ps = [ k1, K1, k2, K2 ]
     k1 = ps[1]*Ω
@@ -47,14 +47,21 @@ function gillespie(stead::Float64,mid::Float64,ps::Array{Float64,1},noits::Int64
     times = zeros(2)
     vars = fill(0,2)
     sad = round(Int64,mid*Ω)
-    star = round(Int64,stead*Ω)
+    star = round(Int64,stead1*Ω)
+    fin = round(Int64,stead2*Ω)
     vars[1] = star
     th = 0
     tl = 0
-    if star > sad
+    if star >= sad
         high = true
+        if sad - fin < 2
+            sad = sad + 2
+        end
     else
         high = false
+        if sad - star < 2
+            sad = sad + 2 # step to avoid overlapping saddle points
+        end
     end
     N = 0 # number of switches
     # run gillespie loop
@@ -73,7 +80,7 @@ function gillespie(stead::Float64,mid::Float64,ps::Array{Float64,1},noits::Int64
         # do gillepsie step
         vars[2] = step(rs,vars[1])
         # now need step to determine if state has switched
-        if high == true && vars[2] <= sad
+        if high == true && vars[2] <= sad # need to establish what is reasonable here
             high = false
             N += 1
         elseif high == false && vars[2] >= sad
@@ -160,50 +167,95 @@ function main()
             k += 1
         end
     end
+    # read in actions
+    acts = zeros(l,8)
+    datayn = fill(true,l)
+    for i = 1:l
+        for j = 1:2
+            # set file to read in
+            if j == 1
+                infile = "../Results/Fig3DataS/Traj/$(i)$(ARGS[1])h2lD.csv"
+            else
+                infile = "../Results/Fig3DataS/Traj/$(i)$(ARGS[1])l2hD.csv"
+            end
+            # check it exits
+            if isfile(infile)
+                w = 4
+                open(infile, "r") do in_file
+                    # only one line now
+                    for line in eachline(in_file)
+                        # parse line by finding commas
+                        L = length(line)
+                        comma = fill(0,w+1)
+                        m = 1
+                        for k = 1:L
+                            if line[k] == ','
+                                m += 1
+                                comma[m] = k
+                            end
+                        end
+                        comma[end] = L+1
+                        for k = 1:w
+                            acts[i,(j-1)*4+k] = parse(Float64,line[(comma[k]+1):(comma[k+1]-1)])
+                        end
+                    end
+                end
+            else # if file doesn't exist inform user of missing data and exclude from plots
+                if j == 1
+                    println("Missing data for run $(i) high A to high B")
+                    datayn[i] = false
+                else
+                    println("Missing data for run $(i) high B to high A")
+                    datayn[i] = false
+                end
+            end
+        end
+    end
     # now run gillespie to find plow and phigh
     probs = zeros(l,2)
     Ωs = zeros(l)
     noits = 100000000
-    thresh = 5000
-    for i = 1:l
+    thresh = 50000
+    inds = 1:17
+    inds = 18:34
+    inds = 35:51
+    inds = 52:68
+    inds = 69:85
+    inds = 86:100
+    for i = inds
         # need a step here to ensure that a resonable volume system is simulated
         println("Run $(i)")
         flush(stdout)
-        tot = (steads[i,1] + steads[i,3])/2
-        println(tot)
-        # this step is somwhat provisional, NEED TO THINK MORE
-        if tot >= 50.0
-            Ωs[i] = 0.125
-        elseif tot >= 25.0
-            Ωs[i] = 0.25
-        elseif tot >= 10.0
-            Ωs[i] = 0.5
-        elseif tot >= 7.5
-            Ωs[i] = 0.75
-        elseif tot >= 5.0
-            Ωs[i] = 1.0
-        elseif tot >= 2.0
-            Ωs[i] = 2.0
+        maxA = maximum([acts[i,2],acts[i,6]])
+        if maxA < 0.05
+            Ωs[i] = 7.0/maxA
+        elseif maxA > 2.5
+            Ωs[i] = 11.0/maxA
         else
-            Ωs[i] = 3.0
+            Ωs[i] = 10.0/maxA
         end
+        # maybe looking at far too small volumes here
         repeat = false
-        probs[i,1], probs[i,2], N, T = gillespie(steads[i,1],steads[i,2],ps[i,:],noits,Ωs[i])
+        probs[i,1], probs[i,2], N, T = gillespie(steads[i,1],steads[i,2],steads[i,3],ps[i,:],noits,Ωs[i])
+        println("N = $(N)")
+        flush(stdout)
         if N < thresh
             repeat = true
         end
         count = 0
         while repeat == true
             if count % 2 == 0
-                pht, plt, n, τ = gillespie(steads[i,3],steads[i,2],ps[i,:],noits,Ωs[i])
+                pht, plt, n, τ = gillespie(steads[i,3],steads[i,2],steads[i,1],ps[i,:],noits,Ωs[i])
             else
-                pht, plt, n, τ = gillespie(steads[i,1],steads[i,2],ps[i,:],noits,Ωs[i])
+                pht, plt, n, τ = gillespie(steads[i,1],steads[i,2],steads[i,3],ps[i,:],noits,Ωs[i])
             end
             count += 1
             probs[i,1] = (probs[i,1]*T + pht*τ)/(T+τ)
             probs[i,2] = (probs[i,2]*T + plt*τ)/(T+τ)
             T += τ
             N += n
+            println("N = $(N)")
+            flush(stdout)
             if N > thresh
                 repeat = false
             end
@@ -211,6 +263,41 @@ function main()
     end
     # now output data
     outfile = "../Results/Fig3DataS/$(ARGS[1])probsS.csv"
+    # Should have a step here so that I can replace lines
+    temprobs = zeros(l,3)
+    if isfile(outfile)
+        # now read in steady states
+        l = countlines(outfile)
+        w = 3
+        steads = zeros(l,w)
+        open(outfile, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w
+                    temprobs[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+    end
+    for i = 1:l
+        if ~any(x->x==i, inds)
+            probs[i,:] = temprobs[i,1:2]
+            Ωs[i] = temprobs[i,3]
+        end
+    end
     out_file = open(outfile, "w")
     for i = 1:l
         line = "$(probs[i,1]),$(probs[i,2]),$(Ωs[i])\n"

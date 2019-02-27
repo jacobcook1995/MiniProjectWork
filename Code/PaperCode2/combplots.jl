@@ -11,6 +11,7 @@ using LaTeXStrings
 import PyPlot
 using Statistics
 using Plots.PlotMeasures
+using LsqFit
 
 function main()
     println("Compiled, Starting script.")
@@ -268,7 +269,51 @@ function main()
             scatter!([Sacts[i,8]-Sacts[i,4]],[Sacts[i,2]-Sacts[i,6]],label="",color=2)
         end
     end
+    # Now want to fit two lines, one for each model
+    @. model(x,p) = p[1] + p[2]*x
+    # Need to reduce data here to only include the relevant points
+    xdataT = acts[datayn,8] .- acts[datayn,4]
+    ydataT = acts[datayn,2] .- acts[datayn,6]
+    p0 = [0.0,1.0]
+    fitT = curve_fit(model,xdataT,ydataT,p0)
+    yintT = coef(fitT)[1]
+    slopT = coef(fitT)[2]
+    xran = -18.0:1.0:52.0
+    plot!(xran,model(xran,[yintT,slopT]),label="",color=1)
+    # then same for Schlögl model
+    xdataS = Sacts[Sdatayn,8] .- Sacts[Sdatayn,4]
+    ydataS = Sacts[Sdatayn,2] .- Sacts[Sdatayn,6]
+    fitS = curve_fit(model,xdataS,ydataS,p0)
+    yintS = coef(fitS)[1]
+    slopS = coef(fitS)[2]
+    plot!(xran,model(xran,[yintS,slopS]),label="",color=2)
     savefig("../Results/DiffActvsDiffEntProd.png")
+    # Now calculate Pearson correlation coefficient
+    xbarT = sum(xdataT)/length(xdataT)
+    ybarT = sum(ydataT)/length(ydataT)
+    a = 0
+    b = 0
+    c = 0
+    for i = 1:length(xdataT)
+        a += (xdataT[i] - xbarT)*(ydataT[i] - ybarT)
+        b += (xdataT[i] - xbarT)^2
+        c += (ydataT[i] - ybarT)^2
+    end
+    r = a/sqrt(b*c)
+    println("Correlation Toggle Switch Act vs Ent: $(r)")
+    # repeat for Schlögl
+    xbarS = sum(xdataS)/length(xdataS)
+    ybarS = sum(ydataS)/length(ydataS)
+    a = 0
+    b = 0
+    c = 0
+    for i = 1:length(xdataS)
+        a += (xdataS[i] - xbarS)*(ydataS[i] - ybarS)
+        b += (xdataS[i] - xbarS)^2
+        c += (ydataS[i] - ybarS)^2
+    end
+    r = a/sqrt(b*c)
+    println("Correlation Schlögl Act vs Ent: $(r)")
     # Final section to read in probs and make a plot, this is necessarily rough at this point
     # Check there is a file of entropies to be read
     infile = "../Results/Fig3Data/$(ARGS[1])probs.csv"

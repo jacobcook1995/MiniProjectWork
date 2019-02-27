@@ -352,7 +352,7 @@ function main()
     for i = Sind
         scatter!([Sprobs[i,3]*(Sacts[i,2]-Sacts[i,6])],[log(Sprobs[i,1]/Sprobs[i,2])],label="",color=2)
     end
-    x = -7.5:0.1:4.5
+    x = -10.0:1.0:10.0
     plot!(x,x,label="",xlabel=L"\ln{(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}})}",ylabel=L"\ln{(\frac{p_{A}}{p_{B}})}")
     savefig("../Results/Linear.png")
     # now try to get log ratio of state probailities to plot against differences in entropy production

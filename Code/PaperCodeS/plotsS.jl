@@ -9,7 +9,6 @@
 using Plots
 using LaTeXStrings
 using PyCall
-pygui(:qt5)
 import PyPlot
 
 function main()
@@ -310,8 +309,8 @@ function main()
     end
     # define some variables
     Ωs = probs[:,3]
-    phs = 1/probs[:,1]
-    pls = 1/probs[:,2]
+    phs = probs[:,1]
+    pls = probs[:,2]
     # # plot change in action vs entropy produced
     # plot(xlabel="Difference in Entropy Produced",ylabel="Difference in Actions",title="Action Difference vs Difference in Entropy Produced")
     # for i = 1:l
@@ -350,6 +349,12 @@ function main()
         scatter!([ent[i,3]-ent[i,4]],[log(phs[i]/pls[i])/Ωs[i]],label="",color=:blue)
     end
     savefig("../Results/TrueLogStabvsDiffEntS.png")
+    x = -7.5:0.1:4.5
+    plot(x,x,label="",xlabel=L"\ln{(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}})}",ylabel=L"\ln{(\frac{p_{A}}{p_{B}})}")
+    for i = 1:l
+        scatter!([Ωs[i]*(acts[i,2]-acts[i,6])],[log(phs[i]/pls[i])],label="",color=2)
+    end
+    savefig("../Results/LinearS.png")
     return(nothing)
 end
 

@@ -149,18 +149,18 @@ function main()
     # combine entropy productions as one structure
     ent = zeros(l,4)
     for i = 1:l
-        ent[i,1] = prods[i,1]
-        ent[i,2] = prods[i,3]
-        ent[i,3] = ents[i,1]
-        ent[i,4] = ents[i,3]
+        ent[i,1] = prods[i,1] # A
+        ent[i,2] = prods[i,3] # B
+        ent[i,3] = ents[i,1] # A
+        ent[i,4] = ents[i,3] # B
     end
     # combine entropy productions as one structure for Schlögl model
     Sent = zeros(l,4)
     for i = 1:l
-        Sent[i,1] = Sprods[i,1]
-        Sent[i,2] = Sprods[i,3]
-        Sent[i,3] = Sents[i,1]
-        Sent[i,4] = Sents[i,3]
+        Sent[i,1] = Sprods[i,1] # A
+        Sent[i,2] = Sprods[i,3] # B
+        Sent[i,3] = Sents[i,1] # A
+        Sent[i,4] = Sents[i,3] # B
     end
     # Line that sets up pyplot and basic sizings
     pyplot(dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12,tickfontsize=14)
@@ -338,14 +338,14 @@ function main()
             k += 1
         end
     end
-    # now need to select inds based on whether probailities have been found yet
+    # now need to select inds based on whether probabilities have been found yet
     Sind = Array{Int64,1}(undef,0)
     for i = 1:l
         if Sprobs[i,3] != 0.0
             Sind = vcat(Sind,i)
         end
     end
-    plot(title=L"\ln{(\frac{p_{A}}{p_{B}})}\;vs\;\ln{(\frac{k_{l\rightarrow h}}{k_{h\rightarrow l}})}")
+    plot(title=L"\ln{(\frac{p_{A}}{p_{B}})}\;vs\;\ln{(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}})}")
     for i = ind
         scatter!([probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="",color=1)
     end

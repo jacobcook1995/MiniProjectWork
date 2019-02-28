@@ -216,12 +216,13 @@ function main()
     Ωs = zeros(l)
     noits = 100000000
     thresh = 50000
-    inds = 1:17
-    inds = 18:34
-    inds = 35:51
-    inds = 52:68
-    inds = 69:85
-    inds = 86:100
+    # These comments are obviously provisonal as they might run into slower or faster patches still
+    inds = 1:17 # Should finish on Friday
+    inds = 18:34 # Seems slow
+    inds = 35:51 # Should finish on Friday
+    inds = 52:68 # Also seems slow
+    inds = 69:85 # Very far behind
+    inds = 86:100 # Should finish on Friday
     for i = inds
         # need a step here to ensure that a resonable volume system is simulated
         println("Run $(i)")

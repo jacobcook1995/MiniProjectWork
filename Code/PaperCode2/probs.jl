@@ -143,6 +143,50 @@ function main()
             k += 1
         end
     end
+    # read in actions
+    acts = zeros(l,8)
+    datayn = fill(true,l)
+    for i = 1:l
+        for j = 1:2
+            # set file to read in
+            if j == 1
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BD.csv"
+            else
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AD.csv"
+            end
+            # check it exits
+            if isfile(infile)
+                w = 4
+                open(infile, "r") do in_file
+                    # only one line now
+                    for line in eachline(in_file)
+                        # parse line by finding commas
+                        L = length(line)
+                        comma = fill(0,w+1)
+                        m = 1
+                        for k = 1:L
+                            if line[k] == ','
+                                m += 1
+                                comma[m] = k
+                            end
+                        end
+                        comma[end] = L+1
+                        for k = 1:w
+                            acts[i,(j-1)*4+k] = parse(Float64,line[(comma[k]+1):(comma[k+1]-1)])
+                        end
+                    end
+                end
+            else # if file doesn't exist inform user of missing data and exclude from plots
+                if j == 1
+                    println("Missing data for run $(i) high A to high B")
+                    datayn[i] = false
+                else
+                    println("Missing data for run $(i) high B to high A")
+                    datayn[i] = false
+                end
+            end
+        end
+    end
     # Check there is a file of steady states to be read
     infile = "../Results/Fig3Data/$(ARGS[1])stead.csv"
     if ~isfile(infile)
@@ -185,54 +229,62 @@ function main()
     # inds = [62,63,67,69,70,74,76,78,79,81,83]
     # inds = [86,87,88,89,90,93,94,95,98,100]
     # inds = [15,16,17,18,20,21,58,85]
+    inds = [62,67,69,70,74] # test delete after
     for i = inds
         # need a step here to ensure that a resonable volume system is simulated
         println("Run $(i)")
         flush(stdout)
-        tot = (steads[i,1] + steads[i,2] + steads[i,5] + steads[i,6])/4
-        if tot >= 50.0
-            Ωs[i] = 0.125
-        elseif tot >= 25.0 || maximum(steads[i,:]) >= 50.0
-            Ωs[i] = 0.25
-        elseif tot >= 10.0
-            Ωs[i] = 0.5
-        elseif tot >= 7.5
-            Ωs[i] = 0.75
-        elseif tot >= 5.0
-            Ωs[i] = 1.0
-        elseif tot >= 2.2
-            Ωs[i] = 5.0
-        elseif tot >= 2.0
-            Ωs[i] = 7.5
+        # Check for differnces in steady state height
+        δtot = (steads[i,1] - steads[i,6])/(steads[i,1] + steads[i,6])
+        # check if saddle is heavily skewed
+        skA = (steads[i,1]-steads[i,3])/steads[i,1]
+        skB = (steads[i,6]-steads[i,4])/steads[i,6]
+        maxA = maximum([acts[i,2],acts[i,6]])
+        if abs(δtot) > 0.25 && skA > 0.25 && skB > 0.25
+            Ωs[i] = 6.0/maxA
+            println("cond")
+        elseif maxA > 20.0
+            Ωs[i] = 3.0/maxA
+            println("high")
         else
-            Ωs[i] = 10.0
+            Ωs[i] = 7.5/maxA
+            println("std")
         end
+        println(abs(δtot))
+        println(skA)
+        println(skB)
+        println(maxA)
+        println(Ωs[i])
+        println(steads[i,:]*Ωs[i])
         repeat = false
-        probs[i,1], probs[i,2], N, T = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
-        println(N/thresh)
-        flush(stdout)
-        if N < thresh
-            repeat = true
-        end
-        count = 0
-        while repeat == true
-            if count % 2 == 0
-                pht, plt, n, τ = gillespie([steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
-            else
-                pht, plt, n, τ = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
-            end
-            count += 1
-            probs[i,1] = (probs[i,1]*T + pht*τ)/(T+τ)
-            probs[i,2] = (probs[i,2]*T + plt*τ)/(T+τ)
-            T += τ
-            N += n
-            println(N/thresh)
-            flush(stdout)
-            if N > thresh
-                repeat = false
-            end
-        end
+        # probs[i,1], probs[i,2], N, T = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
+        # println("N = $(N)")
+        # flush(stdout)
+        # probs[i,1], probs[i,2], N, T = gillespie([steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
+        # println("N = $(N)")
+        # if N < thresh
+        #     repeat = true
+        # end
+        # count = 0
+        # while repeat == true
+        #     if count % 2 == 0
+        #         pht, plt, n, τ = gillespie([steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
+        #     else
+        #         pht, plt, n, τ = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
+        #     end
+        #     count += 1
+        #     probs[i,1] = (probs[i,1]*T + pht*τ)/(T+τ)
+        #     probs[i,2] = (probs[i,2]*T + plt*τ)/(T+τ)
+        #     T += τ
+        #     N += n
+        #     println("N = $(N)")
+        #     flush(stdout)
+        #     if N > thresh
+        #         repeat = false
+        #     end
+        # end
     end
+    return(nothing)
     # now output data
     outfile = "../Results/Fig3Data/$(ARGS[1])probs.csv"
     # Should have a step here so that I can replace lines

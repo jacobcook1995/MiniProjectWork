@@ -397,9 +397,49 @@ function main()
     for i = Sind
         scatter!([Sprobs[i,3]*(Sacts[i,2]-Sacts[i,6])],[log(Sprobs[i,1]/Sprobs[i,2])],label="",color=2)
     end
-    x = -10.0:1.0:10.0
-    plot!(x,x,label="",xlabel=L"\ln{(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}})}",ylabel=L"\ln{(\frac{p_{A}}{p_{B}})}")
+    xdataT = probs[ind,3].*(acts[ind,2].-acts[ind,6])
+    ydataT = log.(probs[ind,1]./probs[ind,2])
+    p0 = [0.0,1.0]
+    fitT = curve_fit(model,xdataT,ydataT,p0)
+    yintT = coef(fitT)[1]
+    slopT = coef(fitT)[2]
+    xran = -8.0:1.0:13.0
+    plot!(xran,model(xran,[yintT,slopT]),label="",color=1)
+    # then same for Schlögl model
+    xdataS = Sprobs[Sind,3].*(Sacts[Sind,2].-Sacts[Sind,6])
+    ydataS = log.(Sprobs[Sind,1]./Sprobs[Sind,2])
+    fitS = curve_fit(model,xdataS,ydataS,p0)
+    yintS = coef(fitS)[1]
+    slopS = coef(fitS)[2]
+    plot!(xran,model(xran,[yintS,slopS]),label="",color=2,xlabel=L"\ln{(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}})}")
+    plot!(xran,xran,label="",ylabel=L"\ln{(\frac{p_{A}}{p_{B}})}",color=3,style=:dash)
     savefig("../Results/Linear.png")
+    # Now calculate Pearson correlation coefficient
+    xbarT = sum(xdataT)/length(xdataT)
+    ybarT = sum(ydataT)/length(ydataT)
+    a = 0
+    b = 0
+    c = 0
+    for i = 1:length(xdataT)
+        a += (xdataT[i] - xbarT)*(ydataT[i] - ybarT)
+        b += (xdataT[i] - xbarT)^2
+        c += (ydataT[i] - ybarT)^2
+    end
+    r = a/sqrt(b*c)
+    println("Correlation Toggle Switch Theory vs Simulation: $(r)")
+    # repeat for Schlögl
+    xbarS = sum(xdataS)/length(xdataS)
+    ybarS = sum(ydataS)/length(ydataS)
+    a = 0
+    b = 0
+    c = 0
+    for i = 1:length(xdataS)
+        a += (xdataS[i] - xbarS)*(ydataS[i] - ybarS)
+        b += (xdataS[i] - xbarS)^2
+        c += (ydataS[i] - ybarS)^2
+    end
+    r = a/sqrt(b*c)
+    println("Correlation Schlögl Theory vs Simulation: $(r)")
     # now try to get log ratio of state probailities to plot against differences in entropy production
     ylab = L"\ln{(\frac{p_{A}}{p_{B}})}"
     xlab = L"\dot{S}_A - \dot{S}_B"
@@ -414,10 +454,58 @@ function main()
             scatter!([Sent[i,3]-Sent[i,4]],[log(Sprobs[i,2]/Sprobs[i,1])/Sprobs[i,3]],label="",color=2)
         end
     end
+    xdataT = ent[ind,3].-ent[ind,4]
+    ydataT = log.(probs[ind,2]./probs[ind,1])./probs[ind,3]
+    p0 = [0.0,1.0]
+    fitT = curve_fit(model,xdataT,ydataT,p0)
+    yintT = coef(fitT)[1]
+    slopT = coef(fitT)[2]
+    xran = -100.0:100.0:1100.0
+    plot!(xran,model(xran,[yintT,slopT]),label="",color=1)
+    # then same for Schlögl model
+    xdataS = Sent[Sind,3].-Sent[Sind,4]
+    ydataS = log.(Sprobs[Sind,2]./Sprobs[Sind,1])./Sprobs[Sind,3]
+    fitS = curve_fit(model,xdataS,ydataS,p0)
+    yintS = coef(fitS)[1]
+    slopS = coef(fitS)[2]
+    xran = -100.0:100.0:4100.0
+    plot!(xran,model(xran,[yintS,slopS]),label="",color=2)
     savefig("../Results/LogProbvsDiffEnt.png")
+    # Now calculate Pearson correlation coefficient
+    xbarT = sum(xdataT)/length(xdataT)
+    ybarT = sum(ydataT)/length(ydataT)
+    a = 0
+    b = 0
+    c = 0
+    for i = 1:length(xdataT)
+        a += (xdataT[i] - xbarT)*(ydataT[i] - ybarT)
+        b += (xdataT[i] - xbarT)^2
+        c += (ydataT[i] - ybarT)^2
+    end
+    r = a/sqrt(b*c)
+    println("Correlation Toggle Switch Occ vs Ent Prod: $(r)")
+    # repeat for Schlögl
+    xbarS = sum(xdataS)/length(xdataS)
+    ybarS = sum(ydataS)/length(ydataS)
+    a = 0
+    b = 0
+    c = 0
+    for i = 1:length(xdataS)
+        a += (xdataS[i] - xbarS)*(ydataS[i] - ybarS)
+        b += (xdataS[i] - xbarS)^2
+        c += (ydataS[i] - ybarS)^2
+    end
+    r = a/sqrt(b*c)
+    println("Correlation Schlögl Occ vs Ent Prod: $(r)")
     # Now do graph of different
     plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
     I = [2,3,11,13,19,32,48]
+    K = 0 # start counter
+    # make arrays to store data
+    pos = zeros(length(I))
+    ms = zeros(length(I))
+    sds = zeros(length(I))
+    # save all x and y values
     for i = I
         infile1 = "../Results/Fig3Data/Traj/$(i)testA2BMast.csv"
         infile2 = "../Results/Fig3Data/Traj/$(i)testB2AMast.csv"
@@ -525,12 +613,45 @@ function main()
         sdb = stdm(mastb,mb;corrected=true)/sqrt(ne-1)
         m = mf - mb
         sd = sqrt(sdf^2 + sdb^2)
-        plot!([pff[1]-pfb[1]],[m],yerror=sd,label="")
+        plot!([pff[1]-pfb[1]],[m],yerror=sd,label="",color=1)
+        # Save data for use outside
+        K += 1 # increment index
+        pos[K] = pff[1]-pfb[1]
+        ms[K] = m
+        sds[K] = sd
     end
-    # add linear lines
-    x3 = -8.0:0.1:4.0
-    plot!(x3,x3,label="")
+    # Abandoning theory here and just finding the best fit
+    xdataT = pos
+    ydataT = ms
+    weigT = (sds.^-2)
+    p0 = [0.0,1.0]
+    fitT = curve_fit(model,xdataT,ydataT,weigT,p0)
+    yintT = coef(fitT)[1]
+    slopT = coef(fitT)[2]
+    xran = -8.0:1.0:4.0
+    plot!(xran,model(xran,[yintT,slopT]),label="",color=1)
     savefig("../Results/MultDiff.png")
+    # Now calculate Pearson correlation coefficient
+    xbarT = sum(xdataT)/length(xdataT)
+    ybarT = sum(ydataT)/length(ydataT)
+    a = 0
+    b = 0
+    c = 0
+    for i = 1:length(xdataT)
+        a += (xdataT[i] - xbarT)*(ydataT[i] - ybarT)
+        b += (xdataT[i] - xbarT)^2
+        c += (ydataT[i] - ybarT)^2
+    end
+    r = a/sqrt(b*c)
+    println("Correlation Toggle Switch Mast vs Langevin: $(r)")
+    # And could do a weighted correlation
+    wxbarT = sum(weigT.*xdataT)/(length(xdataT)*sum(weigT))
+    wybarT = sum(weigT.*ydataT)/(length(ydataT)*sum(weigT))
+    wcovxy = sum(weigT.*(xdataT.-wxbarT).*(ydataT.-wybarT))/sum(weigT)
+    wcovxx = sum(weigT.*(xdataT.-wxbarT).*(xdataT.-wxbarT))/sum(weigT)
+    wcovyy = sum(weigT.*(ydataT.-wybarT).*(ydataT.-wybarT))/sum(weigT)
+    r = wcovxy/sqrt(wcovxx*wcovyy)
+    println("Weighted Correlation Toggle Switch Mast vs Langevin: $(r)")
     return(nothing)
 end
 

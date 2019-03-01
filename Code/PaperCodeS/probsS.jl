@@ -217,12 +217,12 @@ function main()
     noits = 100000000
     thresh = 50000
     # These comments are obviously provisonal as they might run into slower or faster patches still
-    inds = 1:17 # Reached 7 # done 6 out of 17
-    inds = 18:34 # Reached 23 # done 5 out of 17
-    inds = 35:51 # Reached 41 # done 6 out of 17
-    inds = 52:68 # Reached 59 # done 7 out of 17
-    inds = 69:85 # Reached 73 # done 4 out of 17
-    inds = 86:100 # Reached 92 # done 6 out of 15
+    inds = 1:17 # Reached 14 # done 13 out of 17
+    inds = 18:34 # Reached 27 # done 9 out of 17
+    inds = 35:51 # Reached 46 # done 11 out of 17
+    inds = 52:68 # Reached 64 # done 12 out of 17
+    inds = 69:85 # Reached 78 # done 9 out of 17
+    inds = 86:100 # Reached 96 # done 10 out of 15
     for i = inds
         # need a step here to ensure that a resonable volume system is simulated
         println("Run $(i)")

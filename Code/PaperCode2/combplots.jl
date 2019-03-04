@@ -403,7 +403,7 @@ function main()
     fitT = curve_fit(model,xdataT,ydataT,p0)
     yintT = coef(fitT)[1]
     slopT = coef(fitT)[2]
-    xran = -8.0:1.0:13.0
+    xran = -10.0:1.0:13.0
     plot!(xran,model(xran,[yintT,slopT]),label="",color=1)
     # then same for Schlögl model
     xdataS = Sprobs[Sind,3].*(Sacts[Sind,2].-Sacts[Sind,6])

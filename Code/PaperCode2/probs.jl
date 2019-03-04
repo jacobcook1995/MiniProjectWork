@@ -229,62 +229,53 @@ function main()
     # inds = [62,63,67,69,70,74,76,78,79,81,83]
     # inds = [86,87,88,89,90,93,94,95,98,100]
     # inds = [15,16,17,18,20,21,58,85]
-    inds = [62,67,69,70,74] # test delete after
+    inds = 1:100 # DO not run with this as it would take weeks
     for i = inds
         # need a step here to ensure that a resonable volume system is simulated
         println("Run $(i)")
         flush(stdout)
         # Check for differnces in steady state height
         δtot = (steads[i,1] - steads[i,6])/(steads[i,1] + steads[i,6])
-        # check if saddle is heavily skewed
-        skA = (steads[i,1]-steads[i,3])/steads[i,1]
-        skB = (steads[i,6]-steads[i,4])/steads[i,6]
         maxA = maximum([acts[i,2],acts[i,6]])
-        if abs(δtot) > 0.25 && skA > 0.25 && skB > 0.25
-            Ωs[i] = 6.0/maxA
-            println("cond")
-        elseif maxA > 20.0
+        if maxA > 20.0 # catch really high values
             Ωs[i] = 3.0/maxA
             println("high")
+        elseif abs(δtot) > 0.40 # not super high but skewed
+            Ωs[i] = 2.5/maxA
+            println("cond")
+        elseif maxA > 4.5
+            Ωs[i] = 4.5/maxA
+            println("med")
         else
             Ωs[i] = 7.5/maxA
             println("std")
         end
-        println(abs(δtot))
-        println(skA)
-        println(skB)
-        println(maxA)
-        println(Ωs[i])
-        println(steads[i,:]*Ωs[i])
         repeat = false
-        # probs[i,1], probs[i,2], N, T = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
-        # println("N = $(N)")
-        # flush(stdout)
-        # probs[i,1], probs[i,2], N, T = gillespie([steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
-        # println("N = $(N)")
-        # if N < thresh
-        #     repeat = true
-        # end
-        # count = 0
-        # while repeat == true
-        #     if count % 2 == 0
-        #         pht, plt, n, τ = gillespie([steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
-        #     else
-        #         pht, plt, n, τ = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
-        #     end
-        #     count += 1
-        #     probs[i,1] = (probs[i,1]*T + pht*τ)/(T+τ)
-        #     probs[i,2] = (probs[i,2]*T + plt*τ)/(T+τ)
-        #     T += τ
-        #     N += n
-        #     println("N = $(N)")
-        #     flush(stdout)
-        #     if N > thresh
-        #         repeat = false
-        #     end
-        # end
+        probs[i,1], probs[i,2], N, T = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
+        println("N = $(N)")
+        flush(stdout)
+        if N < thresh
+            repeat = true
+        end
+        count = 0
+        while repeat == true
+            if count % 2 == 0
+                pht, plt, n, τ = gillespie([steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
+            else
+                pht, plt, n, τ = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])
+            end
+            count += 1
+            probs[i,1] = (probs[i,1]*T + pht*τ)/(T+τ)
+            probs[i,2] = (probs[i,2]*T + plt*τ)/(T+τ)
+            T += τ
+            N += n
+            println("N = $(N)")
+            flush(stdout)
+            if N > thresh
+                repeat = false
+            end
+        end
     end
-    return(nothing)
     # now output data
     outfile = "../Results/Fig3Data/$(ARGS[1])probs.csv"
     # Should have a step here so that I can replace lines

@@ -223,15 +223,16 @@ function main()
     Ωs = zeros(l)
     noits = 100000000
     thresh = 50000
-    # inds = [2,4,6,7,10,13,14,23,41] # reached 6 # 2 of 10 done
-    # inds = [62,63,67,69,70,74,76,78,79,81,83] # reached 63 # 1 of 10 done
+    # inds = [2,4,6,7,10,13,14,23,41] # reached 7 # 3 of 10 done
+    # inds = [62,63,67,69,70,74,76,78,79,81,83] # reached 67 # 2 of 10 done
     # inds = [86,87,88,89,90,93,94,95,98,100] # reached 86 # 0 of 10 done
     # inds = [15,16,17,18,20,21,58,85] # reached 16 # 1 of 8 done
     # inds = [52,53,55,56,57] # reached 52 # 0 of 5 done
-    # inds = [27,30] # reached 30 # 1 of 2 done
-    # inds = [43,44,46,50,51] # still need to be set off
-    # inds = [32,33,34,35,36,38,40] # still need to be set off
-    # inds = [42,31] # indicies that do not work
+    # inds = [46,50,51] # reached 46 # 0 of 3 done
+    # inds = [32,33,34] # reached 32 # 0 of 3 done
+    # inds = [35,36,38,40] # still need to be set off
+    # inds = [42,31,44] # indicies that do not work
+    # inds = [43] # too fast
     inds = 1:100 # Do not run with this as it would take weeks
     for i = inds
         # need a step here to ensure that a resonable volume system is simulated

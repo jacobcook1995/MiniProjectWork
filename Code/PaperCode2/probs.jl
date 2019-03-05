@@ -228,10 +228,10 @@ function main()
     # inds = [86,87,88,89,90,93,94,95,98,100] # reached 86 # 0 of 10 done
     # inds = [15,16,17,18,20,21,58,85] # reached 16 # 1 of 8 done
     # inds = [52,53,55,56,57] # reached 52 # 0 of 5 done
-    # inds = [46,50,51] # reached 46 # 0 of 3 done
-    # inds = [32,33,34] # reached 32 # 0 of 3 done
-    # inds = [35,36,38,40] # still need to be set off
-    # inds = [42,31,44] # indicies that do not work
+    # inds = [46,50,51] # reached 50 # 1 of 3 done
+    # inds = [33,34,35] # reached 33 # 0 of 3 done
+    # inds = [36,38,40] # still need to be set off
+    # inds = [42,31,44,32] # indicies that do not work
     # inds = [43] # too fast
     inds = 1:100 # Do not run with this as it would take weeks
     for i = inds

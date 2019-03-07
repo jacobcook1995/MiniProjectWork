@@ -460,7 +460,7 @@ function main()
     fitT = curve_fit(model,xdataT,ydataT,p0)
     yintT = coef(fitT)[1]
     slopT = coef(fitT)[2]
-    xran = -100.0:100.0:1100.0
+    xran = -150.0:50.0:1900.0
     plot!(xran,model(xran,[yintT,slopT]),label="",color=1)
     # then same for Schlögl model
     xdataS = Sent[Sind,3].-Sent[Sind,4]
@@ -468,7 +468,7 @@ function main()
     fitS = curve_fit(model,xdataS,ydataS,p0)
     yintS = coef(fitS)[1]
     slopS = coef(fitS)[2]
-    xran = -100.0:100.0:4100.0
+    xran = -150.0:50.0:4100.0
     plot!(xran,model(xran,[yintS,slopS]),label="",color=2)
     savefig("../Results/LogProbvsDiffEnt.png")
     # Now calculate Pearson correlation coefficient

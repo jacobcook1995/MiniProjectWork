@@ -505,7 +505,7 @@ function main()
     p5 = plot(title=L"\Delta S_{A\rightarrow B}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
     p6 = plot(title=L"\Delta S_{B\rightarrow A}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
     p7 = plot(title=L"\Delta S_{A\rightarrow B}/\Delta S_{B\rightarrow A}",xlabel=L"\Delta S^L\,(LDT)",ylabel="Exact EP (FT)")
-    I = [2,3,11,13,19,32,48]
+    I = [1,2,3,4,11,13,19,32,48]
     K = 0 # start counter
     # make arrays to store data
     pos = zeros(length(I))

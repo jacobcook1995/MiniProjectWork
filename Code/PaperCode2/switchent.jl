@@ -46,7 +46,7 @@ function step(rates::Array{Float64,1},vars::Array{Int64,1})
 end
 
 # function to actually run a gillepsie simulation
-function gillespie(ps::Array{Float64,1},star::Array{Int64,1},fin::Array{Int64,1},Ω::Int64)
+function gillespie(ps::Array{Float64,1},star::Array{Int64,1},fin::Array{Int64,1},Ω::Float64)
     k = ps[1]
     kmin = ps[2]
     q = ps[3]
@@ -146,7 +146,7 @@ function rev(reac::Int64,p1::Array{Int64,1},p2::Array{Int64,1},ps::Array{Float64
 end
 
 # function to find the entropy production of a path
-function entp(path::Array{Int64,2},reacs::Array{Int64,1},ps::Array{Float64,1},Ω::Int64)
+function entp(path::Array{Int64,2},reacs::Array{Int64,1},ps::Array{Float64,1},Ω::Float64)
     bpath = path[:,end:-1:1]
     breacs = reacs[end:-1:1]
     # rescale constants appropraitly
@@ -163,6 +163,41 @@ function entp(path::Array{Int64,2},reacs::Array{Int64,1},ps::Array{Float64,1},Ω
     end
     ent = log.(pf./pb)
     return(ent)
+end
+
+function selectvol(A::Array{Float64,1},steads::Array{Float64,1})
+    Ω = 0.0
+    if length(A) != 2
+        println("ERROR: should have provided a two elements for the action!")
+        return(nothing)
+    end
+    if length(steads) != 6
+        println("ERROR: should have provided a six points to describe states!")
+        return(nothing)
+    end
+    # Check for differnces in steady state height
+    δtot = (steads[1] - steads[6])/(steads[1] + steads[6])
+    maxA = maximum(A)
+    hA = (steads[1]+steads[2]) # find heights of states
+    hB = (steads[5]+steads[6])
+    hs = (steads[3]+steads[4])
+    if maxA > 20.0 # catch really high values
+        Ω = 3.0/maxA
+    elseif abs(δtot) > 0.40 # not super high but skewed
+        Ω = 2.5/maxA
+    elseif maxA > 4.5 || hs/hA < 0.125 || hs/hB < 0.125
+        Ω = 4.5/maxA
+    elseif hs/hA < 0.25 || hs/hB < 0.25 # low stable state condidtion
+        Ω = 5.5/maxA
+    else
+        Ω = 7.5/maxA
+    end
+    # step to undo volume reduction when actions are very asymmetric
+    δA = abs(A[1]-A[2])
+    if δA/maxA >= 0.9 && abs(δtot) < 0.5 && maxA < 8.0
+        Ω = 7.5/maxA
+    end
+    return(Ω)
 end
 
 function main()
@@ -235,54 +270,99 @@ function main()
             k += 1
         end
     end
-    # now calulate entropy productions of switching
-    Ωs = [5] # Should choose 10 different volume values
-    I = 48 # picking parameter value to look at
-    len = 100 # run 100 for each, forward and backward
-    entpf = zeros(len*length(Ωs))
-    entpb = zeros(len*length(Ωs))
-    # 3,11,13,19,32,48
-    for i = 1:length(Ωs)
-        star = round.(Int64,Ωs[i]*[steads[I,1],steads[I,2]])
-        fin = round.(Int64,Ωs[i]*[steads[I,5],steads[I,6]])
+    acts = zeros(l,8)
+    datayn = fill(true,l)
+    for i = 1:l
+        for j = 1:2
+            # set file to read in
+            if j == 1
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BD.csv"
+            else
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AD.csv"
+            end
+            # check it exits
+            if isfile(infile)
+                w = 4
+                open(infile, "r") do in_file
+                    # only one line now
+                    for line in eachline(in_file)
+                        # parse line by finding commas
+                        L = length(line)
+                        comma = fill(0,w+1)
+                        m = 1
+                        for k = 1:L
+                            if line[k] == ','
+                                m += 1
+                                comma[m] = k
+                            end
+                        end
+                        comma[end] = L+1
+                        for k = 1:w
+                            acts[i,(j-1)*4+k] = parse(Float64,line[(comma[k]+1):(comma[k+1]-1)])
+                        end
+                    end
+                end
+            else # if file doesn't exist inform user of missing data and exclude from plots
+                if j == 1
+                    println("Missing data for run $(i) high A to high B")
+                    datayn[i] = false
+                else
+                    println("Missing data for run $(i) high B to high A")
+                    datayn[i] = false
+                end
+            end
+        end
+    end
+    # Full parameter set
+    I = vcat(collect(5:10),12,collect(14:18),collect(20:31),collect(33:47),collect(49:100))
+    for i = 1:length(I)
+        println("Run $(I[i]) Started.")
+        flush(stdout)
+        # now calulate entropy productions of switching
+        # calculate optimum value each time
+        Ωs = selectvol([acts[I[i],2],acts[I[i],6]],steads[I[i],:])
+        len = 100 # run 100 for each, forward and backward
+        entpf = zeros(len)
+        entpb = zeros(len)
+        star = round.(Int64,Ωs*[steads[I[i],1],steads[I[i],2]])
+        fin = round.(Int64,Ωs*[steads[I[i],5],steads[I[i],6]])
         for j = 1:len
-            path, reacs = gillespie(ps[I,:],star,fin,Ωs[i])
-            entprod = entp(path,reacs,ps[I,:],Ωs[i])
-            entpf[j+(i-1)*len] = sum(entprod)/Ωs[i]
+            path, reacs = gillespie(ps[I[i],:],star,fin,Ωs)
+            entprod = entp(path,reacs,ps[I[i],:],Ωs)
+            entpf[j] = sum(entprod)/Ωs
             # opposite direction
-            path, reacs = gillespie(ps[I,:],fin,star,Ωs[i])
-            entprod = entp(path,reacs,ps[I,:],Ωs[i])
-            entpb[j+(i-1)*len] = sum(entprod)/Ωs[i]
+            path, reacs = gillespie(ps[I[i],:],fin,star,Ωs)
+            entprod = entp(path,reacs,ps[I[i],:],Ωs)
+            entpb[j] = sum(entprod)/Ωs
+            if j % 10 == 0
+                println("Step $(j) done.")
+                flush(stdout)
+            end
         end
-        println("$(Ωs[i]) done.")
-    end
-    # Then output all data
-    # Do A to B first
-    outfile = "../Results/Fig3Data/Traj/$(I)$(ARGS[1])A2BMast.csv"
-    out_file = open(outfile, "w")
-    for i = 1:length(Ωs)
+        # Then output all data
+        # Do A to B first
+        outfile = "../Results/Fig3Data/Traj/$(I[i])$(ARGS[1])A2BMast.csv"
+        out_file = open(outfile, "w")
         line = ""
         for j = 1:len
-            line *= "$(entpf[j+(i-1)*len]),"
+            line *= "$(entpf[j]),"
         end
         # add a new line and volume
-        line *= "$(Ωs[i])\n"
+        line *= "$(Ωs)\n"
         write(out_file,line)
-    end
-    close(out_file)
-    # The do B to A
-    outfile = "../Results/Fig3Data/Traj/$(I)$(ARGS[1])B2AMast.csv"
-    out_file = open(outfile, "w")
-    for i = 1:length(Ωs)
+        close(out_file)
+        # The do B to A
+        outfile = "../Results/Fig3Data/Traj/$(I[i])$(ARGS[1])B2AMast.csv"
+        out_file = open(outfile, "w")
         line = ""
         for j = 1:len
-            line *= "$(entpb[j+(i-1)*len]),"
+            line *= "$(entpb[j]),"
         end
         # add a new line and volume
-        line *= "$(Ωs[i])\n"
+        line *= "$(Ωs)\n"
         write(out_file,line)
+        close(out_file)
     end
-    close(out_file)
     return(nothing)
 end
 

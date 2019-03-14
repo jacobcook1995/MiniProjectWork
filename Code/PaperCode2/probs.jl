@@ -224,8 +224,8 @@ function main()
     noits = 100000000
     thresh = 50000
     # inds = [86,87,88,89,90,93,94,95,98,100] # reached 98 # 8 of 10 done
-    # inds = [42,31,44,32] # indicies that do not work
-    # inds = [43] # too fast
+    # inds = [42,43,44]
+    # inds = [31,32]
     inds = 1:100 # Do not run with this as it would take weeks
     for i = inds
         # need a step here to ensure that a resonable volume system is simulated
@@ -234,6 +234,9 @@ function main()
         # Check for differnces in steady state height
         δtot = (steads[i,1] - steads[i,6])/(steads[i,1] + steads[i,6])
         maxA = maximum([acts[i,2],acts[i,6]])
+        hA = (steads[i,1]+steads[i,2]) # find heights of states
+        hB = (steads[i,5]+steads[i,6])
+        hs = (steads[i,3]+steads[i,4])
         if maxA > 20.0 # catch really high values
             Ωs[i] = 3.0/maxA
             println("high")
@@ -243,9 +246,18 @@ function main()
         elseif maxA > 4.5
             Ωs[i] = 4.5/maxA
             println("med")
+        elseif hs/hA < 0.25 || hs/hB < 0.25 # low stable state condidtion
+            Ωs[i] = 5.5/maxA
+            println("sad")
         else
             Ωs[i] = 7.5/maxA
             println("std")
+        end
+        # step to undo volume reduction when actions are very asymmetric
+        δA = abs(acts[i,2]-acts[i,6])
+        if δA/maxA >= 0.9 && abs(δtot) < 0.5 && maxA < 8.0
+            Ωs[i] = 7.5/maxA
+            println("undo")
         end
         repeat = false
         probs[i,1], probs[i,2], N, T = gillespie([steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],ps[i,:],noits,Ωs[i])

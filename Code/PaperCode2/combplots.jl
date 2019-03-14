@@ -498,7 +498,13 @@ function main()
     r = a/sqrt(b*c)
     println("Correlation Schlögl Occ vs Ent Prod: $(r)")
     # Now do graph of different
-    plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
+    p1 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
+    p2 = plot(title=L"\Delta S_{A\rightarrow B}",xlabel=L"\Delta S^L\,(LDT)",ylabel="Exact EP (FT)")
+    p3 = plot(title=L"\Delta S_{B\rightarrow A}",xlabel=L"\Delta S^L\,(LDT)",ylabel="Exact EP (FT)")
+    p4 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",xlabel=L"\Delta S^L\,(LDT)",ylabel="Exact EP (FT)")
+    p5 = plot(title=L"\Delta S_{A\rightarrow B}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
+    p6 = plot(title=L"\Delta S_{B\rightarrow A}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
+    p7 = plot(title=L"\Delta S_{A\rightarrow B}/\Delta S_{B\rightarrow A}",xlabel=L"\Delta S^L\,(LDT)",ylabel="Exact EP (FT)")
     I = [2,3,11,13,19,32,48]
     K = 0 # start counter
     # make arrays to store data
@@ -613,7 +619,15 @@ function main()
         sdb = stdm(mastb,mb;corrected=true)/sqrt(ne-1)
         m = mf - mb
         sd = sqrt(sdf^2 + sdb^2)
-        plot!([pff[1]-pfb[1]],[m],yerror=sd,label="",color=1)
+        div = mf/mb
+        sdiv = div*sqrt((sdf/mf)^2 + (sdb/mb)^2)
+        plot!(p1,[pff[1]-pfb[1]],[m],yerror=sd,label="",color=1)
+        plot!(p2,[acts[i,4]],[mf],yerror=sdf,label="",color=1)
+        plot!(p3,[acts[i,8]],[mb],yerror=sdb,label="",color=1)
+        plot!(p4,[acts[i,4]-acts[i,8]],[m],yerror=sd,label="",color=1)
+        plot!(p5,[pff[1]],[mf],yerror=sdf,label="",color=1)
+        plot!(p6,[pff[2]],[mb],yerror=sdb,label="",color=1)
+        plot!(p7,[acts[i,4]/acts[i,8]],[div],yerror=sdiv,label="",color=1)
         # Save data for use outside
         K += 1 # increment index
         pos[K] = pff[1]-pfb[1]
@@ -629,8 +643,14 @@ function main()
     yintT = coef(fitT)[1]
     slopT = coef(fitT)[2]
     xran = -8.0:1.0:4.0
-    plot!(xran,model(xran,[yintT,slopT]),label="",color=1)
-    savefig("../Results/MultDiff.png")
+    plot!(p1,xran,model(xran,[yintT,slopT]),label="",color=1)
+    savefig(p1,"../Results/MultDiff.png")
+    savefig(p2,"../Results/MultDiffalt1.png")
+    savefig(p3,"../Results/MultDiffalt2.png")
+    savefig(p4,"../Results/MultDiffalt3.png")
+    savefig(p5,"../Results/MultDiffalt4.png")
+    savefig(p6,"../Results/MultDiffalt5.png")
+    savefig(p7,"../Results/MultDiffalt6.png")
     # Now calculate Pearson correlation coefficient
     xbarT = sum(xdataT)/length(xdataT)
     ybarT = sum(ydataT)/length(ydataT)

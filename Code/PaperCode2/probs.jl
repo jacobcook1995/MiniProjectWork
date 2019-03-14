@@ -224,8 +224,8 @@ function main()
     noits = 100000000
     thresh = 50000
     # inds = [86,87,88,89,90,93,94,95,98,100] # reached 98 # 8 of 10 done
-    # inds = [42,43,44]
-    # inds = [31,32]
+    # inds = [42,43,44] # reached 42 # 0 of 3 done
+    # inds = [31,32] # reached 31 # 0 of 2 done
     inds = 1:100 # Do not run with this as it would take weeks
     for i = inds
         # need a step here to ensure that a resonable volume system is simulated
@@ -247,7 +247,7 @@ function main()
             Ωs[i] = 4.5/maxA
             println("med")
         elseif hs/hA < 0.25 || hs/hB < 0.25 # low stable state condidtion
-            Ωs[i] = 5.5/maxA
+            Ωs[i] = 5.0/maxA
             println("sad")
         else
             Ωs[i] = 7.5/maxA

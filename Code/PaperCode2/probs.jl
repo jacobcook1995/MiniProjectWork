@@ -223,8 +223,7 @@ function main()
     Ωs = zeros(l)
     noits = 100000000
     thresh = 50000
-    # inds = [2,4,6,7,10,13,14,23,41] # reached 41 # 8 of 9 done
-    # inds = [86,87,88,89,90,93,94,95,98,100] # reached 94 # 6 of 10 done
+    # inds = [86,87,88,89,90,93,94,95,98,100] # reached 98 # 8 of 10 done
     # inds = [42,31,44,32] # indicies that do not work
     # inds = [43] # too fast
     inds = 1:100 # Do not run with this as it would take weeks

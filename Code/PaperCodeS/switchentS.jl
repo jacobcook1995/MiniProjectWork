@@ -271,8 +271,8 @@ function main()
             end
         end
     end
-    I = [1,2] # picking parameter values to look at
-    # I = vcat(collect(7:10),12,collect(14:18),collect(20:31),collect(33:47),collect(49:100))
+    # Setting parameter sets to look at
+    I = collect(1:100)
     for i = 1:length(I)
         println("Run $(I[i]) Started.")
         flush(stdout)

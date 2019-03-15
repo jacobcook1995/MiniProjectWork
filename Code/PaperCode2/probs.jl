@@ -223,11 +223,9 @@ function main()
     Ωs = zeros(l)
     noits = 100000000
     thresh = 50000
-    # inds = [86,87,88,89,90,93,94,95,98,100] # reached 98 # 8 of 10 done
     # inds = [42,43,44] # reached 42 # 0 of 3 done
     # inds = [31,32] # reached 31 # 0 of 2 done
     inds = 1:100 # Do not run with this as it would take weeks
-    inds = [42]
     for i = inds
         # need a step here to ensure that a resonable volume system is simulated
         println("Run $(i)")

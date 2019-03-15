@@ -505,7 +505,7 @@ function main()
     p5 = plot(title=L"\Delta S_{A\rightarrow B}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
     p6 = plot(title=L"\Delta S_{B\rightarrow A}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
     p7 = plot(title=L"\Delta S_{A\rightarrow B}/\Delta S_{B\rightarrow A}",xlabel=L"\Delta S^L\,(LDT)",ylabel="Exact EP (FT)")
-    I = [1,2,3,4,11,13,19,32,48]
+    I = collect(1:100)
     K = 0 # start counter
     # make arrays to store data
     pos = zeros(length(I))
@@ -642,7 +642,7 @@ function main()
     fitT = curve_fit(model,xdataT,ydataT,weigT,p0)
     yintT = coef(fitT)[1]
     slopT = coef(fitT)[2]
-    xran = -8.0:1.0:4.0
+    xran = -55.0:5.0:195.0
     plot!(p1,xran,model(xran,[yintT,slopT]),label="",color=1)
     savefig(p1,"../Results/MultDiff.png")
     savefig(p2,"../Results/MultDiffalt1.png")

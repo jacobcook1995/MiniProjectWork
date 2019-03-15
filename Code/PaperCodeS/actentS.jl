@@ -296,9 +296,11 @@ function main()
             if j == 1
                 infile = "../Results/Fig3DataS/Traj/$(i)$(ARGS[1])h2l.csv"
                 outfile = "../Results/Fig3DataS/Traj/$(i)$(ARGS[1])h2lD.csv"
+                outfile2 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[1])h2lpf.csv"
             else
                 infile = "../Results/Fig3DataS/Traj/$(i)$(ARGS[1])l2h.csv"
                 outfile = "../Results/Fig3DataS/Traj/$(i)$(ARGS[1])l2hD.csv"
+                outfile2 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[1])l2hpf.csv"
             end
             # check if file
             if isfile(infile)
@@ -335,12 +337,17 @@ function main()
                 Ns = convert(Int64,NM/2)
                 # now use a function that takes the time discretised path and
                 # finds the action in a more conventional manner and then can also get entropy production from this
-                Act, ΔS = act(path2,Tp,b,Dmin,ps[i,:],Ns)
+                # Act, ΔS = act(path2,Tp,b,Dmin,ps[i,:],Ns)
+                Act, ΔS, _, _, _, _, prods, flows = act(path2,Tp,b,Dmin,ps[i,:],Ns)
                 # and write out the new data to a new file
                 out_file = open(outfile, "w")
                 line = "$(Tp),$(ActS),$(Act),$(ΔS)\n"
                 write(out_file, line)
                 close(out_file)
+                out_file2 = open(outfile2, "w")
+                line = "$(sum(prods)),$(sum(flows))\n"
+                write(out_file2, line)
+                close(out_file2)
             else # Tell users about missing files
                 if j == 1
                     println("No high to low path for $(i)")
@@ -587,5 +594,5 @@ function plotting()
     return(nothing)
 end
 
-# @time main()
-@time plotting()
+@time main()
+# @time plotting()

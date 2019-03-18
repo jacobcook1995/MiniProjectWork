@@ -498,12 +498,11 @@ function main()
     r = a/sqrt(b*c)
     println("Correlation Schlögl Occ vs Ent Prod: $(r)")
     # Now do graph of different
+    xlab = L"ΔS"
+    ylab = L"\dot{S}"
     p1 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
-    p2 = plot(title=L"\Delta S_{A\rightarrow B}",xlabel=L"\Delta S^L\,(LDT)",ylabel="Exact EP (FT)")
-    p3 = plot(title=L"\Delta S_{B\rightarrow A}",xlabel=L"\Delta S^L\,(LDT)",ylabel="Exact EP (FT)")
-    p4 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",xlabel=L"\Delta S^L\,(LDT)",ylabel="Exact EP (FT)")
-    p5 = plot(title=L"\Delta S_{A\rightarrow B}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
-    p6 = plot(title=L"\Delta S_{B\rightarrow A}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
+    p2 = plot(xlabel=xlab,ylabel=ylab,title=L"Ratio\;\dot{S}\;vs\;\Delta\Delta S")
+    p3 = plot(xlabel=xlab,ylabel=ylab,title=L"Ratio\;\dot{S}\;vs\;\Delta\Delta S")
     I = collect(1:100)
     K = 0 # start counter
     # make arrays to store data
@@ -566,7 +565,7 @@ function main()
         infile1 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2Bpf.csv"
         infile2 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2Apf.csv"
         # Extract forward data
-        w = 2
+        w = 4
         pff = zeros(w)
         open(infile1, "r") do in_file
             # Use a for loop to process the rows in the input file one-by-one
@@ -619,11 +618,10 @@ function main()
         m = mf - mb
         sd = sqrt(sdf^2 + sdb^2)
         plot!(p1,[pff[1]-pfb[1]],[m],yerror=sd,label="",color=1)
-        plot!(p2,[acts[i,4]],[mf],yerror=sdf,label="",color=1)
-        plot!(p3,[acts[i,8]],[mb],yerror=sdb,label="",color=1)
-        plot!(p4,[acts[i,4]-acts[i,8]],[m],yerror=sd,label="",color=1)
-        plot!(p5,[pff[1]],[mf],yerror=sdf,label="",color=1)
-        plot!(p6,[pff[2]],[mb],yerror=sdb,label="",color=1)
+        scatter!(p2,[pff[4]],[log(ents[i,1])],label="",color=1)
+        scatter!(p2,[pfb[4]],[log(ents[i,3])],label="",color=1)
+        scatter!(p3,[pff[3]],[log(ents[i,1])],label="",color=1)
+        scatter!(p3,[pfb[3]],[log(ents[i,3])],label="",color=1)
         # Save data for use outside
         K += 1 # increment index
         pos[K] = pff[1]-pfb[1]
@@ -640,6 +638,27 @@ function main()
     slopT = coef(fitT)[2]
     xran = -55.0:5.0:195.0
     plot!(p1,xran,model(xran,[yintT,slopT]),label="",color=1)
+    # Now calculate Pearson correlation coefficient
+    xbarT = sum(xdataT)/length(xdataT)
+    ybarT = sum(ydataT)/length(ydataT)
+    a = 0
+    b = 0
+    c = 0
+    for i = 1:length(xdataT)
+        a += (xdataT[i] - xbarT)*(ydataT[i] - ybarT)
+        b += (xdataT[i] - xbarT)^2
+        c += (ydataT[i] - ybarT)^2
+    end
+    r = a/sqrt(b*c)
+    println("Correlation Toggle Switch Mast vs Langevin: $(r)")
+    # And could do a weighted correlation
+    wxbarT = sum(weigT.*xdataT)/(length(xdataT)*sum(weigT))
+    wybarT = sum(weigT.*ydataT)/(length(ydataT)*sum(weigT))
+    wcovxy = sum(weigT.*(xdataT.-wxbarT).*(ydataT.-wybarT))/sum(weigT)
+    wcovxx = sum(weigT.*(xdataT.-wxbarT).*(xdataT.-wxbarT))/sum(weigT)
+    wcovyy = sum(weigT.*(ydataT.-wybarT).*(ydataT.-wybarT))/sum(weigT)
+    r = wcovxy/sqrt(wcovxx*wcovyy)
+    println("Weighted Correlation Toggle Switch Mast vs Langevin: $(r)")
     # The same is now done for the Sclögl model
     # make arrays to store data
     pos = zeros(length(I))
@@ -702,7 +721,7 @@ function main()
         infile1 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])h2lpf.csv"
         infile2 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])l2hpf.csv"
         # Extract forward data
-        w = 2
+        w = 4
         pff = zeros(w)
         open(infile1, "r") do in_file
             # Use a for loop to process the rows in the input file one-by-one
@@ -755,11 +774,10 @@ function main()
         m = mf - mb
         sd = sqrt(sdf^2 + sdb^2)
         plot!(p1,[pff[1]-pfb[1]],[m],yerror=sd,label="",color=2)
-        plot!(p2,[acts[i,4]],[mf],yerror=sdf,label="",color=2)
-        plot!(p3,[acts[i,8]],[mb],yerror=sdb,label="",color=2)
-        plot!(p4,[acts[i,4]-acts[i,8]],[m],yerror=sd,label="",color=2)
-        plot!(p5,[pff[1]],[mf],yerror=sdf,label="",color=2)
-        plot!(p6,[pff[2]],[mb],yerror=sdb,label="",color=2)
+        scatter!(p2,[pff[4]],[log(Sents[i,1])],label="",color=2)
+        scatter!(p2,[pfb[4]],[log(Sents[i,3])],label="",color=2)
+        scatter!(p3,[pff[3]],[log(Sents[i,1])],label="",color=2)
+        scatter!(p3,[pfb[3]],[log(Sents[i,3])],label="",color=2)
         # Save data for use outside
         K += 1 # increment index
         pos[K] = pff[1]-pfb[1]
@@ -774,14 +792,11 @@ function main()
     fitT = curve_fit(model,xdataT,ydataT,weigT,p0)
     yintT = coef(fitT)[1]
     slopT = coef(fitT)[2]
-    xran = -55.0:5.0:25.0
+    xran = -55.0:5.0:195.0
     plot!(p1,xran,model(xran,[yintT,slopT]),label="",color=2)
     savefig(p1,"../Results/MultDiff.png")
-    savefig(p2,"../Results/MultDiffalt1.png")
-    savefig(p3,"../Results/MultDiffalt2.png")
-    savefig(p4,"../Results/MultDiffalt3.png")
-    savefig(p5,"../Results/MultDiffalt4.png")
-    savefig(p6,"../Results/MultDiffalt5.png")
+    savefig(p2,"../Results/SwitchvsProd.png")
+    savefig(p3,"../Results/SwitchvsProdtest.png")
     # Now calculate Pearson correlation coefficient
     xbarT = sum(xdataT)/length(xdataT)
     ybarT = sum(ydataT)/length(ydataT)

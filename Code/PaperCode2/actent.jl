@@ -187,11 +187,17 @@ function times(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1}
 end
 
 # function to rediscretise a path from arc discretisation to time discretisation
-function timdis(ts::Array{Float64,1},x::Array{Float64,2},NG::Int64,NM::Int64)
+function timdis(ts::Array{Float64,1},x::Array{Float64,2},NG::Int64,NM::Int64,Tmid::Float64)
+    Ns = 1
+    signed = false
     # Make discrete vector of time points
     t = zeros(NM+1)
     for i = 1:NM+1
         t[i] = (i-1)*ts[end]/NM
+        if signed == false && t[i] >= Tmid
+            Ns = i
+            signed = true
+        end
     end
     # Find index of first element greater than t[i] in ts
     inds = fill(0,NM+1)
@@ -223,7 +229,7 @@ function timdis(ts::Array{Float64,1},x::Array{Float64,2},NG::Int64,NM::Int64)
             path[i,j] = x₀ + (t[i] - t₀)*(x₁ - x₀)/(t₁ - t₀)
         end
     end
-    return(path)
+    return(path,Ns)
 end
 
 # function to take time discretised path and return Action and total entropy production based on it
@@ -283,7 +289,9 @@ function act(x::Array{Float64,2},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::A
     end
     ΔS = sum(ΔSf)
     Ac = sum(Af)
-    return(Ac,ΔS,Af,ΔSf,KE,PE,prods,flows)
+    ΔS1 = sum(ΔSf[1:Ns])
+    ΔS2 = sum(ΔSf[Ns+1:end])
+    return(Ac,ΔS,Af,ΔSf,KE,PE,prods,flows,ΔS1,ΔS2)
 end
 
 function main()
@@ -379,20 +387,20 @@ function main()
                 ActS = sum(S)
                 tims2 = times(x,xprim,λs,ϑs,λprim,NG)
                 # save time of path
+                Tmid = tims2[Nmid]
                 Tp = tims2[end]
-                path2 = timdis(tims2,x,NG,NM)
-                Ns = 300 # fudge
+                path2, Ns = timdis(tims2,x,NG,NM,Tmid)
                 # now use a function that takes the time discretised path and
                 # finds the action in a more conventional manner and then can also get entropy production from this
                 # Act, ΔS = act(path2,Tp,b,Dmin,ps[i,:],Ns)
-                Act, ΔS, _, _, _, _, prods, flows = act(path2,Tp,b,Dmin,ps[i,:],Ns)
+                Act, ΔS, _, _, _, _, prods, flows, ΔS1, ΔS2 = act(path2,Tp,b,Dmin,ps[i,:],Ns)
                 # and write out the new data to a new file
                 out_file1 = open(outfile1, "w")
                 line1 = "$(Tp),$(ActS),$(Act),$(ΔS)\n"
                 write(out_file1,line1)
                 close(out_file1)
                 out_file2 = open(outfile2, "w")
-                line2 = "$(sum(prods)),$(sum(flows))\n"
+                line2 = "$(sum(prods)),$(sum(flows)),$(ΔS1),$(ΔS2)\n"
                 write(out_file2,line2)
                 close(out_file2)
             else # Tell users about missing files
@@ -638,5 +646,5 @@ function plotting()
     return(nothing)
 end
 
-# @time main()
-@time plotting()
+@time main()
+# @time plotting()

@@ -504,7 +504,6 @@ function main()
     p4 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",xlabel=L"\Delta S^L\,(LDT)",ylabel="Exact EP (FT)")
     p5 = plot(title=L"\Delta S_{A\rightarrow B}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
     p6 = plot(title=L"\Delta S_{B\rightarrow A}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
-    p7 = plot(title=L"\Delta S_{A\rightarrow B}/\Delta S_{B\rightarrow A}",xlabel=L"\Delta S^L\,(LDT)",ylabel="Exact EP (FT)")
     I = collect(1:100)
     K = 0 # start counter
     # make arrays to store data
@@ -513,8 +512,8 @@ function main()
     sds = zeros(length(I))
     # save all x and y values
     for i = I
-        infile1 = "../Results/Fig3Data/Traj/$(i)testA2BMast.csv"
-        infile2 = "../Results/Fig3Data/Traj/$(i)testB2AMast.csv"
+        infile1 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BMast.csv"
+        infile2 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AMast.csv"
         # Extract forward data
         ne = 101
         w = ne
@@ -564,8 +563,8 @@ function main()
             end
         end
         # now read in productions and flows for foward and backwards paths
-        infile1 = "../Results/Fig3Data/Traj/$(i)testA2Bpf.csv"
-        infile2 = "../Results/Fig3Data/Traj/$(i)testB2Apf.csv"
+        infile1 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2Bpf.csv"
+        infile2 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2Apf.csv"
         # Extract forward data
         w = 2
         pff = zeros(w)
@@ -619,15 +618,12 @@ function main()
         sdb = stdm(mastb,mb;corrected=true)/sqrt(ne-1)
         m = mf - mb
         sd = sqrt(sdf^2 + sdb^2)
-        div = mf/mb
-        sdiv = div*sqrt((sdf/mf)^2 + (sdb/mb)^2)
         plot!(p1,[pff[1]-pfb[1]],[m],yerror=sd,label="",color=1)
         plot!(p2,[acts[i,4]],[mf],yerror=sdf,label="",color=1)
         plot!(p3,[acts[i,8]],[mb],yerror=sdb,label="",color=1)
         plot!(p4,[acts[i,4]-acts[i,8]],[m],yerror=sd,label="",color=1)
         plot!(p5,[pff[1]],[mf],yerror=sdf,label="",color=1)
         plot!(p6,[pff[2]],[mb],yerror=sdb,label="",color=1)
-        plot!(p7,[acts[i,4]/acts[i,8]],[div],yerror=sdiv,label="",color=1)
         # Save data for use outside
         K += 1 # increment index
         pos[K] = pff[1]-pfb[1]
@@ -644,13 +640,148 @@ function main()
     slopT = coef(fitT)[2]
     xran = -55.0:5.0:195.0
     plot!(p1,xran,model(xran,[yintT,slopT]),label="",color=1)
+    # The same is now done for the Sclögl model
+    # make arrays to store data
+    pos = zeros(length(I))
+    ms = zeros(length(I))
+    sds = zeros(length(I))
+    K = 0 # restart counter
+    # save all x and y values
+    for i = I
+        infile1 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])h2lMast.csv"
+        infile2 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])l2hMast.csv"
+        # Extract forward data
+        ne = 101
+        w = ne
+        mastf = zeros(w-1)
+        open(infile1, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w-1
+                    mastf[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+        # Then extract backwards data
+        mastb = zeros(w-1)
+        open(infile2, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w-1
+                    mastb[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+        # now read in productions and flows for foward and backwards paths
+        infile1 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])h2lpf.csv"
+        infile2 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])l2hpf.csv"
+        # Extract forward data
+        w = 2
+        pff = zeros(w)
+        open(infile1, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w
+                    pff[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+        pfb = zeros(w)
+        open(infile2, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w
+                    pfb[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+        # Now need to extract averages and standard deviations and plot against other data
+        mf = mean(mastf)
+        mb = mean(mastb)
+        sdf = stdm(mastf,mf;corrected=true)/sqrt(ne-1)
+        sdb = stdm(mastb,mb;corrected=true)/sqrt(ne-1)
+        m = mf - mb
+        sd = sqrt(sdf^2 + sdb^2)
+        plot!(p1,[pff[1]-pfb[1]],[m],yerror=sd,label="",color=2)
+        plot!(p2,[acts[i,4]],[mf],yerror=sdf,label="",color=2)
+        plot!(p3,[acts[i,8]],[mb],yerror=sdb,label="",color=2)
+        plot!(p4,[acts[i,4]-acts[i,8]],[m],yerror=sd,label="",color=2)
+        plot!(p5,[pff[1]],[mf],yerror=sdf,label="",color=2)
+        plot!(p6,[pff[2]],[mb],yerror=sdb,label="",color=2)
+        # Save data for use outside
+        K += 1 # increment index
+        pos[K] = pff[1]-pfb[1]
+        ms[K] = m
+        sds[K] = sd
+    end
+    # Abandoning theory here and just finding the best fit
+    xdataT = pos
+    ydataT = ms
+    weigT = (sds.^-2)
+    p0 = [0.0,1.0]
+    fitT = curve_fit(model,xdataT,ydataT,weigT,p0)
+    yintT = coef(fitT)[1]
+    slopT = coef(fitT)[2]
+    xran = -55.0:5.0:25.0
+    plot!(p1,xran,model(xran,[yintT,slopT]),label="",color=2)
     savefig(p1,"../Results/MultDiff.png")
     savefig(p2,"../Results/MultDiffalt1.png")
     savefig(p3,"../Results/MultDiffalt2.png")
     savefig(p4,"../Results/MultDiffalt3.png")
     savefig(p5,"../Results/MultDiffalt4.png")
     savefig(p6,"../Results/MultDiffalt5.png")
-    savefig(p7,"../Results/MultDiffalt6.png")
     # Now calculate Pearson correlation coefficient
     xbarT = sum(xdataT)/length(xdataT)
     ybarT = sum(ydataT)/length(ydataT)
@@ -663,7 +794,7 @@ function main()
         c += (ydataT[i] - ybarT)^2
     end
     r = a/sqrt(b*c)
-    println("Correlation Toggle Switch Mast vs Langevin: $(r)")
+    println("Correlation Schlögl Mast vs Langevin: $(r)")
     # And could do a weighted correlation
     wxbarT = sum(weigT.*xdataT)/(length(xdataT)*sum(weigT))
     wybarT = sum(weigT.*ydataT)/(length(ydataT)*sum(weigT))
@@ -671,7 +802,7 @@ function main()
     wcovxx = sum(weigT.*(xdataT.-wxbarT).*(xdataT.-wxbarT))/sum(weigT)
     wcovyy = sum(weigT.*(ydataT.-wybarT).*(ydataT.-wybarT))/sum(weigT)
     r = wcovxy/sqrt(wcovxx*wcovyy)
-    println("Weighted Correlation Toggle Switch Mast vs Langevin: $(r)")
+    println("Weighted Correlation Schlögl Mast vs Langevin: $(r)")
     return(nothing)
 end
 

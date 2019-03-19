@@ -497,11 +497,76 @@ function main()
     end
     r = a/sqrt(b*c)
     println("Correlation Schlögl Occ vs Ent Prod: $(r)")
+    # Read in steady states and use to calculate distances
+    infile = "../Results/Fig3Data/$(ARGS[1])stead.csv"
+    l = countlines(infile)
+    w = 6
+    steads = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                steads[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # now make δsad
+    δsad = zeros(l,2)
+    for i = 1:l
+        δsad[i,1] = sqrt((steads[i,1]-steads[i,3])^2 + (steads[i,2]-steads[i,4])^2)
+        δsad[i,2] = sqrt((steads[i,5]-steads[i,3])^2 + (steads[i,6]-steads[i,4])^2)
+    end
+    # Same for Schlögl states
+    infile = "../Results/Fig3DataS/$(ARGS[2])steadS.csv"
+    l = countlines(infile)
+    w = 3
+    steadsS = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                steadsS[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # now make δsad
+    δsadS = zeros(l,2)
+    for i = 1:l
+        δsadS[i,1] = abs(steadsS[i,1]-steadsS[i,2])
+        δsadS[i,2] = abs(steadsS[i,3]-steadsS[i,2])
+    end
     # Now do graph of different
     xlab = L"ΔS"
     ylab = L"\dot{S}"
     p1 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
     p2 = plot(xlabel=xlab,ylabel=ylab,title=L"Δ\;\dot{S}\;vs\;\Delta\Delta S")
+    p3 = plot(xlabel=xlab,ylabel=ylab,title=L"Δ\;\dot{S}\;vs\;\Delta\Delta S")
     I = collect(1:100)
     K = 0 # start counter
     # make arrays to store data
@@ -619,6 +684,7 @@ function main()
         sd = sqrt(sdf^2 + sdb^2)
         plot!(p1,[pff[1]-pfb[1]],[m],yerror=sd,label="",color=1)
         scatter!(p2,[pff[3]-pfb[3]],[ents[i,1] - ents[i,3]],label="",color=1)
+        scatter!(p3,[pff[3]-pfb[3]],[δsad[i,1]*ents[i,1] - δsad[i,2]*ents[i,3]],label="",color=1)
         # Save data for use outside
         K += 1 # increment index
         pos[K] = pff[1]-pfb[1]
@@ -643,6 +709,13 @@ function main()
     slopT = coef(fitT)[2]
     xran = -45.0:5.0:10.0
     plot!(p2,xran,model(xran,[yintT,slopT]),label="",color=1)
+    xdataT = pos2
+    ydataT = δsad[:,1].*ents[:,1] .- δsad[:,2].*ents[:,3]
+    fitT = curve_fit(model,xdataT,ydataT,p0)
+    yintT = coef(fitT)[1]
+    slopT = coef(fitT)[2]
+    xran = -45.0:5.0:10.0
+    plot!(p3,xran,model(xran,[yintT,slopT]),label="",color=1)
     # Now calculate Pearson correlation coefficient
     xbarT = sum(xdataT)/length(xdataT)
     ybarT = sum(ydataT)/length(ydataT)
@@ -781,6 +854,7 @@ function main()
         sd = sqrt(sdf^2 + sdb^2)
         plot!(p1,[pff[1]-pfb[1]],[m],yerror=sd,label="",color=2)
         scatter!(p2,[pff[3]-pfb[3]],[Sents[i,1] - Sents[i,3]],label="",color=2)
+        scatter!(p3,[pff[3]-pfb[3]],[δsadS[i,1]*Sents[i,1] - δsadS[i,2]*Sents[i,3]],label="",color=2)
         # Save data for use outside
         K += 1 # increment index
         pos[K] = pff[1]-pfb[1]
@@ -806,8 +880,17 @@ function main()
     slopS = coef(fitS)[2]
     xran = -45.0:5.0:10.0
     plot!(p2,xran,model(xran,[yintS,slopS]),label="",color=2)
+    xdataS = pos2
+    ydataS = δsadS[:,1].*Sents[:,1] .- δsadS[:,2].*Sents[:,3]
+    p0 = [0.0,1.0]
+    fitS = curve_fit(model,xdataS,ydataS,p0)
+    yintS = coef(fitS)[1]
+    slopS = coef(fitS)[2]
+    xran = -45.0:5.0:10.0
+    plot!(p3,xran,model(xran,[yintS,slopS]),label="",color=2)
     savefig(p1,"../Results/MultDiff.png")
     savefig(p2,"../Results/SwitchvsProd.png")
+    savefig(p3,"../Results/SwitchvsProdtest.png")
     # Now calculate Pearson correlation coefficient
     xbarS = sum(xdataS)/length(xdataS)
     ybarS = sum(ydataS)/length(ydataS)

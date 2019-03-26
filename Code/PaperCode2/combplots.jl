@@ -164,7 +164,7 @@ function main()
         Sent[i,4] = Sents[i,3] # B
     end
     # Line that sets up pyplot and basic sizings
-    pyplot(dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12,tickfontsize=14)
+    pyplot(dpi=300,titlefontsize=20,guidefontsize=17,legendfontsize=15,tickfontsize=14)
     # Now a whole section for reading and plotting the stability data
     # first make structure to store data to
     acts = zeros(l,8)
@@ -256,9 +256,9 @@ function main()
         end
     end
     # plot change in action vs entropy produced
-    xlab = L"ΔS_{A\rightarrow B} - ΔS_{B\rightarrow A}"
-    ylab = L"\mathcal{A}_{B\rightarrow A} - \mathcal{A}_{A\rightarrow B}"
-    plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S")
+    xlab = L"ΔS^L_{A\rightarrow B} - ΔS^L_{B\rightarrow A}"
+    ylab = L"\mathcal{A}_{B\rightarrow A} - \mathcal{A}_{A\rightarrow B}\;(1/\Omega)"
+    plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S^L")
     for i = 1:l
         if datayn[i] == true
             scatter!([acts[i,8]-acts[i,4]],[acts[i,2]-acts[i,6]],label="",color=1)
@@ -286,7 +286,7 @@ function main()
     fitS = curve_fit(model,xdataS,ydataS,p0)
     yintS = coef(fitS)[1]
     slopS = coef(fitS)[2]
-    plot!(xran,model(xran,[yintS,slopS]),label="",color=2)
+    plot!(xran,model(xran,[yintS,slopS]),label="",color=2,top_margin=8mm)
     savefig("../Results/DiffActvsDiffEntProd.png")
     # Now calculate Pearson correlation coefficient
     xbarT = sum(xdataT)/length(xdataT)
@@ -390,7 +390,7 @@ function main()
             Sind = vcat(Sind,i)
         end
     end
-    plot(title=L"\ln{(\frac{p_{A}}{p_{B}})}\;vs\;\ln{(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}})}")
+    plot(title=L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}\;vs\;\ln{\left(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}}\right)}")
     for i = ind
         scatter!([probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="",color=1)
     end
@@ -411,8 +411,8 @@ function main()
     fitS = curve_fit(model,xdataS,ydataS,p0)
     yintS = coef(fitS)[1]
     slopS = coef(fitS)[2]
-    plot!(xran,model(xran,[yintS,slopS]),label="",color=2,xlabel=L"\ln{(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}})}")
-    plot!(xran,xran,label="",ylabel=L"\ln{(\frac{p_{A}}{p_{B}})}",color=3,style=:dash)
+    plot!(xran,model(xran,[yintS,slopS]),label="",color=2,xlabel=L"\ln{\left(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}}\right)}")
+    plot!(xran,xran,label="",ylabel=L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}",color=:black,style=:dash)
     savefig("../Results/Linear.png")
     # Now calculate Pearson correlation coefficient
     xbarT = sum(xdataT)/length(xdataT)
@@ -441,9 +441,10 @@ function main()
     r = a/sqrt(b*c)
     println("Correlation Schlögl Theory vs Simulation: $(r)")
     # now try to get log ratio of state probailities to plot against differences in entropy production
-    ylab = L"\ln{(\frac{p_{A}}{p_{B}})}"
-    xlab = L"\dot{S}_A - \dot{S}_B"
-    plot(xlabel=xlab,ylabel=ylab,title="$(ylab) vs $(xlab)")
+    ylab = L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}"
+    xlab1 = L"\dot{S}_A - \dot{S}_B"
+    xlab2 = L"\dot{S}_A - \dot{S}_B\;(s^{-1})"
+    plot(xlabel=xlab2,ylabel=ylab,title="$(ylab) vs $(xlab1)")
     for i = ind
         if datayn[i] == true
             scatter!([ent[i,3]-ent[i,4]],[log(probs[i,2]/probs[i,1])/probs[i,3]],label="",color=1)
@@ -564,16 +565,19 @@ function main()
     # Now do graph of different
     xlab = L"ΔS"
     ylab = L"\dot{S}"
-    p1 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",xlabel="Langevin EP (LDT)",ylabel="Exact EP (FT)")
-    p2 = plot(xlabel=xlab,ylabel=ylab,title=L"Δ\;\dot{S}\;vs\;\Delta\Delta S")
-    p3 = plot(xlabel=xlab,ylabel=ylab,title=L"Δ\;\dot{S}\;vs\;\Delta\Delta S")
+    mag1 = 10^-2
+    Lmag1 = L"10^2"
+    p1 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",guidefontsize=15)
+    plot!(p1,xlabel="Langevin EP (LDT) ($Lmag1)",ylabel="Exact EP (FT) ($Lmag1)")
+    # p2 = plot(xlabel=xlab,ylabel=ylab,title=L"Δ\;\dot{S}\;vs\;\Delta\Delta S")
+    # p3 = plot(xlabel=xlab,ylabel=ylab,title=L"Δ\;\dot{S}\;vs\;\Delta\Delta S")
     I = collect(1:100)
     K = 0 # start counter
     # make arrays to store data
     pos = zeros(length(I))
     ms = zeros(length(I))
     sds = zeros(length(I))
-    pos2 = zeros(length(I))
+    # pos2 = zeros(length(I))
     # save all x and y values
     for i = I
         infile1 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BMast.csv"
@@ -682,15 +686,15 @@ function main()
         sdb = stdm(mastb,mb;corrected=true)/sqrt(ne-1)
         m = mf - mb
         sd = sqrt(sdf^2 + sdb^2)
-        plot!(p1,[pff[1]-pfb[1]],[m],yerror=sd,label="",color=1)
-        scatter!(p2,[pff[3]-pfb[3]],[ents[i,1] - ents[i,3]],label="",color=1)
-        scatter!(p3,[pff[3]-pfb[3]],[δsad[i,1]*ents[i,1] - δsad[i,2]*ents[i,3]],label="",color=1)
+        plot!(p1,mag1*[pff[1]-pfb[1]],mag1*[m],yerror=mag1*sd,label="",markercolor=1,markerstrokecolor=:black)
+        # scatter!(p2,[pff[3]-pfb[3]],[ents[i,1] - ents[i,3]],label="",color=1)
+        # scatter!(p3,[pff[3]-pfb[3]],[δsad[i,1]*ents[i,1] - δsad[i,2]*ents[i,3]],label="",color=1)
         # Save data for use outside
         K += 1 # increment index
         pos[K] = pff[1]-pfb[1]
         ms[K] = m
         sds[K] = sd
-        pos2[K] = pff[3]-pfb[3]
+        # pos2[K] = pff[3]-pfb[3]
     end
     # Abandoning theory here and just finding the best fit
     xdataT = pos
@@ -701,21 +705,21 @@ function main()
     yintT = coef(fitT)[1]
     slopT = coef(fitT)[2]
     xran = -55.0:5.0:195.0
-    plot!(p1,xran,model(xran,[yintT,slopT]),label="",color=1)
-    xdataT = pos2
-    ydataT = ents[:,1] .- ents[:,3]
-    fitT = curve_fit(model,xdataT,ydataT,p0)
-    yintT = coef(fitT)[1]
-    slopT = coef(fitT)[2]
-    xran = -45.0:5.0:10.0
-    plot!(p2,xran,model(xran,[yintT,slopT]),label="",color=1)
-    xdataT = pos2
-    ydataT = δsad[:,1].*ents[:,1] .- δsad[:,2].*ents[:,3]
-    fitT = curve_fit(model,xdataT,ydataT,p0)
-    yintT = coef(fitT)[1]
-    slopT = coef(fitT)[2]
-    xran = -45.0:5.0:10.0
-    plot!(p3,xran,model(xran,[yintT,slopT]),label="",color=1)
+    plot!(p1,mag1*xran,mag1*model(xran,[yintT,slopT]),label="",color=1)
+    # xdataT = pos2
+    # ydataT = ents[:,1] .- ents[:,3]
+    # fitT = curve_fit(model,xdataT,ydataT,p0)
+    # yintT = coef(fitT)[1]
+    # slopT = coef(fitT)[2]
+    # xran = -45.0:5.0:10.0
+    # plot!(p2,xran,model(xran,[yintT,slopT]),label="",color=1)
+    # xdataT = pos2
+    # ydataT = δsad[:,1].*ents[:,1] .- δsad[:,2].*ents[:,3]
+    # fitT = curve_fit(model,xdataT,ydataT,p0)
+    # yintT = coef(fitT)[1]
+    # slopT = coef(fitT)[2]
+    # xran = -45.0:5.0:10.0
+    # plot!(p3,xran,model(xran,[yintT,slopT]),label="",color=1)
     # Now calculate Pearson correlation coefficient
     xbarT = sum(xdataT)/length(xdataT)
     ybarT = sum(ydataT)/length(ydataT)
@@ -729,20 +733,20 @@ function main()
     end
     r = a/sqrt(b*c)
     println("Correlation Toggle Switch EntProd vs TrajEntProd: $(r)")
-    # # And could do a weighted correlation
-    # wxbarT = sum(weigT.*xdataT)/(length(xdataT)*sum(weigT))
-    # wybarT = sum(weigT.*ydataT)/(length(ydataT)*sum(weigT))
-    # wcovxy = sum(weigT.*(xdataT.-wxbarT).*(ydataT.-wybarT))/sum(weigT)
-    # wcovxx = sum(weigT.*(xdataT.-wxbarT).*(xdataT.-wxbarT))/sum(weigT)
-    # wcovyy = sum(weigT.*(ydataT.-wybarT).*(ydataT.-wybarT))/sum(weigT)
-    # r = wcovxy/sqrt(wcovxx*wcovyy)
-    # println("Weighted Correlation Toggle Switch Mast vs Langevin: $(r)")
-    # The same is now done for the Sclögl model
+    # And could do a weighted correlation
+    wxbarT = sum(weigT.*xdataT)/(length(xdataT)*sum(weigT))
+    wybarT = sum(weigT.*ydataT)/(length(ydataT)*sum(weigT))
+    wcovxy = sum(weigT.*(xdataT.-wxbarT).*(ydataT.-wybarT))/sum(weigT)
+    wcovxx = sum(weigT.*(xdataT.-wxbarT).*(xdataT.-wxbarT))/sum(weigT)
+    wcovyy = sum(weigT.*(ydataT.-wybarT).*(ydataT.-wybarT))/sum(weigT)
+    r = wcovxy/sqrt(wcovxx*wcovyy)
+    println("Weighted Correlation Toggle Switch Mast vs Langevin: $(r)")
+    # The same is now done for the Schlögl model
     # make arrays to store data
     pos = zeros(length(I))
     ms = zeros(length(I))
     sds = zeros(length(I))
-    pos2 = zeros(length(I))
+    # pos2 = zeros(length(I))
     K = 0 # restart counter
     # save all x and y values
     for i = I
@@ -852,15 +856,15 @@ function main()
         sdb = stdm(mastb,mb;corrected=true)/sqrt(ne-1)
         m = mf - mb
         sd = sqrt(sdf^2 + sdb^2)
-        plot!(p1,[pff[1]-pfb[1]],[m],yerror=sd,label="",color=2)
-        scatter!(p2,[pff[3]-pfb[3]],[Sents[i,1] - Sents[i,3]],label="",color=2)
-        scatter!(p3,[pff[3]-pfb[3]],[δsadS[i,1]*Sents[i,1] - δsadS[i,2]*Sents[i,3]],label="",color=2)
+        plot!(p1,mag1*[pff[1]-pfb[1]],mag1*[m],yerror=mag1*sd,label="",markercolor=2,markerstrokecolor=:black)
+        # scatter!(p2,[pff[3]-pfb[3]],[Sents[i,1] - Sents[i,3]],label="",color=2)
+        # scatter!(p3,[pff[3]-pfb[3]],[δsadS[i,1]*Sents[i,1] - δsadS[i,2]*Sents[i,3]],label="",color=2)
         # Save data for use outside
         K += 1 # increment index
         pos[K] = pff[1]-pfb[1]
         ms[K] = m
         sds[K] = sd
-        pos2[K] = pff[3]-pfb[3]
+        # pos2[K] = pff[3]-pfb[3]
     end
     # Abandoning theory here and just finding the best fit
     xdataS = pos
@@ -871,26 +875,26 @@ function main()
     yintS = coef(fitS)[1]
     slopS = coef(fitS)[2]
     xran = -55.0:5.0:195.0
-    plot!(p1,xran,model(xran,[yintS,slopS]),label="",color=2)
-    xdataS = pos2
-    ydataS = Sents[:,1] .- Sents[:,3]
-    p0 = [0.0,1.0]
-    fitS = curve_fit(model,xdataS,ydataS,p0)
-    yintS = coef(fitS)[1]
-    slopS = coef(fitS)[2]
-    xran = -45.0:5.0:10.0
-    plot!(p2,xran,model(xran,[yintS,slopS]),label="",color=2)
-    xdataS = pos2
-    ydataS = δsadS[:,1].*Sents[:,1] .- δsadS[:,2].*Sents[:,3]
-    p0 = [0.0,1.0]
-    fitS = curve_fit(model,xdataS,ydataS,p0)
-    yintS = coef(fitS)[1]
-    slopS = coef(fitS)[2]
-    xran = -45.0:5.0:10.0
-    plot!(p3,xran,model(xran,[yintS,slopS]),label="",color=2)
+    plot!(p1,mag1*xran,mag1*model(xran,[yintS,slopS]),label="",color=2)
+    # xdataS = pos2
+    # ydataS = Sents[:,1] .- Sents[:,3]
+    # p0 = [0.0,1.0]
+    # fitS = curve_fit(model,xdataS,ydataS,p0)
+    # yintS = coef(fitS)[1]
+    # slopS = coef(fitS)[2]
+    # xran = -45.0:5.0:10.0
+    # plot!(p2,xran,model(xran,[yintS,slopS]),label="",color=2)
+    # xdataS = pos2
+    # ydataS = δsadS[:,1].*Sents[:,1] .- δsadS[:,2].*Sents[:,3]
+    # p0 = [0.0,1.0]
+    # fitS = curve_fit(model,xdataS,ydataS,p0)
+    # yintS = coef(fitS)[1]
+    # slopS = coef(fitS)[2]
+    # xran = -45.0:5.0:10.0
+    # plot!(p3,xran,model(xran,[yintS,slopS]),label="",color=2)
     savefig(p1,"../Results/MultDiff.png")
-    savefig(p2,"../Results/SwitchvsProd.png")
-    savefig(p3,"../Results/SwitchvsProdtest.png")
+    # savefig(p2,"../Results/SwitchvsProd.png")
+    # savefig(p3,"../Results/SwitchvsProdtest.png")
     # Now calculate Pearson correlation coefficient
     xbarS = sum(xdataS)/length(xdataS)
     ybarS = sum(ydataS)/length(ydataS)
@@ -904,14 +908,14 @@ function main()
     end
     r = a/sqrt(b*c)
     println("Correlation Schlögl Entprod vs TrajEntProd: $(r)")
-    # # And could do a weighted correlation
-    # wxbarT = sum(weigT.*xdataT)/(length(xdataT)*sum(weigT))
-    # wybarT = sum(weigT.*ydataT)/(length(ydataT)*sum(weigT))
-    # wcovxy = sum(weigT.*(xdataT.-wxbarT).*(ydataT.-wybarT))/sum(weigT)
-    # wcovxx = sum(weigT.*(xdataT.-wxbarT).*(xdataT.-wxbarT))/sum(weigT)
-    # wcovyy = sum(weigT.*(ydataT.-wybarT).*(ydataT.-wybarT))/sum(weigT)
-    # r = wcovxy/sqrt(wcovxx*wcovyy)
-    # println("Weighted Correlation Schlögl Mast vs Langevin: $(r)")
+    # And could do a weighted correlation
+    wxbarT = sum(weigT.*xdataT)/(length(xdataT)*sum(weigT))
+    wybarT = sum(weigT.*ydataT)/(length(ydataT)*sum(weigT))
+    wcovxy = sum(weigT.*(xdataT.-wxbarT).*(ydataT.-wybarT))/sum(weigT)
+    wcovxx = sum(weigT.*(xdataT.-wxbarT).*(xdataT.-wxbarT))/sum(weigT)
+    wcovyy = sum(weigT.*(ydataT.-wybarT).*(ydataT.-wybarT))/sum(weigT)
+    r = wcovxy/sqrt(wcovxx*wcovyy)
+    println("Weighted Correlation Schlögl Mast vs Langevin: $(r)")
     return(nothing)
 end
 

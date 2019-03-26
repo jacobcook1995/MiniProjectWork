@@ -249,10 +249,10 @@ function main()
     Lx = latexstring("Time\\,\\tau")
     Ly = L"P(\tau)"
     ax = bar(hA,label="",linecolor=:blue,dpi=300,fillalpha=1.0,fillcolor=:blue,xlim=(0,tsA[end]),ylim=(0,1.1*maxA))
-    plot!(rangeA,A,label="",grid=false,xlabel=Lx,ylabel=Ly,xticks=false,yticks=false,guidefontsize=30)
+    plot!(rangeA,A,label="",grid=false,xlabel=Lx,ylabel=Ly,xticks=false,yticks=false,guidefontsize=40,bgcolor=:transparent)
     savefig("../Results/wA.png")
     bar(hB,label="",linecolor=:blue,dpi=300,fillalpha=1.0,fillcolor=:blue,xlim=(0,tsB[end]),ylim=(0,1.1*maxB))
-    plot!(rangeB,B,label="",grid=false,xlabel=Lx,ylabel=Ly,xticks=false,yticks=false,guidefontsize=30)
+    plot!(rangeB,B,label="",grid=false,xlabel=Lx,ylabel=Ly,xticks=false,yticks=false,guidefontsize=40,bgcolor=:transparent)
     savefig("../Results/wB.png")
     return(nothing)
 end

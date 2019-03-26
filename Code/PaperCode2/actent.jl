@@ -506,13 +506,15 @@ function plotting()
     # 2 for loops to loop over every file
     pyplot()
     p1 = plot(dpi=300,title="Toggle Switch Paths",xlabel="Concentration a",ylabel="Concentration b")
-    plot!(p1,titlefontsize=20,guidefontsize=16,legendfontsize=12,tickfontsize=14)
+    plot!(p1,titlefontsize=20,guidefontsize=16,legendfontsize=15,tickfontsize=14)
     mag1 = 10.0^3
     Smag1 = L"(10^{-3}\,1/\Omega)"
-    p2 = plot(dpi=300,title="Toggle Switch Action Contributions",xlabel="Concentration a")
-    plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions $Smag1",tickfontsize=14)
-    p3 = plot(dpi=300,title="Toggle Switch Production/Flow Terms",xlabel="Concentration a")
-    plot!(p3,titlefontsize=20,guidefontsize=16,legendfontsize=12,ylabel="Action Contributions $Smag1",tickfontsize=14)
+    p2 = plot(dpi=300,title="Toggle Switch Action",xlabel="Concentration a")
+    plot!(p2,titlefontsize=20,guidefontsize=16,legendfontsize=15,ylabel="Action terms $Smag1",tickfontsize=14)
+    mag2 = 10.0^1
+    Smag2 = L"(10^{-1}\,1/\Omega)"
+    p3 = plot(dpi=300,title="Toggle Switch Production/Flow",xlabel="Concentration a")
+    plot!(p3,titlefontsize=20,guidefontsize=16,legendfontsize=15,ylabel="Action terms $Smag2",tickfontsize=14)
     Act = [0.0,0.0]
     ΔS = [0.0,0.0]
     Af = zeros(600,2)
@@ -570,7 +572,9 @@ function plotting()
                 tims2 = times(x,xprim,λs,ϑs,λprim,NG)
                 # save time of path
                 Tp = tims2[end]
-                path2 = timdis(tims2,x,NG,NM)
+                Tmid = tims2[Nmid]
+                path2, Ns = timdis(tims2,x,NG,NM,Tmid)
+                println(Ns)
                 if j == 1
                     plot!(p1,path2[:,1],path2[:,2],label=L"A\rightarrow B",color=1)
                     plot!(p1,path2[515:516,1],path2[515:516,2],arrow=0.4,label="",color=1)
@@ -580,6 +584,7 @@ function plotting()
                 end
                 # find point that path reaches saddle Ns
                 Ns = 0
+                println(Ns)
                 if path2[1,:] == [steads[N,1],steads[N,2]]
                     for i = 1:length(path2)
                         if path2[i,1] <= steads[N,3] && path2[i,2] >= steads[N,4]
@@ -595,9 +600,10 @@ function plotting()
                         end
                     end
                 else
-                    println("Error: Should start at sone of the two points")
+                    println("Error: Should start at one of the two points")
                     error()
                 end
+                println(Ns)
                 # now use a function that takes the time discretised path and
                 # finds the action in a more conventional manner and then can also get entropy production from this
                 Act[j], ΔS[j], Af[:,j], ΔSf[:,j], KE[:,j], PE[:,j], prods, flows = act(path2,Tp,b,Dmin,ps[i,:],Ns)
@@ -605,18 +611,18 @@ function plotting()
                     plot!(p2,path2[1:end-1,1],Af[:,j]*mag1,label=L"\mathcal{A}",color=1)
                     plot!(p2,path2[1:end-1,1],PE[:,j]*mag1,label="PE",color=2)
                     plot!(p2,path2[1:end-1,1],KE[:,j]*mag1,label="KE",color=3)
-                    plot!(p3,path2[1:end-1,1],prods*mag1,label="EP",color=1)
-                    plot!(p3,path2[1:end-1,1],flows*mag1,label="EF",color=2)
-                    plot!(p3,path2[1:end-1,1],(prods.-flows)*mag1,label="EP-EF",color=3)
-                    plot!(p3,path2[1:end-1,1],ΔSf[:,j]*mag1,label=L"\Delta S",color=4)
+                    plot!(p3,path2[1:end-1,1],prods*mag2,label="EP",color=1)
+                    plot!(p3,path2[1:end-1,1],flows*mag2,label="EF",color=2)
+                    plot!(p3,path2[1:end-1,1],(prods.-flows)*mag2,label="EP-EF",color=3)
+                    plot!(p3,path2[1:end-1,1],ΔSf[:,j]*mag2,label=L"\Delta S^L",color=4)
                 else
                     plot!(p2,path2[1:end-1,1],Af[:,j]*mag1,label="",color=1,style=:dash)
                     plot!(p2,path2[1:end-1,1],PE[:,j]*mag1,label="",color=2,style=:dash)
                     plot!(p2,path2[1:end-1,1],KE[:,j]*mag1,label="",color=3,style=:dash)
-                    plot!(p3,path2[1:end-1,1],prods*mag1,label="",color=1,style=:dash)
-                    plot!(p3,path2[1:end-1,1],flows*mag1,label="",color=2,style=:dash)
-                    plot!(p3,path2[1:end-1,1],(prods.-flows)*mag1,label="",color=3,style=:dash)
-                    plot!(p3,path2[1:end-1,1],ΔSf[:,j]*mag1,label="",color=4,style=:dash)
+                    plot!(p3,path2[1:end-1,1],prods*mag2,label="",color=1,style=:dash)
+                    plot!(p3,path2[1:end-1,1],flows*mag2,label="",color=2,style=:dash)
+                    plot!(p3,path2[1:end-1,1],(prods.-flows)*mag2,label="",color=3,style=:dash)
+                    plot!(p3,path2[1:end-1,1],ΔSf[:,j]*mag2,label="",color=4,style=:dash)
                 end
             else # Tell users about missing files
                 if j == 1
@@ -634,7 +640,7 @@ function plotting()
     annotate!(p1,[(steads[N,5]+0.1,steads[N,6],text("B",20)),(steads[N,1],steads[N,2]+0.15,text("A",20))])
     savefig(p1,"../Results/Fig2Graphs/TogPath$(ARGS[2]).png")
     plot!(p2,path2[1:end-1,1],(Af[:,2]-Af[end:-1:1,1])*mag1,label=L"\mathcal{A}_{B\rightarrow A} - \mathcal{A}_{A\rightarrow B}",color=4,style=:dashdot)
-    plot!(p2,path2[1:end-1,1],(ΔSf[end:-1:1,1]-ΔSf[:,2])*mag1,label=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",color=5,style=:dashdot)
+    plot!(p2,path2[1:end-1,1],(ΔSf[end:-1:1,1]-ΔSf[:,2])*mag1,label=L"\Delta S^{L}_{A\rightarrow B} - \Delta S^{L}_{B\rightarrow A}",color=5,style=:dashdot)
     scatter!(p2,[steads[N,1]],[0.0],markersize=6,markercolor=:white,label="")
     scatter!(p2,[steads[N,3]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
     scatter!(p2,[steads[N,5]],[0.0],markersize=6,markercolor=:black,label="")
@@ -646,5 +652,5 @@ function plotting()
     return(nothing)
 end
 
-@time main()
-# @time plotting()
+# @time main()
+@time plotting()

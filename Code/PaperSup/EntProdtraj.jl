@@ -13,6 +13,7 @@ using Plots
 using LaTeXStrings
 using PyCall
 import PyPlot
+using Plots.PlotMeasures
 
 # make a symbolic diffusion matrix
 function Ds()
@@ -603,8 +604,9 @@ function main()
         end
     end
     # Now calculate and plot langevin entropy productions
-    LatS = L"\Delta S_{L}"
-    LatS2 = L"\Delta S_{M}"
+    LatS = L"\Delta S^{L}"
+    LatS2 = L"\Delta S^{R}"
+    LatS3 = L"\Delta S"
     pyplot()
     Ω = 5000
     for i = 1:len
@@ -614,18 +616,34 @@ function main()
             println("$(i),$(j),$(sum(entp)),$(Act[2*(i-1)+j,4])")
             entp2 = MastEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1],Ω)
             println("$(i),$(j),$(sum(entp2)/Ω)")
-            plot(traj2[1:end-1,1+d],entp,label=LatS,dpi=300,legend=:best,title="Langevin")
-            plot!(xlabel="Concentration A",ylabel=LatS,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+            plot(traj2[1:end-1,1+d],entp,label=LatS,dpi=300,legend=:best,title="",margin=8.0mm)
+            plot!(xlabel="Concentration a",ylabel=LatS,titlefontsize=20,guidefontsize=16,legendfontsize=12)
             scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
             scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
             scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
             savefig("../Results/SupGraphs/$(i)$(j)LangEnt.png")
-            plot(traj2[1:end-1,1+d],entp2/(Ω),label=LatS2,dpi=300,legend=:best,title="Reduced Master Eq")
-            plot!(xlabel="Concentration A",ylabel=LatS2,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+            plot(traj2[1:end-1,1+d],entp2/(Ω),label=LatS2,dpi=300,legend=:best,title="",margin=8.0mm)
+            plot!(xlabel="Concentration a",ylabel=LatS2,titlefontsize=20,guidefontsize=16,legendfontsize=12)
             scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
             scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
             scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
             savefig("../Results/SupGraphs/$(i)$(j)MastEnt.png")
+        end
+    end
+    for i = 1:len
+        for j = 1:2
+            d = 2*(j-1)+4*(i-1)
+            entp = LangEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1]/N)
+            println("$(i),$(j),$(sum(entp)),$(Act[2*(i-1)+j,4])")
+            entp2 = MastEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1],Ω)
+            println("$(i),$(j),$(sum(entp2)/Ω)")
+            plot(traj2[1:end-1,1+d],entp,label=LatS,dpi=300,legend=:best,title="",margin=8.0mm)
+            plot!(traj2[1:end-1,1+d],entp2/(Ω),label=LatS2)
+            plot!(xlabel="Concentration a",ylabel=LatS3,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+            scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
+            scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
+            scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
+            savefig("../Results/SupGraphs/$(i)$(j)CombEnt.png")
         end
     end
     return(nothing)

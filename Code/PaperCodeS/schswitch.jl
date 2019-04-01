@@ -119,6 +119,11 @@ function main()
     hline!([mid1],color=:black,linestyle=:dot,label="saddle")
     hline!([fin1],color=:black,linestyle=:solid,label="high state")
     savefig("../Results/SchSwitch.png")
+    plot(ts,Xs,label="",dpi=300,legend=false)
+    hline!([star1],color=:black,linestyle=:dash)
+    hline!([mid1],color=:black,linestyle=:dot)
+    hline!([fin1],color=:black,linestyle=:solid,xlabel="Time t",ylabel="Copy number X")
+    savefig("../Results/SchSwitchred.png")
     return(nothing)
 end
 

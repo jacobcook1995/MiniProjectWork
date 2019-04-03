@@ -258,7 +258,7 @@ function main()
     # plot change in action vs entropy produced
     xlab = L"ΔS^L_{A\rightarrow B} - ΔS^L_{B\rightarrow A}"
     ylab = L"\mathcal{A}_{B\rightarrow A} - \mathcal{A}_{A\rightarrow B}\;(1/\Omega)"
-    plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S^L")
+    plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S^L",bgcolor=:transparent,fgcolor=:black)
     for i = 1:l
         if datayn[i] == true
             scatter!([acts[i,8]-acts[i,4]],[acts[i,2]-acts[i,6]],label="",color=1)
@@ -390,7 +390,7 @@ function main()
             Sind = vcat(Sind,i)
         end
     end
-    plot(title=L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}\;vs\;\ln{\left(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}}\right)}")
+    plot(title=L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}\;vs\;\ln{\left(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}}\right)}",bgcolor=:transparent,fgcolor=:black)
     for i = ind
         scatter!([probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="",color=1)
     end
@@ -444,7 +444,7 @@ function main()
     ylab = L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}"
     xlab1 = L"\dot{S}_A - \dot{S}_B"
     xlab2 = L"\dot{S}_A - \dot{S}_B\;(s^{-1})"
-    plot(xlabel=xlab2,ylabel=ylab,title="$(ylab) vs $(xlab1)")
+    plot(xlabel=xlab2,ylabel=ylab,title="$(ylab) vs $(xlab1)",bgcolor=:transparent,fgcolor=:black)
     for i = ind
         if datayn[i] == true
             scatter!([ent[i,3]-ent[i,4]],[log(probs[i,2]/probs[i,1])/probs[i,3]],label="",color=1)
@@ -567,7 +567,7 @@ function main()
     ylab = L"\dot{S}"
     mag1 = 10^-2
     Lmag1 = L"10^2"
-    p1 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",guidefontsize=15)
+    p1 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",guidefontsize=15,bgcolor=:transparent,fgcolor=:black)
     plot!(p1,xlabel="Langevin EP (LDT) ($Lmag1)",ylabel="Exact EP (FT) ($Lmag1)")
     # p2 = plot(xlabel=xlab,ylabel=ylab,title=L"Δ\;\dot{S}\;vs\;\Delta\Delta S")
     # p3 = plot(xlabel=xlab,ylabel=ylab,title=L"Δ\;\dot{S}\;vs\;\Delta\Delta S")

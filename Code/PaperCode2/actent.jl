@@ -634,7 +634,7 @@ function plotting()
         end
     end
     # Start plotting here
-    scatter!(p1,[steads[N,1]],[steads[N,2]],markersize=6,markercolor=:white,label="")
+    scatter!(p1,[steads[N,1]],[steads[N,2]],markersize=6,markercolor=:white,label="",bgcolor=:transparent,fgcolor=:black)
     scatter!(p1,[steads[N,3]],[steads[N,4]],markersize=5,markercolor=:black,markershape=:x,label="")
     scatter!(p1,[steads[N,5]],[steads[N,6]],markersize=6,markercolor=:black,label="",legendfontrotation=90.0)
     annotate!(p1,[(steads[N,5]+0.1,steads[N,6],text("B",20)),(steads[N,1],steads[N,2]+0.15,text("A",20))])
@@ -643,11 +643,11 @@ function plotting()
     plot!(p2,path2[1:end-1,1],(ΔSf[end:-1:1,1]-ΔSf[:,2])*mag1,label=L"\Delta S^{L}_{A\rightarrow B} - \Delta S^{L}_{B\rightarrow A}",color=5,style=:dashdot)
     scatter!(p2,[steads[N,1]],[0.0],markersize=6,markercolor=:white,label="")
     scatter!(p2,[steads[N,3]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
-    scatter!(p2,[steads[N,5]],[0.0],markersize=6,markercolor=:black,label="")
+    scatter!(p2,[steads[N,5]],[0.0],markersize=6,markercolor=:black,label="",bgcolor=:transparent,fgcolor=:black)
     savefig(p2,"../Results/Fig2Graphs/TogAct$(ARGS[2]).png")
     scatter!(p3,[steads[N,1]],[0.0],markersize=6,markercolor=:white,label="")
     scatter!(p3,[steads[N,3]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
-    scatter!(p3,[steads[N,5]],[0.0],markersize=6,markercolor=:black,label="")
+    scatter!(p3,[steads[N,5]],[0.0],markersize=6,markercolor=:black,label="",bgcolor=:transparent,fgcolor=:black)
     savefig(p3,"../Results/Fig2Graphs/TogfTerms$(ARGS[2]).png")
     return(nothing)
 end

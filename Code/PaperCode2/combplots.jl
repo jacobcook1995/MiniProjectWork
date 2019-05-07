@@ -258,7 +258,7 @@ function main()
     # plot change in action vs entropy produced
     xlab = L"ΔS^L_{A\rightarrow B} - ΔS^L_{B\rightarrow A}"
     ylab = L"\mathcal{A}_{B\rightarrow A} - \mathcal{A}_{A\rightarrow B}\;(1/\Omega)"
-    plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S^L",bgcolor=:transparent,fgcolor=:black)
+    plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S^L")#,bgcolor=:transparent,fgcolor=:black)
     for i = 1:l
         if datayn[i] == true
             scatter!([acts[i,8]-acts[i,4]],[acts[i,2]-acts[i,6]],label="",color=1)
@@ -269,6 +269,73 @@ function main()
             scatter!([Sacts[i,8]-Sacts[i,4]],[Sacts[i,2]-Sacts[i,6]],label="",color=2)
         end
     end
+    # Want to establish the worst and best fitting cases for toggle switch
+    best = zeros(10,2)
+    worst = zeros(10,2)
+    for i = 1:l
+        # Find divergence from expected relation
+        δ = abs(acts[i,8]-acts[i,4]-2*(acts[i,2]-acts[i,6]))
+        # Fill empty entries until vector full
+        if i <= 10
+            if best[i,2] == 0.0 && worst[i,2] == 0.0
+                best[i,1] = i
+                worst[i,1] = i
+                best[i,2] = δ
+                worst[i,2] = δ
+            end
+        end
+        # Slightly hacky reording when the two vectors are full
+        if i == 11
+            bestp = sortperm(best[:,2])
+            worstp = sortperm(worst[:,2],rev=true)
+            worst = worst[worstp,:]
+            best = best[bestp,:]
+        end
+        if i >= 11
+            # Nothing triggered yet
+            tbest = false
+            tworst = false
+            for j = 1:10
+                # Only run if not already triggered for this vector
+                if best[j,2] > δ && tbest == false
+                    for k = 10:-1:j+1 # Use reverse for loop to rearrange elements
+                        best[k,:] = best[k-1,:]
+                    end
+                    best[j,1] = i
+                    best[j,2] = δ
+                    tbest = true
+                end
+                if worst[j,2] < δ && tworst == false
+                    for k = 10:-1:j+1 # Use reverse for loop to rearrange elements
+                        worst[k,:] = worst[k-1,:]
+                    end
+                    worst[j,1] = i
+                    worst[j,2] = δ
+                    tworst = true
+                end
+                # break if both are triggered
+                if tbest == true && tworst == true
+                    break
+                end
+            end
+        end
+    end
+    # Then output reduced best and worst indices
+    outfileb = "../Results/Fig3Data/Best.csv"
+    outfilew = "../Results/Fig3Data/Worst.csv"
+    # open files for writing
+    out_fileb = open(outfileb, "w")
+    for j = 1:size(best,1)
+        line = "$(best[j,1]),$(best[j,2])\n"
+        write(out_fileb, line)
+    end
+    close(out_fileb)
+    out_filew = open(outfilew, "w")
+    for j = 1:size(worst,1)
+        line = "$(worst[j,1]),$(worst[j,2])\n"
+        write(out_filew, line)
+    end
+    close(out_filew)
     # Now want to fit two lines, one for each model
     @. model(x,p) = p[1] + p[2]*x
     # Need to reduce data here to only include the relevant points
@@ -390,7 +457,7 @@ function main()
             Sind = vcat(Sind,i)
         end
     end
-    plot(title=L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}\;vs\;\ln{\left(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}}\right)}",bgcolor=:transparent,fgcolor=:black)
+    plot(title=L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}\;vs\;\ln{\left(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}}\right)}")#,bgcolor=:transparent,fgcolor=:black)
     for i = ind
         scatter!([probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="",color=1)
     end
@@ -444,7 +511,7 @@ function main()
     ylab = L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}"
     xlab1 = L"\dot{S}_A - \dot{S}_B"
     xlab2 = L"\dot{S}_A - \dot{S}_B\;(s^{-1})"
-    plot(xlabel=xlab2,ylabel=ylab,title="$(ylab) vs $(xlab1)",bgcolor=:transparent,fgcolor=:black)
+    plot(xlabel=xlab2,ylabel=ylab,title="$(ylab) vs $(xlab1)")#,bgcolor=:transparent,fgcolor=:black)
     for i = ind
         if datayn[i] == true
             scatter!([ent[i,3]-ent[i,4]],[log(probs[i,2]/probs[i,1])/probs[i,3]],label="",color=1)
@@ -567,7 +634,7 @@ function main()
     ylab = L"\dot{S}"
     mag1 = 10^-2
     Lmag1 = L"10^2"
-    p1 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",guidefontsize=15,bgcolor=:transparent,fgcolor=:black)
+    p1 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",guidefontsize=15)#,bgcolor=:transparent,fgcolor=:black)
     plot!(p1,xlabel="Langevin EP (LDT) ($Lmag1)",ylabel="Exact EP (FT) ($Lmag1)")
     # p2 = plot(xlabel=xlab,ylabel=ylab,title=L"Δ\;\dot{S}\;vs\;\Delta\Delta S")
     # p3 = plot(xlabel=xlab,ylabel=ylab,title=L"Δ\;\dot{S}\;vs\;\Delta\Delta S")

@@ -206,7 +206,11 @@ end
 
 # function to calculate speed along a path
 function speed(path::Array{Float64,2},ps::Array{Float64,1})
-    v = zeros(size(path,1)-1)
+    v = zeros(size(path,1)-1,2)
+    f = zeros(size(path,1)-1,2)
+    C = zeros(size(path,1)-1)
+    ΔS = zeros(size(path,1)-1)
+    Dm = zeros(size(path,1)-1,2,2)
     # Generate values needed for time discretisation
     ϑ, λ, b, Dmin = gensyms(ps)
     # define NG and Nmid and use to find variables
@@ -223,10 +227,50 @@ function speed(path::Array{Float64,2},ps::Array{Float64,1})
     Tp = tims2[end]
     Tmid = tims2[Nmid]
     path2, Ns = timdis(tims2,x,NG,NM,Tmid)
-    for i = 1:length(v)
-        v[i] = sqrt((path2[i,1]-path2[i+1,1])^2 + (path2[i,2]-path2[i+1,2])^2)
+    δt = tims2[2] - tims2[1]
+    for i = 1:size(v,1)
+        v[i,1] = (path2[i+1,1]-path2[i,1])/δt
+        v[i,2] = (path2[i+1,2]-path2[i,2])/δt
     end
-    return(v,path2)
+    A, B = symbols("A B")
+    # Adding calculation of f in
+    for i = 1:size(f,1)
+        posA = (path2[i+1,1] + path2[i,1])/2
+        posB = (path2[i+1,2] + path2[i,2])/2
+        bt = copy(b)
+        for j = 1:2
+            bt[j] = subs(bt[j], A=>posA, B=>posB) |> float
+        end
+        f[i,1] = bt[1]
+        f[i,2] = bt[2]
+    end
+    # Now calculate diffusion matrices
+    for i = 1:size(Dm,1)
+        posA = (path2[i+1,1] + path2[i,1])/2
+        posB = (path2[i+1,2] + path2[i,2])/2
+        Dmt = copy(Dmin)
+        for j = 1:2
+            for k = 1:2
+                Dmt[j,k] = subs(Dmt[j,k], A=>posA, B=>posB) |> float
+            end
+        end
+        Dm[i,1,1] = Dmt[1,1]
+        Dm[i,2,2] = Dmt[2,2]
+        Dm[i,1,2] = Dm[i,2,1] = 0.0
+    end
+    # and then calculate conservative actions
+    for i = 1:length(C)
+        for j = 1:2
+            C[i] += 0.5*(f[i,j]*Dm[i,j,j]*f[i,j] + v[i,j]*Dm[i,j,j]*v[i,j])*δt
+        end
+    end
+    # Calculate entropy production
+    for i = 1:length(ΔS)
+        for j = 1:2
+            ΔS[i] += (f[i,j]*Dm[i,j,j]*v[i,j])*δt
+        end
+    end
+    return(v,path2,f,C,ΔS)
 end
 
 function main()
@@ -328,6 +372,9 @@ function main()
             k += 1
         end
     end
+    println(best)
+    println(worst)
+    return(nothing)
     # Now read in best trajectories and plot
     for i = 1:length(best)
         infile1 = "../Results/Fig3Data/Traj/$(best[i])$(ARGS[1])A2B.csv"
@@ -382,15 +429,41 @@ function main()
                 k += 1
             end
         end
-        plot(path1[:,1],path1[:,2])
-        plot!(path2[:,1],path2[:,2])
-        savefig("../Results/BestWorst/Best$(i).png")
         # Calculate and then plot velocities
-        v1, tpath1 = speed(path1,ps[best[i],:])
-        v2, tpath2 = speed(path2,ps[best[i],:])
-        plot(tpath1[2:end,2],v1)
-        plot!(tpath2[2:end,2],v2)
-        savefig("../Results/BestWorst/VelocityBest$(i).png")
+        v1, tpath1, f1, C1, ΔS1 = speed(path1,ps[best[i],:])
+        v2, tpath2, f2, C2, ΔS2 = speed(path2,ps[best[i],:])
+        # plot(path1[:,1],path1[:,2])
+        # plot!(path2[:,1],path2[:,2])
+        # savefig("../Results/BestWorst/Best$(i).png")
+        # plot(tpath1[2:end,2],abs.(v1))
+        # plot!(tpath2[2:end,2],abs.(v2))
+        # savefig("../Results/BestWorst/VelocityBest$(i).png")
+        # plot(tpath1[2:end,2],abs.(f1))
+        # plot!(tpath2[2:end,2],abs.(f2))
+        # savefig("../Results/BestWorst/ForceBest$(i).png")
+        # plot(tpath1[2:end,2],C1)
+        # plot!(tpath2[2:end,2],C2)
+        # savefig("../Results/BestWorst/ConservBest$(i).png")
+        # Make cumaltive actions
+        CC1 = zeros(length(C1))
+        CC2 = zeros(length(C2))
+        for i = 1:length(C1)
+            CC1[i] = sum(C1[1:i])
+            CC2[i] = sum(C2[end+1-i:end])
+        end
+        plot(tpath1[2:end,2],CC1)
+        plot!(tpath2[end:-1:2,2],CC2)
+        savefig("../Results/BestWorst/CumConservBest$(i).png")
+        # Make cumaltive entropy productions
+        CΔS1 = zeros(length(ΔS1))
+        CΔS2 = zeros(length(ΔS2))
+        for i = 1:length(C1)
+            CΔS1[i] = sum(ΔS1[1:i])
+            CΔS2[i] = sum(ΔS2[end+1-i:end])
+        end
+        plot(tpath1[2:end,2],CΔS1)
+        plot!(tpath2[end:-1:2,2],CΔS2)
+        savefig("../Results/BestWorst/CumEntPBest$(i).png")
     end
     # Now read in worst trajectories and plot
     for i = 1:length(worst)
@@ -446,15 +519,41 @@ function main()
                 k += 1
             end
         end
-        plot(path1[:,1],path1[:,2])
-        plot!(path2[:,1],path2[:,2])
-        savefig("../Results/BestWorst/Worst$(i).png")
         # Calculate and then plot velocities
-        v1, tpath1 = speed(path1,ps[worst[i],:])
-        v2, tpath2 = speed(path2,ps[worst[i],:])
-        plot(tpath1[2:end,2],v1)
-        plot!(tpath2[2:end,2],v2)
-        savefig("../Results/BestWorst/VelocityWorst$(i).png")
+        v1, tpath1, f1, C1, ΔS1 = speed(path1,ps[worst[i],:])
+        v2, tpath2, f2, C2, ΔS2 = speed(path2,ps[worst[i],:])
+        # plot(path1[:,1],path1[:,2])
+        # plot!(path2[:,1],path2[:,2])
+        # savefig("../Results/BestWorst/Worst$(i).png")
+        # plot(tpath1[2:end,2],abs.(v1))
+        # plot!(tpath2[2:end,2],abs.(v2))
+        # savefig("../Results/BestWorst/VelocityWorst$(i).png")
+        # plot(tpath1[2:end,2],abs.(f1))
+        # plot!(tpath2[2:end,2],abs.(f2))
+        # savefig("../Results/BestWorst/ForceWorst$(i).png")
+        # plot(tpath1[2:end,2],C1)
+        # plot!(tpath2[2:end,2],C2)
+        # savefig("../Results/BestWorst/ConservWorst$(i).png")
+        # Make cumulative actions
+        CC1 = zeros(length(C1))
+        CC2 = zeros(length(C2))
+        for i = 1:length(C1)
+            CC1[i] = sum(C1[1:i])
+            CC2[i] = sum(C2[end+1-i:end])
+        end
+        plot(tpath1[2:end,2],CC1)
+        plot!(tpath2[end:-1:2,2],CC2)
+        savefig("../Results/BestWorst/CumConservWorst$(i).png")
+        # Make cumaltive entropy productions
+        CΔS1 = zeros(length(ΔS1))
+        CΔS2 = zeros(length(ΔS2))
+        for i = 1:length(C1)
+            CΔS1[i] = sum(ΔS1[1:i])
+            CΔS2[i] = sum(ΔS2[end+1-i:end])
+        end
+        plot(tpath1[2:end,2],CΔS1)
+        plot!(tpath2[end:-1:2,2],CΔS2)
+        savefig("../Results/BestWorst/CumEntPWorst$(i).png")
     end
     return(nothing)
 end

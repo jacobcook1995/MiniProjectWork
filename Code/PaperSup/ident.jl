@@ -340,7 +340,7 @@ function main()
                 end
             end
             comma[end] = L+1
-            # Parse from beginninh (comma[1]) to first comma (comma[2])
+            # Parse from beginning (comma[1]) to first comma (comma[2])
             temp = parse(Float64,line[(comma[1]+1):(comma[2]-1)])
             # Convert to Int
             best[k] = convert(Int64,temp)
@@ -365,18 +365,15 @@ function main()
                 end
             end
             comma[end] = L+1
-            # Parse from beginninh (comma[1]) to first comma (comma[2])
+            # Parse from beginning (comma[1]) to first comma (comma[2])
             temp = parse(Float64,line[(comma[1]+1):(comma[2]-1)])
             # Covert to Int
             worst[k] = convert(Int64,temp)
             k += 1
         end
     end
-    println(best)
-    println(worst)
-    return(nothing)
     # Now read in best trajectories and plot
-    for i = 1:length(best)
+    for i = 1:3#length(best)
         infile1 = "../Results/Fig3Data/Traj/$(best[i])$(ARGS[1])A2B.csv"
         infile2 = "../Results/Fig3Data/Traj/$(best[i])$(ARGS[1])B2A.csv"
         # now should read in 1st path
@@ -432,18 +429,18 @@ function main()
         # Calculate and then plot velocities
         v1, tpath1, f1, C1, ΔS1 = speed(path1,ps[best[i],:])
         v2, tpath2, f2, C2, ΔS2 = speed(path2,ps[best[i],:])
-        # plot(path1[:,1],path1[:,2])
-        # plot!(path2[:,1],path2[:,2])
-        # savefig("../Results/BestWorst/Best$(i).png")
-        # plot(tpath1[2:end,2],abs.(v1))
-        # plot!(tpath2[2:end,2],abs.(v2))
-        # savefig("../Results/BestWorst/VelocityBest$(i).png")
-        # plot(tpath1[2:end,2],abs.(f1))
-        # plot!(tpath2[2:end,2],abs.(f2))
-        # savefig("../Results/BestWorst/ForceBest$(i).png")
-        # plot(tpath1[2:end,2],C1)
-        # plot!(tpath2[2:end,2],C2)
-        # savefig("../Results/BestWorst/ConservBest$(i).png")
+        plot(path1[:,2],path1[:,1])
+        plot!(path2[:,2],path2[:,1])
+        savefig("../Results/BestWorst/Best$(i).png")
+        plot(tpath1[2:end,2],abs.(v1))
+        plot!(tpath2[2:end,2],abs.(v2))
+        savefig("../Results/BestWorst/VelocityBest$(i).png")
+        plot(tpath1[2:end,2],abs.(f1))
+        plot!(tpath2[2:end,2],abs.(f2))
+        savefig("../Results/BestWorst/ForceBest$(i).png")
+        plot(tpath1[2:end,2],C1)
+        plot!(tpath2[2:end,2],C2)
+        savefig("../Results/BestWorst/ConservBest$(i).png")
         # Make cumaltive actions
         CC1 = zeros(length(C1))
         CC2 = zeros(length(C2))
@@ -461,12 +458,15 @@ function main()
             CΔS1[i] = sum(ΔS1[1:i])
             CΔS2[i] = sum(ΔS2[end+1-i:end])
         end
+        plot(tpath1[2:end,2],ΔS1)
+        plot!(tpath2[end:-1:2,2],ΔS2[end:-1:1])
+        savefig("../Results/BestWorst/EntPBest$(i).png")
         plot(tpath1[2:end,2],CΔS1)
         plot!(tpath2[end:-1:2,2],CΔS2)
         savefig("../Results/BestWorst/CumEntPBest$(i).png")
     end
     # Now read in worst trajectories and plot
-    for i = 1:length(worst)
+    for i = 1:3#length(worst)
         infile1 = "../Results/Fig3Data/Traj/$(worst[i])$(ARGS[1])A2B.csv"
         infile2 = "../Results/Fig3Data/Traj/$(worst[i])$(ARGS[1])B2A.csv"
         # now should read in 1st path
@@ -522,18 +522,22 @@ function main()
         # Calculate and then plot velocities
         v1, tpath1, f1, C1, ΔS1 = speed(path1,ps[worst[i],:])
         v2, tpath2, f2, C2, ΔS2 = speed(path2,ps[worst[i],:])
-        # plot(path1[:,1],path1[:,2])
-        # plot!(path2[:,1],path2[:,2])
-        # savefig("../Results/BestWorst/Worst$(i).png")
+        plot(path1[:,2],path1[:,1])
+        plot!(path2[:,2],path2[:,1])
+        savefig("../Results/BestWorst/Worst$(i).png")
         # plot(tpath1[2:end,2],abs.(v1))
         # plot!(tpath2[2:end,2],abs.(v2))
-        # savefig("../Results/BestWorst/VelocityWorst$(i).png")
+        plot(tpath1[2:end,2],v1)
+        plot!(tpath2[2:end,2],v2)
+        savefig("../Results/BestWorst/VelocityWorst$(i).png")
         # plot(tpath1[2:end,2],abs.(f1))
         # plot!(tpath2[2:end,2],abs.(f2))
-        # savefig("../Results/BestWorst/ForceWorst$(i).png")
-        # plot(tpath1[2:end,2],C1)
-        # plot!(tpath2[2:end,2],C2)
-        # savefig("../Results/BestWorst/ConservWorst$(i).png")
+        plot(tpath1[2:end,2],f1)
+        plot!(tpath2[2:end,2],f2)
+        savefig("../Results/BestWorst/ForceWorst$(i).png")
+        plot(tpath1[2:end,2],C1)
+        plot!(tpath2[2:end,2],C2)
+        savefig("../Results/BestWorst/ConservWorst$(i).png")
         # Make cumulative actions
         CC1 = zeros(length(C1))
         CC2 = zeros(length(C2))
@@ -551,6 +555,9 @@ function main()
             CΔS1[i] = sum(ΔS1[1:i])
             CΔS2[i] = sum(ΔS2[end+1-i:end])
         end
+        plot(tpath1[2:end,2],ΔS1)
+        plot!(tpath2[end:-1:2,2],ΔS2[end:-1:1])
+        savefig("../Results/BestWorst/EntPWorst$(i).png")
         plot(tpath1[2:end,2],CΔS1)
         plot!(tpath2[end:-1:2,2],CΔS2)
         savefig("../Results/BestWorst/CumEntPWorst$(i).png")

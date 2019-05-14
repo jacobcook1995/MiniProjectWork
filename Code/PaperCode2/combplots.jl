@@ -275,7 +275,6 @@ function main()
     for i = 1:l
         # Find divergence from expected relation
         δ = abs(acts[i,8]-acts[i,4]-2*(acts[i,2]-acts[i,6]))
-        # δ = abs(acts[i,8]-acts[i,4]-2*(acts[i,2]-acts[i,6]))/(abs(acts[i,8]-acts[i,4])+abs(2*(acts[i,2]-acts[i,6])))
         # Fill empty entries until vector full
         if i <= 10
             if best[i,2] == 0.0 && worst[i,2] == 0.0

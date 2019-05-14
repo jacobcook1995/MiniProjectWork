@@ -373,7 +373,7 @@ function main()
         end
     end
     # Now read in best trajectories and plot
-    for i = 1:3#length(best)
+    for i = 1:length(best)
         infile1 = "../Results/Fig3Data/Traj/$(best[i])$(ARGS[1])A2B.csv"
         infile2 = "../Results/Fig3Data/Traj/$(best[i])$(ARGS[1])B2A.csv"
         # now should read in 1st path
@@ -466,7 +466,7 @@ function main()
         savefig("../Results/BestWorst/CumEntPBest$(i).png")
     end
     # Now read in worst trajectories and plot
-    for i = 1:3#length(worst)
+    for i = 1:length(worst)
         infile1 = "../Results/Fig3Data/Traj/$(worst[i])$(ARGS[1])A2B.csv"
         infile2 = "../Results/Fig3Data/Traj/$(worst[i])$(ARGS[1])B2A.csv"
         # now should read in 1st path

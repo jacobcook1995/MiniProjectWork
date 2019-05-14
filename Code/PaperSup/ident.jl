@@ -372,6 +372,28 @@ function main()
             k += 1
         end
     end
+    # @. f1(x,ind) = (1/(ps[ind,2]+ps[ind,5]))*((ps[ind,1]*ps[ind,9]/(ps[ind,9]+ps[ind,10]*x^2)) + ps[ind,6])
+    # @. f2(x,ind) = real(sqrt(complex((ps[ind,9]/ps[ind,10])*(ps[ind,3]/((ps[ind,4]+ps[ind,7])*x - ps[ind,8]) - 1))))
+    # B = 0.0:0.01:50.0
+    # ind = best[1]
+    # ps[ind,2] = ps[ind,2]/4
+    # ps[ind,5] = ps[ind,5]/4
+    # ps[ind,4] = ps[ind,4]/4
+    # ps[ind,7] = ps[ind,7]/4
+    # plot(B,f1(B,ind))
+    # plot!(B,f2(B,ind))
+    # savefig("../Results/BestWorst/test1.png")
+    # ind = worst[1]
+    # plot(B,f1(B,ind))
+    # plot!(B,f2(B,ind))
+    # savefig("../Results/BestWorst/test2.png")
+    println("BEST:")
+    # println((ps[best,2].+ps[best,5].+ps[best,4].+ps[best,7])./(ps[best,1].+ps[best,6].+ps[best,3].+ps[best,8]))
+    println((ps[best,2]./ps[best,1]).+(ps[best,5]./ps[best,6]).+(ps[best,4]./ps[best,3]).+(ps[best,7]./ps[best,8]))
+    println("WORST:")
+    # println((ps[worst,2].+ps[worst,5].+ps[worst,4].+ps[worst,7])./(ps[worst,1].+ps[worst,6].+ps[worst,3].+ps[worst,8]))
+    println((ps[worst,2]./ps[worst,1]).+(ps[worst,5]./ps[worst,6]).+(ps[worst,4]./ps[worst,3]).+(ps[worst,7]./ps[worst,8]))
+    return(nothing)
     # Now read in best trajectories and plot
     for i = 1:length(best)
         infile1 = "../Results/Fig3Data/Traj/$(best[i])$(ARGS[1])A2B.csv"
@@ -432,11 +454,11 @@ function main()
         plot(path1[:,2],path1[:,1])
         plot!(path2[:,2],path2[:,1])
         savefig("../Results/BestWorst/Best$(i).png")
-        plot(tpath1[2:end,2],abs.(v1))
-        plot!(tpath2[2:end,2],abs.(v2))
+        plot(tpath1[2:end,2],v1)
+        plot!(tpath2[2:end,2],v2)
         savefig("../Results/BestWorst/VelocityBest$(i).png")
-        plot(tpath1[2:end,2],abs.(f1))
-        plot!(tpath2[2:end,2],abs.(f2))
+        plot(tpath1[2:end,2],f1)
+        plot!(tpath2[2:end,2],f2)
         savefig("../Results/BestWorst/ForceBest$(i).png")
         plot(tpath1[2:end,2],C1)
         plot!(tpath2[2:end,2],C2)
@@ -525,13 +547,9 @@ function main()
         plot(path1[:,2],path1[:,1])
         plot!(path2[:,2],path2[:,1])
         savefig("../Results/BestWorst/Worst$(i).png")
-        # plot(tpath1[2:end,2],abs.(v1))
-        # plot!(tpath2[2:end,2],abs.(v2))
         plot(tpath1[2:end,2],v1)
         plot!(tpath2[2:end,2],v2)
         savefig("../Results/BestWorst/VelocityWorst$(i).png")
-        # plot(tpath1[2:end,2],abs.(f1))
-        # plot!(tpath2[2:end,2],abs.(f2))
         plot(tpath1[2:end,2],f1)
         plot!(tpath2[2:end,2],f2)
         savefig("../Results/BestWorst/ForceWorst$(i).png")

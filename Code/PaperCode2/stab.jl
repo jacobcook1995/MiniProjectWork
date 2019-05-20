@@ -221,6 +221,44 @@ function genvars(x::Array{Float64,2},λ::SymEngine.Basic,ϑ::Array{SymEngine.Bas
     return(x,xprim,λs,ϑs,λprim)
 end
 
+# Altenative for when not considering a saddle point
+function genvars(x::Array{Float64,2},λ::SymEngine.Basic,ϑ::Array{SymEngine.Basic,1},NG::Int64)
+    # define neccesary symbols
+    A, B, y1, y2 = symbols("A B y1 y2")
+    # calculate velocities
+    xprim = fill(NaN, NG+1, 2)
+    for i = 2:NG
+        for j = 1:2
+            xprim[i,j] = (x[i+1,j] - x[i-1,j])/(2/NG)
+        end
+    end
+    # now find λs
+    λs = fill(NaN, NG+1)
+    for i = 2:NG
+        λt = λ # temporary λ to avoid changing the master one
+        λt = subs(λt, A=>x[i,1], B=>x[i,2])
+        λs[i] = subs(λt, y1=>xprim[i,1], y2=>xprim[i,2]) |> float
+    end
+    # Critical points so expect both to be zero
+    λs[1] = 0
+    λs[NG+1] = 0
+    # now find ϑs
+    ϑs = fill(NaN, NG+1, 2)
+    ϑt = Array{SymEngine.Basic,1}(undef,2)
+    for j = 1:2
+        for i = 2:NG
+            ϑt[j] = subs(ϑ[j], A=>x[i,1], B=>x[i,2])
+            ϑs[i,j] = subs(ϑt[j], y1=>xprim[i,1], y2=>xprim[i,2]) |> float
+        end
+    end
+    # Now find λprim
+    λprim = fill(NaN, NG+1)
+    for i = 2:NG
+        λprim[i] = (λs[i+1] - λs[i-1])/(2/NG)
+    end
+    return(x,xprim,λs,ϑs,λprim)
+end
+
 # function to be solved by NLsolve
 function g!(F::Array{Float64,2},x::Array{Float64,2},C::Array{Float64,1},K::Array{Float64,2},xi::Array{Float64,2},NG::Int64,Nmid::Int64)
     # Start point
@@ -244,6 +282,23 @@ function g!(F::Array{Float64,2},x::Array{Float64,2},C::Array{Float64,1},K::Array
     # end point
     F[NG+1,1] = x[NG+1,1] - xi[3,1]
     F[NG+1,2] = x[NG+1,2] - xi[3,2]
+    return(F)
+end
+
+# Alternate g! for case without saddle point
+function g!(F::Array{Float64,2},x::Array{Float64,2},C::Array{Float64,1},K::Array{Float64,2},xi::Array{Float64,2},NG::Int64)
+    # Start point
+    F[1,1] = x[1,1] - xi[1,1]
+    F[1,2] = x[1,2] - xi[1,2]
+    # path
+    for i = 2:NG
+        for j = 1:2
+            F[i,j] = x[i,j] - C[i]*(x[i+1,j] - 2*x[i,j] + x[i-1,j]) - K[i,j]
+        end
+    end
+    # end point
+    F[NG+1,1] = x[NG+1,1] - xi[2,1]
+    F[NG+1,2] = x[NG+1,2] - xi[2,2]
     return(F)
 end
 
@@ -276,7 +331,7 @@ function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1
         # start point
         xi[1,i] = Δτ*(Hθtt[i]) + x[1,i]
         # midpoint
-        xi[2,i] = -Δτ*(Hxt[i]*Ht) + x[Nmid,i] # x[Nmid,i] is changing between loops for some reason
+        xi[2,i] = -Δτ*(Hxt[i]*Ht) + x[Nmid,i]
         # End point
         xi[3,i] = Δτ*(Hθt[i]) + x[end,i]
     end
@@ -293,7 +348,7 @@ function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1
     # loop for additional midpoint terms
     for j = 1:2
         for i = 1:2
-            xi[2,i] -= Δτ*(Hxθt[i,j]*Hθttt[j]) # maybe Hθttt[j]?
+            xi[2,i] -= Δτ*(Hxθt[i,j]*Hθttt[j])
         end
     end
     # Make vector to store constant terms C
@@ -333,6 +388,74 @@ function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1
     newxi = x
     # make f! a closure of g! for specific xi, C, K
     f!(F,x) = g!(F,x,C,K,xi,NG,Nmid)
+    # Then put all this into the solver
+    newx = nlsolve(f!, newxi)
+    return(newx)
+end
+
+# Altentaive linsys for case with no saddle point
+function linsys(x::Array{Float64,2},xprim::Array{Float64,2},λs::Array{Float64,1},ϑs::Array{Float64,2},λprim::Array{Float64,1},
+                Hx::Array{SymEngine.Basic,1},Hθ::Array{SymEngine.Basic,1},Hθθ::Array{SymEngine.Basic,2},
+                Hθx::Array{SymEngine.Basic,2},Δτ::Float64,NG::Int64,H::SymEngine.Basic)
+    # define relevant symbols
+    A, B, the1, the2 = symbols("A B the1 the2")
+    # Make array to store fixed points
+    xi = fill(NaN, 2, 2)
+    # the fixed points are allowed to vary as both are at zeros
+    # Start point
+    Hθt = Array{SymEngine.Basic,1}(undef,2) # temporary hamiltonian so master isn't changed
+    Hxt = Array{SymEngine.Basic,1}(undef,2)
+    for i = 1:2
+        Hθt[i] = subs(Hθ[i], the1=>0.0, the2=>0.0)
+        Hxt[i] = subs(Hx[i], the1=>0.0, the2=>0.0)
+    end
+    Hθtt = Array{SymEngine.Basic,1}(undef,2)
+    # loop to define fixed points
+    for i = 1:2
+        Hθtt[i] = subs(Hθt[i], A=>x[1,1], B=>x[1,2]) |> float
+        Hθt[i] = subs(Hθt[i], A=>x[end,1], B=>x[end,2]) |> float
+        # start point
+        xi[1,i] = Δτ*(Hθtt[i]) + x[1,i]
+        # End point
+        xi[2,i] = Δτ*(Hθt[i]) + x[end,i]
+    end
+    # Make vector to store constant terms C
+    C = fill(NaN, NG+1)
+    for i = 2:NG
+        C[i] = Δτ*(λs[i]^2)/(1/(NG^2))
+    end
+    # Make array to store constant vector K's
+    K = fill(NaN, NG+1, 2)
+    Hxt = Array{SymEngine.Basic,1}(undef,2)
+    Hθθt = Array{SymEngine.Basic,2}(undef,2,2)
+    Hθxt = Array{SymEngine.Basic,2}(undef,2,2)
+    # Put initial values for K in
+    for j = 1:2
+        for i = 2:NG
+            K[i,j] = x[i,j]
+            K[i,j] += Δτ*λs[i]*λprim[i]*xprim[i,j]
+        end
+    end
+    for l = 1:2
+        for i = 2:NG
+            # Save temporary Hamiltonians so that the substitution doesn't overwrite orginal
+            Hxt[l] = subs(Hx[l], A=>x[i,1], B=>x[i,2])
+            Hxt[l] = subs(Hxt[l], the1=>ϑs[i,1], the2=>ϑs[i,2]) |> float
+            for m = 1:2
+                Hθθt[m,l] = subs(Hθθ[m,l], A=>x[i,1], B=>x[i,2])
+                Hθθt[m,l] = subs(Hθθt[m,l], the1=>ϑs[i,1], the2=>ϑs[i,2]) |> float
+                Hθxt[m,l] = subs(Hθx[m,l], A=>x[i,1], B=>x[i,2])
+                Hθxt[m,l] = subs(Hθxt[m,l], the1=>ϑs[i,1], the2=>ϑs[i,2]) |> float
+                # Update K's with new contributions from Hamiltonians
+                K[i,m] -= Δτ*λs[i]*(Hθxt[m,l]*xprim[i,l])
+                K[i,m] += Δτ*(Hθθt[m,l]*Hxt[l])
+            end
+        end
+    end
+    # Make an initial guess of the path, as prior path
+    newxi = x
+    # make f! a closure of g! for specific xi, C, K
+    f!(F,x) = g!(F,x,C,K,xi,NG)
     # Then put all this into the solver
     newx = nlsolve(f!, newxi)
     return(newx)
@@ -424,6 +547,56 @@ function discretise(x::Array{Float64,2},NG::Int64,Nmid::Int64)
     return(disx)
 end
 
+# alternate discretisation for when saddle point isn't provided
+function discretise(x::Array{Float64,2},NG::Int64)
+    # need to interpolate the data from x onto disx, preserving |x'| = const,
+    # i.e equal distance between points
+    dis = NG+1
+    s = zeros(dis)
+    s[1] = 0
+    for i = 2:dis
+        dA = x[i,1] - x[i-1,1]
+        dB = x[i,2] - x[i-1,2]
+        s[i] = s[i-1] + sqrt(dA^2 + dB^2) # Could probably drop the sqrts to speed up the code
+    end
+    # Divide total arc length into equal segments
+    ls = zeros(dis)
+    for i = 1:dis
+        ls[i] = (i-1)*s[end]/NG
+    end
+    # Find first index greater than a ls[i] for each i
+    inds = fill(0,dis)
+    j = 1
+    for i = 1:dis
+        higher = false
+        while higher == false
+            if s[j] >= ls[i] || j == dis
+                inds[i] = j
+                higher = true
+            else
+                j += 1
+            end
+        end
+    end
+    # First do mid points and end points as they should be fixed
+    disx = zeros(NG+1,2)
+    disx[1,:] = x[1,:]
+    disx[NG+1,:] = x[NG+1,:]
+    # This is done to linear order, which is probably good enough
+    for i = 2:NG
+        one = inds[i] - 1
+        two = inds[i]
+        s₀ = s[one]
+        s₁ = s[two]
+        for j = 1:2
+            x₀ = x[one,j]
+            x₁ = x[two,j]
+            disx[i,j] = x₀ + (ls[i] - s₀)*(x₁ - x₀)/(s₁ - s₀)
+        end
+    end
+    return(disx)
+end
+
 # Function to generate an initial path then run the alorithm until a MAP is obtained
 # This path is then returned for other functions
 function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,ss1::Array{Float64,1},sad::Array{Float64,1},ss2::Array{Float64,1})
@@ -446,6 +619,46 @@ function gMAP(ps::Array{Float64,1},NG::Int64,Nmid::Int64,Δτ::Float64,ss1::Arra
         x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG,Nmid)
         newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG,Nmid,H)
         xn = discretise(newx.zero,NG,Nmid)
+        # delta is the sum of the differences of all the points in the path
+        δ = 0
+        for i = 1:NG+1
+            for j = 1:2
+                δ += abs(x[i,j] - xn[i,j])
+            end
+        end
+        l += 1
+        if l % 200 == 0
+            println("$l,$δ")
+            flush(stdout)
+        end
+        # Now overwrite old x
+        x = xn
+        if δ <= 0.00000000005#0.00000000005
+            convrg = true
+            print("$(l) steps to converge\n")
+            flush(stdout)
+        end
+    end
+    return(x)
+end
+
+# Alternate gMAP with no midpoint provided
+function gMAP(ps::Array{Float64,1},NG::Int64,Δτ::Float64,ss1::Array{Float64,1},ss2::Array{Float64,1})
+    # generate symbolic forms for equations required for the simulation
+    ϑ, λ, Hθ, Hθx, Hθθ, Hx, H = gensyms(ps)
+    # First find the steady states and saddle point
+    a = collect(range(ss1[1],stop=ss2[1],length=NG+1))
+    b = collect(range(ss1[2],stop=ss2[2],length=NG+1))
+    x = hcat(a,b)
+    # Then appropriatly discretise the path such that it works with this algorithm
+    x = discretise(x,NG)
+    # Set up method to tell if is converged
+    convrg = false
+    l = 0
+    while convrg == false
+        x, xprim, λs, ϑs, λprim = genvars(x,λ,ϑ,NG)
+        newx = linsys(x,xprim,λs,ϑs,λprim,Hx,Hθ,Hθθ,Hθx,Δτ,NG,H)
+        xn = discretise(newx.zero,NG)
         # delta is the sum of the differences of all the points in the path
         δ = 0
         for i = 1:NG+1
@@ -545,7 +758,7 @@ function main()
     path1 = zeros(NG+1,2)
     path2 = zeros(NG+1,2)
     # run the stability analysis for each of the hundred steady states
-    for i = 56#1:l
+    for i = 1:l
         println("Run number: $(i)")
         flush(stdout)
         # pick appropriate Δτ for simulation, this still requires more testing
@@ -560,6 +773,118 @@ function main()
         end
         path1 = gMAP(ps[i,:],NG,Nmid,Δτ,[steads[i,1],steads[i,2]],[steads[i,3],steads[i,4]],[steads[i,5],steads[i,6]])
         path2 = gMAP(ps[i,:],NG,Nmid,Δτ,[steads[i,5],steads[i,6]],[steads[i,3],steads[i,4]],[steads[i,1],steads[i,2]])
+        # define sensible names for the output files
+        outfile1 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2B.csv"
+        outfile2 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2A.csv"
+        # open files for writing
+        out_file1 = open(outfile1, "w")
+        for j = 1:size(path1,1)
+            line = "$(path1[j,1]),$(path1[j,2])\n"
+            write(out_file1, line)
+        end
+        close(out_file1)
+        out_file2 = open(outfile2, "w")
+        for j = 1:size(path2,1)
+            line = "$(path2[j,1]),$(path2[j,2])\n"
+            write(out_file2, line)
+        end
+        close(out_file2)
+    end
+    return(nothing)
+end
+
+function test()
+    println("Compiled, Starting script.")
+    flush(stdout)
+    # First check that an argument for naming has been provided
+    if length(ARGS) == 0
+        println("Error: Need to provide an argument to name output with.")
+        return(nothing)
+    end
+    # Check there is a file of parameters to be read
+    infile = "../Results/Fig3Data/$(ARGS[1])para.csv"
+    if ~isfile(infile)
+        println("Error: No file of parameters to be read.")
+        return(nothing)
+    end
+    # now read in parameters
+    l = countlines(infile)
+    w = 10
+    ps = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                ps[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Check there is a file of steady states to be read
+    infile = "../Results/Fig3Data/$(ARGS[1])stead.csv"
+    if ~isfile(infile)
+        println("Error: No file of steady states to be read.")
+        return(nothing)
+    end
+    # now read in steady states
+    l = countlines(infile)
+    w = 6
+    steads = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                steads[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # preallocate to store paths
+    NG = 600
+    path1 = zeros(NG+1,2)
+    path2 = zeros(NG+1,2)
+    P = 56 # Hard coded the worst path in for testing
+    # run the stability analysis for each of the hundred steady states
+    for i = P
+        println("Run number: $(i)")
+        flush(stdout)
+        # pick appropriate Δτ for simulation, this still requires more testing
+        if minimum(steads[i,:]) <= 0.025
+            Δτ = 0.001
+        elseif minimum(steads[i,:]) <= 0.1
+            Δτ = 0.005
+        elseif sum(steads[i,:]) >= 100.0
+            Δτ = 0.1
+        else
+            Δτ = 0.05
+        end
+        # No longer providing midpoints to gMAP
+        path1 = gMAP(ps[i,:],NG,Δτ,[steads[i,1],steads[i,2]],[steads[i,5],steads[i,6]])
+        path2 = gMAP(ps[i,:],NG,Δτ,[steads[i,5],steads[i,6]],[steads[i,1],steads[i,2]])
         # define sensible names for the output files
         outfile1 = "../Results/Fig3Data/Traj2/$(i)$(ARGS[1])A2B.csv" # temporary change back
         outfile2 = "../Results/Fig3Data/Traj2/$(i)$(ARGS[1])B2A.csv" # temporary change back
@@ -581,3 +906,4 @@ function main()
 end
 
 @time main()
+# @time test()

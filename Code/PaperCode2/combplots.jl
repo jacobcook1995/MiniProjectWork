@@ -13,7 +13,9 @@ using Statistics
 using Plots.PlotMeasures
 using LsqFit
 
-function main()
+# function to plot graphs of actions vs path entropies, path entropies vs prods, occupation probability from theory vs exact
+# and occupation probability vs Schnakenberg entropy production
+function first()
     println("Compiled, Starting script.")
     # First check that an argument for naming has been provided
     if length(ARGS) == 0
@@ -986,4 +988,283 @@ function main()
     return(nothing)
 end
 
-@time main()
+# function to plot steady state entropy and diffusion matrix graphs
+function second()
+    println("Compiled, Starting script.")
+    # First check that an argument for naming has been provided
+    if length(ARGS) == 0
+        println("Error: Need to provide a name for toggle switch inputs")
+        return(nothing)
+    elseif length(ARGS) == 1
+        println("Error: Need to provide a name for Schlögl inputs.")
+        return(nothing)
+    end
+    # Check there is a file of magnitudes of diffusion matrices to be read
+    infile = "../Results/Fig3Data/$(ARGS[1])D.csv"
+    if ~isfile(infile)
+        println("Error: No file of diffusion matrix magnitudes to be read for toggle.")
+        return(nothing)
+    end
+    # now read in magnitudes of diffusion matrices
+    l = countlines(infile)
+    w = 3
+    TDs = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                TDs[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Repeat for Schlögl model
+    infile = "../Results/Fig3DataS/$(ARGS[2])DS.csv"
+    if ~isfile(infile)
+        println("Error: No file of diffusion matrix magnitudes to be read for Schlögl.")
+        return(nothing)
+    end
+    # now read in magnitudes of diffusion matrices
+    l = countlines(infile)
+    w = 3
+    SDs = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                SDs[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Now a whole section for reading and plotting the stability data
+    # first make structure to store data to
+    acts = zeros(l,8)
+    datayn = fill(true,l)
+    for i = 1:l
+        for j = 1:2
+            # set file to read in
+            if j == 1
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BD.csv"
+            else
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AD.csv"
+            end
+            # check it exits
+            if isfile(infile)
+                w = 4
+                open(infile, "r") do in_file
+                    # only one line now
+                    for line in eachline(in_file)
+                        # parse line by finding commas
+                        L = length(line)
+                        comma = fill(0,w+1)
+                        m = 1
+                        for k = 1:L
+                            if line[k] == ','
+                                m += 1
+                                comma[m] = k
+                            end
+                        end
+                        comma[end] = L+1
+                        for k = 1:w
+                            acts[i,(j-1)*4+k] = parse(Float64,line[(comma[k]+1):(comma[k+1]-1)])
+                        end
+                    end
+                end
+            else # if file doesn't exist inform user of missing data and exclude from plots
+                if j == 1
+                    println("Missing data for run $(i) high A to high B")
+                    datayn[i] = false
+                else
+                    println("Missing data for run $(i) high B to high A")
+                    datayn[i] = false
+                end
+            end
+        end
+    end
+    # Now a whole section for reading and plotting the stability data for the Schlögl model
+    # first make structure to store data to
+    Sacts = zeros(l,8)
+    Sdatayn = fill(true,l)
+    for i = 1:l
+        for j = 1:2
+            # set file to read in
+            if j == 1
+                infile = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])h2lD.csv"
+            else
+                infile = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])l2hD.csv"
+            end
+            # check it exits
+            if isfile(infile)
+                w = 4
+                open(infile, "r") do in_file
+                    # only one line now
+                    for line in eachline(in_file)
+                        # parse line by finding commas
+                        L = length(line)
+                        comma = fill(0,w+1)
+                        m = 1
+                        for k = 1:L
+                            if line[k] == ','
+                                m += 1
+                                comma[m] = k
+                            end
+                        end
+                        comma[end] = L+1
+                        for k = 1:w
+                            Sacts[i,(j-1)*4+k] = parse(Float64,line[(comma[k]+1):(comma[k+1]-1)])
+                        end
+                    end
+                end
+            else # if file doesn't exist inform user of missing data and exclude from plots
+                if j == 1
+                    println("Missing data for run $(i) high A to high B")
+                    Sdatayn[i] = false
+                else
+                    println("Missing data for run $(i) high B to high A")
+                    Sdatayn[i] = false
+                end
+            end
+        end
+    end
+    # Check there is a file of entropies to be read
+    infile = "../Results/Fig3Data/$(ARGS[1])ent.csv"
+    if ~isfile(infile)
+        println("Error: No file of entropies to be read for Toggle Switch.")
+        return(nothing)
+    end
+    # now read in entropies
+    l = countlines(infile)
+    w = 2
+    Tent = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                Tent[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Repeat for Schlögl model
+    infile = "../Results/Fig3DataS/$(ARGS[2])entS.csv"
+    if ~isfile(infile)
+        println("Error: No file of entropies to be read for Toggle Switch.")
+        return(nothing)
+    end
+    # Now read in file of entropies
+    l = countlines(infile)
+    w = 2
+    Sent = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                Sent[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Set basic pyplot settings
+    pyplot(dpi=300,titlefontsize=20,guidefontsize=17,legendfontsize=15,tickfontsize=14)
+    # Now try to make diffusion matrix plot
+    scatter([acts[:,2].-acts[:,6]],[TDs[:,1]./TDs[:,3]],label="",color=1)
+    scatter!([Sacts[:,6].-Sacts[:,2]],[SDs[:,3]./SDs[:,1]],label="",color=2)
+    # Some Latex strings to insert
+    xlab = L"\Delta\mathcal{A}_{A\rightarrow B} - \Delta\mathcal{A}_{B\rightarrow A}"
+    ylab = L"mag(D_A)/mag(D_B)"
+    titx = L"\Delta\mathcal{A}"
+    plot!(xlabel=xlab,ylabel=ylab,title="$(ylab) vs $(titx)")
+    savefig("../Results/DiffvsAct.png")
+    # Now try to make entropy plot
+    scatter([acts[:,2].-acts[:,6]],[Tent[:,1].-Tent[:,2]],label="",color=1)
+    scatter!([Sacts[:,6].-Sacts[:,2]],[Sent[:,2].-Sent[:,1]],label="",color=2)
+    # Some Latex strings to insert
+    xlab = L"\Delta\mathcal{A}_{A\rightarrow B} - \Delta\mathcal{A}_{B\rightarrow A} (1/\Omega)"
+    ylab = L"S_A - S_B"
+    titx = L"\Delta\mathcal{A}"
+    tity = L"\Delta S"
+    plot!(xlabel=xlab,ylabel=ylab,title="$(tity) vs $(titx)")
+    # Make linear model to fit to
+    @. model(x, p) = p[1] + p[2]*x
+    xdataT = acts[:,2].-acts[:,6]
+    ydataT = Tent[:,1].-Tent[:,2]
+    p0 = [0.0,1.0]
+    fitT = curve_fit(model,xdataT,ydataT,p0)
+    yintT = coef(fitT)[1]
+    slopT = coef(fitT)[2]
+    xran = -27.0:1.0:10.0
+    plot!(xran,model(xran,[yintT,slopT]),label="",color=1)
+    # then same for Schlögl model
+    xdataS = Sacts[:,6].-Sacts[:,2]
+    ydataS = Sent[:,2].-Sent[:,1]
+    fitS = curve_fit(model,xdataS,ydataS,p0)
+    yintS = coef(fitS)[1]
+    slopS = coef(fitS)[2]
+    plot!(xran,model(xran,[yintS,slopS]),label="",color=2)
+    # Find confidence intervals of parameters and convert to usable form
+    conT = confidence_interval(fitT, 0.05)
+    vyintT = conT[1]
+    vslopT = conT[2]
+    conS = confidence_interval(fitS, 0.05)
+    vyintS = conS[1]
+    vslopS = conS[2]
+    # Need to think of a way of plotting this
+    # This is basic idea but need more thought about how to do shading etc
+    plot!(xran,model(xran,[vyintS[1],slopS]),label="",color=2)
+    plot!(xran,model(xran,[vyintS[2],slopS]),label="",color=2)
+    plot!(xran,model(xran,[yintS,vslopS[1]]),label="",color=2)
+    plot!(xran,model(xran,[yintS,vslopS[2]]),label="",color=2)
+    savefig("../Results/EntvsAct.png")
+    return(nothing)
+end
+
+@time second()

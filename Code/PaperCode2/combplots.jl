@@ -260,17 +260,7 @@ function first()
     # plot change in action vs entropy produced
     xlab = L"ΔS^L_{A\rightarrow B} - ΔS^L_{B\rightarrow A}"
     ylab = L"\mathcal{A}_{B\rightarrow A} - \mathcal{A}_{A\rightarrow B}\;(1/\Omega)"
-    plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S^L")#,bgcolor=:transparent,fgcolor=:black)
-    for i = 1:l
-        if datayn[i] == true
-            scatter!([acts[i,8]-acts[i,4]],[acts[i,2]-acts[i,6]],label="",color=1)
-        end
-    end
-    for i = 1:l
-        if Sdatayn[i] == true
-            scatter!([Sacts[i,8]-Sacts[i,4]],[Sacts[i,2]-Sacts[i,6]],label="",color=2)
-        end
-    end
+    plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S^L",top_margin=8mm)
     # Want to establish the worst and best fitting cases for toggle switch
     best = zeros(10,2)
     worst = zeros(10,2)
@@ -348,14 +338,30 @@ function first()
     yintT = coef(fitT)[1]
     slopT = coef(fitT)[2]
     xran = -18.0:1.0:52.0
-    plot!(xran,model(xran,[yintT,slopT]),label="",color=1)
     # then same for Schlögl model
     xdataS = Sacts[Sdatayn,8] .- Sacts[Sdatayn,4]
     ydataS = Sacts[Sdatayn,2] .- Sacts[Sdatayn,6]
     fitS = curve_fit(model,xdataS,ydataS,p0)
     yintS = coef(fitS)[1]
     slopS = coef(fitS)[2]
-    plot!(xran,model(xran,[yintS,slopS]),label="",color=2,top_margin=8mm)
+    # Find confidence intervals of parameters and convert to usable form
+    conT = confidence_interval(fitT, 0.05)
+    vyintT = conT[1]
+    vslopT = conT[2]
+    conS = confidence_interval(fitS, 0.05)
+    vyintS = conS[1]
+    vslopS = conS[2]
+    # Find deviating from best line and then plot them on raph as ribbon
+    Tl = abs.(model(xran,[yintT,slopT]) .- model(xran,[vyintT[2],vslopT[2]]))
+    Tu = abs.(model(xran,[yintT,slopT]) .- model(xran,[vyintT[1],vslopT[1]]))
+    plot!(xran,model(xran,[yintT,slopT]),ribbon=(Tl,Tu),label="",color=1)
+    # Same for Schlögl model
+    Sl = abs.(model(xran,[yintS,slopS]) .- model(xran,[vyintS[2],vslopS[2]]))
+    Su = abs.(model(xran,[yintS,slopS]) .- model(xran,[vyintS[1],vslopS[1]]))
+    plot!(xran,model(xran,[yintS,slopS]),ribbon=(Sl,Su),label="",color=2)
+    # Finally add points to entropy plot
+    scatter!([xdataT],[ydataT],label="",color=1)
+    scatter!([xdataS],[ydataS],label="",color=2)
     savefig("../Results/DiffActvsDiffEntProd.png")
     # Now calculate Pearson correlation coefficient
     xbarT = sum(xdataT)/length(xdataT)
@@ -459,7 +465,7 @@ function first()
             Sind = vcat(Sind,i)
         end
     end
-    plot(title=L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}\;vs\;\ln{\left(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}}\right)}")#,bgcolor=:transparent,fgcolor=:black)
+    plot(title=L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}\;vs\;\ln{\left(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}}\right)}")
     for i = ind
         scatter!([probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="",color=1)
     end
@@ -473,14 +479,31 @@ function first()
     yintT = coef(fitT)[1]
     slopT = coef(fitT)[2]
     xran = -10.0:1.0:13.0
-    plot!(xran,model(xran,[yintT,slopT]),label="",color=1)
     # then same for Schlögl model
     xdataS = Sprobs[Sind,3].*(Sacts[Sind,2].-Sacts[Sind,6])
     ydataS = log.(Sprobs[Sind,1]./Sprobs[Sind,2])
     fitS = curve_fit(model,xdataS,ydataS,p0)
     yintS = coef(fitS)[1]
     slopS = coef(fitS)[2]
-    plot!(xran,model(xran,[yintS,slopS]),label="",color=2,xlabel=L"\ln{\left(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}}\right)}")
+    # Find confidence intervals of parameters and convert to usable form
+    conT = confidence_interval(fitT, 0.05)
+    vyintT = conT[1]
+    vslopT = conT[2]
+    conS = confidence_interval(fitS, 0.05)
+    vyintS = conS[1]
+    vslopS = conS[2]
+    # Find deviating from best line and then plot them on raph as ribbon
+    Tl = abs.(model(xran,[yintT,slopT]) .- model(xran,[vyintT[2],vslopT[2]]))
+    Tu = abs.(model(xran,[yintT,slopT]) .- model(xran,[vyintT[1],vslopT[1]]))
+    plot!(xran,model(xran,[yintT,slopT]),ribbon=(Tl,Tu),label="",color=1)
+    # Same for Schlögl model
+    Sl = abs.(model(xran,[yintS,slopS]) .- model(xran,[vyintS[2],vslopS[2]]))
+    Su = abs.(model(xran,[yintS,slopS]) .- model(xran,[vyintS[1],vslopS[1]]))
+    plot!(xran,model(xran,[yintS,slopS]),ribbon=(Sl,Su),label="",color=2)
+    # Finally add points to entropy plot
+    scatter!([xdataT],[ydataT],label="",color=1)
+    scatter!([xdataS],[ydataS],label="",color=2)
+    plot!(xlabel=L"\ln{\left(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}}\right)}")
     plot!(xran,xran,label="",ylabel=L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}",color=:black,style=:dash)
     savefig("../Results/Linear.png")
     # Now calculate Pearson correlation coefficient
@@ -513,7 +536,37 @@ function first()
     ylab = L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}"
     xlab1 = L"\dot{S}_A - \dot{S}_B"
     xlab2 = L"\dot{S}_A - \dot{S}_B\;(s^{-1})"
-    plot(xlabel=xlab2,ylabel=ylab,title="$(ylab) vs $(xlab1)")#,bgcolor=:transparent,fgcolor=:black)
+    plot(xlabel=xlab2,ylabel=ylab,title="$(ylab) vs $(xlab1)",ylims=(-22.5,42.5))
+    xdataT = ent[ind,3].-ent[ind,4]
+    ydataT = log.(probs[ind,2]./probs[ind,1])./probs[ind,3]
+    p0 = [0.0,1.0]
+    fitT = curve_fit(model,xdataT,ydataT,p0)
+    yintT = coef(fitT)[1]
+    slopT = coef(fitT)[2]
+    xranT = -300.0:100.0:3800.0#1900.0
+    # then same for Schlögl model
+    xdataS = Sent[Sind,3].-Sent[Sind,4]
+    ydataS = log.(Sprobs[Sind,2]./Sprobs[Sind,1])./Sprobs[Sind,3]
+    fitS = curve_fit(model,xdataS,ydataS,p0)
+    yintS = coef(fitS)[1]
+    slopS = coef(fitS)[2]
+    xranS = -300.0:100.0:4100.0
+    # Find confidence intervals of parameters and convert to usable form
+    conT = confidence_interval(fitT, 0.05)
+    vyintT = conT[1]
+    vslopT = conT[2]
+    conS = confidence_interval(fitS, 0.05)
+    vyintS = conS[1]
+    vslopS = conS[2]
+    # Find deviating from best line and then plot them on raph as ribbon
+    Tl = abs.(model(xranT,[yintT,slopT]) .- model(xranT,[vyintT[2],vslopT[2]]))
+    Tu = abs.(model(xranT,[yintT,slopT]) .- model(xranT,[vyintT[1],vslopT[1]]))
+    plot!(xranT,model(xranT,[yintT,slopT]),ribbon=(Tl,Tu),label="",color=1)
+    # Same for Schlögl model
+    Sl = abs.(model(xranS,[yintS,slopS]) .- model(xranS,[vyintS[2],vslopS[2]]))
+    Su = abs.(model(xranS,[yintS,slopS]) .- model(xranS,[vyintS[1],vslopS[1]]))
+    plot!(xranS,model(xranS,[yintS,slopS]),ribbon=(Sl,Su),label="",color=2)
+    # Now plot the data points on top
     for i = ind
         if datayn[i] == true
             scatter!([ent[i,3]-ent[i,4]],[log(probs[i,2]/probs[i,1])/probs[i,3]],label="",color=1)
@@ -524,22 +577,6 @@ function first()
             scatter!([Sent[i,3]-Sent[i,4]],[log(Sprobs[i,2]/Sprobs[i,1])/Sprobs[i,3]],label="",color=2)
         end
     end
-    xdataT = ent[ind,3].-ent[ind,4]
-    ydataT = log.(probs[ind,2]./probs[ind,1])./probs[ind,3]
-    p0 = [0.0,1.0]
-    fitT = curve_fit(model,xdataT,ydataT,p0)
-    yintT = coef(fitT)[1]
-    slopT = coef(fitT)[2]
-    xran = -300.0:100.0:1900.0
-    plot!(xran,model(xran,[yintT,slopT]),label="",color=1)
-    # then same for Schlögl model
-    xdataS = Sent[Sind,3].-Sent[Sind,4]
-    ydataS = log.(Sprobs[Sind,2]./Sprobs[Sind,1])./Sprobs[Sind,3]
-    fitS = curve_fit(model,xdataS,ydataS,p0)
-    yintS = coef(fitS)[1]
-    slopS = coef(fitS)[2]
-    xran = -300.0:100.0:4100.0
-    plot!(xran,model(xran,[yintS,slopS]),label="",color=2)
     savefig("../Results/LogProbvsDiffEnt.png")
     # Now calculate Pearson correlation coefficient
     xbarT = sum(xdataT)/length(xdataT)
@@ -1293,4 +1330,4 @@ function second()
     return(nothing)
 end
 
-@time second()
+@time first()

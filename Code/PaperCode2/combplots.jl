@@ -258,8 +258,8 @@ function first()
         end
     end
     # plot change in action vs entropy produced
-    xlab = L"ΔS^L_{A\rightarrow B} - ΔS^L_{B\rightarrow A}"
-    ylab = L"\mathcal{A}_{B\rightarrow A} - \mathcal{A}_{A\rightarrow B}\;(1/\Omega)"
+    xlab = L"ΔS^L_{B\rightarrow A} - ΔS^L_{A\rightarrow B}"
+    ylab = L"\mathcal{A}_{A\rightarrow B} - \mathcal{A}_{B\rightarrow A}\;(1/\Omega)"
     plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S^L",top_margin=8mm)
     # Want to establish the worst and best fitting cases for toggle switch
     best = zeros(10,2)
@@ -465,7 +465,7 @@ function first()
             Sind = vcat(Sind,i)
         end
     end
-    plot(title=L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}\;vs\;\ln{\left(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}}\right)}")
+    plot(title=L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}\;vs\;\Delta\mathcal{A}")
     for i = ind
         scatter!([probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="",color=1)
     end
@@ -503,7 +503,7 @@ function first()
     # Finally add points to entropy plot
     scatter!([xdataT],[ydataT],label="",color=1)
     scatter!([xdataS],[ydataS],label="",color=2)
-    plot!(xlabel=L"\ln{\left(\frac{k_{B\rightarrow A}}{k_{A\rightarrow B}}\right)}")
+    plot!(xlabel=L"\mathcal{A}_{A\rightarrow B} - \mathcal{A}_{B\rightarrow A}\;(1/\Omega)")
     plot!(xran,xran,label="",ylabel=L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}",color=:black,style=:dash)
     savefig("../Results/Linear.png")
     # Now calculate Pearson correlation coefficient
@@ -536,9 +536,9 @@ function first()
     ylab = L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}"
     xlab1 = L"\dot{S}_A - \dot{S}_B"
     xlab2 = L"\dot{S}_A - \dot{S}_B\;(s^{-1})"
-    plot(xlabel=xlab2,ylabel=ylab,title="$(ylab) vs $(xlab1)",ylims=(-22.5,42.5))
+    plot(xlabel=xlab2,ylabel=ylab,title="$(ylab) vs $(xlab1)",ylims=(-45.0,22.5))
     xdataT = ent[ind,3].-ent[ind,4]
-    ydataT = log.(probs[ind,2]./probs[ind,1])./probs[ind,3]
+    ydataT = log.(probs[ind,1]./probs[ind,2])./probs[ind,3]
     p0 = [0.0,1.0]
     fitT = curve_fit(model,xdataT,ydataT,p0)
     yintT = coef(fitT)[1]
@@ -546,7 +546,7 @@ function first()
     xranT = -300.0:100.0:3800.0#1900.0
     # then same for Schlögl model
     xdataS = Sent[Sind,3].-Sent[Sind,4]
-    ydataS = log.(Sprobs[Sind,2]./Sprobs[Sind,1])./Sprobs[Sind,3]
+    ydataS = log.(Sprobs[Sind,1]./Sprobs[Sind,2])./Sprobs[Sind,3]
     fitS = curve_fit(model,xdataS,ydataS,p0)
     yintS = coef(fitS)[1]
     slopS = coef(fitS)[2]
@@ -569,12 +569,12 @@ function first()
     # Now plot the data points on top
     for i = ind
         if datayn[i] == true
-            scatter!([ent[i,3]-ent[i,4]],[log(probs[i,2]/probs[i,1])/probs[i,3]],label="",color=1)
+            scatter!([ent[i,3]-ent[i,4]],[log(probs[i,1]/probs[i,2])/probs[i,3]],label="",color=1)
         end
     end
     for i = Sind
         if Sdatayn[i] == true
-            scatter!([Sent[i,3]-Sent[i,4]],[log(Sprobs[i,2]/Sprobs[i,1])/Sprobs[i,3]],label="",color=2)
+            scatter!([Sent[i,3]-Sent[i,4]],[log(Sprobs[i,1]/Sprobs[i,2])/Sprobs[i,3]],label="",color=2)
         end
     end
     savefig("../Results/LogProbvsDiffEnt.png")
@@ -1253,16 +1253,16 @@ function second()
     # Set basic pyplot settings
     pyplot(dpi=300,titlefontsize=20,guidefontsize=17,legendfontsize=15,tickfontsize=14)
     # Now try to make diffusion matrix plot
-    scatter([acts[:,2].-acts[:,6]],[TDs[:,1]./TDs[:,3]],label="",color=1)
-    scatter!([Sacts[:,6].-Sacts[:,2]],[SDs[:,3]./SDs[:,1]],label="",color=2)
+    scatter([acts[:,2].-acts[:,6]],[TDs[:,3]./TDs[:,1]],label="",color=1)
+    scatter!([Sacts[:,2].-Sacts[:,6]],[SDs[:,3]./SDs[:,1]],label="",color=2)
     # Some Latex strings to insert
-    xlab = L"\Delta\mathcal{A}_{A\rightarrow B} - \Delta\mathcal{A}_{B\rightarrow A}"
-    ylab = L"mag(D_A)/mag(D_B)"
+    xlab = L"\mathcal{A}_{A\rightarrow B} - \mathcal{A}_{B\rightarrow A}"
+    ylab = L"mag(D_B)/mag(D_A)"
     titx = L"\Delta\mathcal{A}"
     plot!(xlabel=xlab,ylabel=ylab,title="$(ylab) vs $(titx)")
     savefig("../Results/DiffvsAct.png")
     # Some Latex strings to insert
-    xlab = L"\Delta\mathcal{A}_{A\rightarrow B} - \Delta\mathcal{A}_{B\rightarrow A} (1/\Omega)"
+    xlab = L"\mathcal{A}_{A\rightarrow B} - \mathcal{A}_{B\rightarrow A} (1/\Omega)"
     ylab = L"S_A - S_B"
     titx = L"\Delta\mathcal{A}"
     tity = L"\Delta S"
@@ -1275,10 +1275,10 @@ function second()
     fitT = curve_fit(model,xdataT,ydataT,p0)
     yintT = coef(fitT)[1]
     slopT = coef(fitT)[2]
-    xran = -27.0:1.0:10.0
+    xran = -20.0:1.0:28.0
     # then same for Schlögl model
-    xdataS = Sacts[:,6].-Sacts[:,2]
-    ydataS = Sent[:,2].-Sent[:,1]
+    xdataS = Sacts[:,2].-Sacts[:,6]
+    ydataS = Sent[:,1].-Sent[:,2]
     fitS = curve_fit(model,xdataS,ydataS,p0)
     yintS = coef(fitS)[1]
     slopS = coef(fitS)[2]
@@ -1299,7 +1299,7 @@ function second()
     plot!(xran,model(xran,[yintS,slopS]),ribbon=(Sl,Su),label="",color=2)
     # Finally add points to entropy plot
     scatter!([acts[:,2].-acts[:,6]],[Tent[:,1].-Tent[:,2]],label="",color=1)
-    scatter!([Sacts[:,6].-Sacts[:,2]],[Sent[:,2].-Sent[:,1]],label="",color=2)
+    scatter!([Sacts[:,2].-Sacts[:,6]],[Sent[:,1].-Sent[:,2]],label="",color=2)
     savefig("../Results/EntvsAct.png")
     # Now calculate Pearson correlation coefficient
     xbarT = sum(xdataT)/length(xdataT)
@@ -1330,4 +1330,4 @@ function second()
     return(nothing)
 end
 
-@time first()
+@time second()

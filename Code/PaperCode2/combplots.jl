@@ -261,73 +261,6 @@ function first()
     xlab = L"ΔS^L_{B\rightarrow A} - ΔS^L_{A\rightarrow B}"
     ylab = L"\mathcal{A}_{A\rightarrow B} - \mathcal{A}_{B\rightarrow A}\;(1/\Omega)"
     plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S^L",top_margin=8mm)
-    # Want to establish the worst and best fitting cases for toggle switch
-    best = zeros(10,2)
-    worst = zeros(10,2)
-    for i = 1:l
-        # Find divergence from expected relation
-        δ = abs(acts[i,8]-acts[i,4]-2*(acts[i,2]-acts[i,6]))
-        # Fill empty entries until vector full
-        if i <= 10
-            if best[i,2] == 0.0 && worst[i,2] == 0.0
-                best[i,1] = i
-                worst[i,1] = i
-                best[i,2] = δ
-                worst[i,2] = δ
-            end
-        end
-        # Slightly hacky reording when the two vectors are full
-        if i == 11
-            bestp = sortperm(best[:,2])
-            worstp = sortperm(worst[:,2],rev=true)
-            worst = worst[worstp,:]
-            best = best[bestp,:]
-        end
-        if i >= 11
-            # Nothing triggered yet
-            tbest = false
-            tworst = false
-            for j = 1:10
-                # Only run if not already triggered for this vector
-                if best[j,2] > δ && tbest == false
-                    for k = 10:-1:j+1 # Use reverse for loop to rearrange elements
-                        best[k,:] = best[k-1,:]
-                    end
-                    best[j,1] = i
-                    best[j,2] = δ
-                    tbest = true
-                end
-                if worst[j,2] < δ && tworst == false
-                    for k = 10:-1:j+1 # Use reverse for loop to rearrange elements
-                        worst[k,:] = worst[k-1,:]
-                    end
-                    worst[j,1] = i
-                    worst[j,2] = δ
-                    tworst = true
-                end
-                # break if both are triggered
-                if tbest == true && tworst == true
-                    break
-                end
-            end
-        end
-    end
-    # Then output reduced best and worst indices
-    outfileb = "../Results/Fig3Data/Best.csv"
-    outfilew = "../Results/Fig3Data/Worst.csv"
-    # open files for writing
-    out_fileb = open(outfileb, "w")
-    for j = 1:size(best,1)
-        line = "$(best[j,1]),$(best[j,2])\n"
-        write(out_fileb, line)
-    end
-    close(out_fileb)
-    out_filew = open(outfilew, "w")
-    for j = 1:size(worst,1)
-        line = "$(worst[j,1]),$(worst[j,2])\n"
-        write(out_filew, line)
-    end
-    close(out_filew)
     # Now want to fit two lines, one for each model
     @. model(x,p) = p[1] + p[2]*x
     # Need to reduce data here to only include the relevant points
@@ -1330,4 +1263,174 @@ function second()
     return(nothing)
 end
 
-@time second()
+# A third function to investigate and plot the best and worst fitting parameter sets
+# Only done for toggle switch so only need to provide one argument here
+function third()
+    println("Compiled, Starting script.")
+    # First check that an argument for naming has been provided
+    if length(ARGS) == 0
+        println("Error: Need to provide a name for toggle switch inputs")
+        return(nothing)
+    end
+    # First read in parameter sets
+    infile = "../Results/Fig3Data/$(ARGS[1])para.csv"
+    if ~isfile(infile)
+        println("Error: No file of parameters to be read.")
+        return(nothing)
+    end
+    # now read in parameters
+    l = countlines(infile)
+    w = 10
+    ps = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                ps[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Now a whole section for reading and plotting the stability data
+    # first make structure to store data to
+    acts = zeros(l,8)
+    datayn = fill(true,l)
+    for i = 1:l
+        for j = 1:2
+            # set file to read in
+            if j == 1
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BD.csv"
+            else
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AD.csv"
+            end
+            # check it exits
+            if isfile(infile)
+                w = 4
+                open(infile, "r") do in_file
+                    # only one line now
+                    for line in eachline(in_file)
+                        # parse line by finding commas
+                        L = length(line)
+                        comma = fill(0,w+1)
+                        m = 1
+                        for k = 1:L
+                            if line[k] == ','
+                                m += 1
+                                comma[m] = k
+                            end
+                        end
+                        comma[end] = L+1
+                        for k = 1:w
+                            acts[i,(j-1)*4+k] = parse(Float64,line[(comma[k]+1):(comma[k+1]-1)])
+                        end
+                    end
+                end
+            else # if file doesn't exist inform user of missing data and exclude from plots
+                if j == 1
+                    println("Missing data for run $(i) high A to high B")
+                    datayn[i] = false
+                else
+                    println("Missing data for run $(i) high B to high A")
+                    datayn[i] = false
+                end
+            end
+        end
+    end
+    # Want to establish the worst and best fitting cases for toggle switch
+    L = 25#10 # Number of points to find
+    best = zeros(L,2)
+    worst = zeros(L,2)
+    δ = zeros(l)
+    δ2 = zeros(l)
+    r = zeros(l) # to store parameter ratios
+    for i = 1:l
+        # Find divergence from expected relation
+        δ[i] = abs(acts[i,8]-acts[i,4]-2*(acts[i,2]-acts[i,6]))
+        sca = acts[i,2] + acts[i,6] # rescaling factor
+        δ2[i] = δ[i]/sca
+        r[i] = (ps[i,2]+ps[i,5]+ps[i,4]+ps[i,7])/(ps[i,1]+ps[i,6]+ps[i,3]+ps[i,8])
+        # r[i] = (ps[i,2]+ps[i,4]+ps[i,6]+ps[i,8])/(ps[i,1]+ps[i,3]+ps[i,5]+ps[i,7])
+        # Fill empty entries until vector full
+        if i <= L
+            if best[i,2] == 0.0 && worst[i,2] == 0.0
+                best[i,1] = i
+                worst[i,1] = i
+                best[i,2] = δ2[i]
+                worst[i,2] = δ2[i]
+            end
+        end
+        # Slightly hacky reording when the two vectors are full
+        if i == L+1
+            bestp = sortperm(best[:,2])
+            worstp = sortperm(worst[:,2],rev=true)
+            worst = worst[worstp,:]
+            best = best[bestp,:]
+        end
+        if i >= L+1
+            # Nothing triggered yet
+            tbest = false
+            tworst = false
+            for j = 1:L
+                # Only run if not already triggered for this vector
+                if best[j,2] > δ2[i] && tbest == false
+                    for k = L:-1:j+1 # Use reverse for loop to rearrange elements
+                        best[k,:] = best[k-1,:]
+                    end
+                    best[j,1] = i
+                    best[j,2] = δ2[i]
+                    tbest = true
+                end
+                if worst[j,2] < δ2[i] && tworst == false
+                    for k = L:-1:j+1 # Use reverse for loop to rearrange elements
+                        worst[k,:] = worst[k-1,:]
+                    end
+                    worst[j,1] = i
+                    worst[j,2] = δ2[i]
+                    tworst = true
+                end
+                # break if both are triggered
+                if tbest == true && tworst == true
+                    break
+                end
+            end
+        end
+    end
+    # Then output reduced best and worst indices
+    outfileb = "../Results/Fig3Data/Best.csv"
+    outfilew = "../Results/Fig3Data/Worst.csv"
+    # open files for writing
+    out_fileb = open(outfileb, "w")
+    for j = 1:size(best,1)
+        line = "$(best[j,1]),$(best[j,2])\n"
+        write(out_fileb, line)
+    end
+    close(out_fileb)
+    out_filew = open(outfilew, "w")
+    for j = 1:size(worst,1)
+        line = "$(worst[j,1]),$(worst[j,2])\n"
+        write(out_filew, line)
+    end
+    close(out_filew)
+    pyplot() # call pyplot
+    # Now plot parameter ratios against divergences
+    scatter(r,δ)
+    savefig("../Results/test1.png")
+    # and again using rescaled divergences
+    scatter(r,δ2)
+    savefig("../Results/test2.png")
+    return(nothing)
+end
+
+@time third()

@@ -1433,4 +1433,15 @@ function third()
     return(nothing)
 end
 
-@time third()
+# little function to generate pyplot custom legends that I can then add to a bigger plot
+function fourth()
+    # call pyplot with basic settings
+    pyplot(dpi=1000,titlefontsize=20,guidefontsize=17,legendfontsize=15,tickfontsize=14)
+    x = 0.001:0.001:0.002
+    plot(x,x,label=L"A{\rightarrow}B",color=:black,ticks=false,linestyle=:solid,ylim=(0.0,10000.0))
+    plot!(x,x,label=L"B{\rightarrow}A",color=:black,linestyle=:dash,border=:none,xlim=(0.0,10000.0))
+    savefig("../Results/CustomLegend.png")
+    return(nothing)
+end
+
+@time fourth()

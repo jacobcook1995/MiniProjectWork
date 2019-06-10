@@ -475,7 +475,7 @@ function plotting()
     Smag2 = L"(10^{-2}\,1/\Omega)" # legendfontsize used to be 12
     plot!(p3,titlefontsize=20,guidefontsize=16,legendfontsize=15,ylabel="Action terms $(Smag2)",tickfontsize=14)
     p4 = plot(dpi=300,title="Comparison of f and $(qlab) for Schlögl model",xlabel="Concentration x",ylabel="Magnitude (Copy Number/s)")
-    p5 = plot(dpi=300,bgcolor=:transparent,fgcolor=:black,grid=false,ticks=false,xaxis=false,yaxis=false)
+    p5 = plot(dpi=300,bgcolor=:transparent,fgcolor=:black,grid=false,ticks=false,border=:none)
     for i = N
         for j = 1:2
             if j == 1
@@ -531,9 +531,9 @@ function plotting()
                 Act, ΔS, Af, ΔSf, KE, PE, prods, flows, fs, qs = act(path2,Tp,b,Dmin,ps[i,:],Ns)
                 if j == 1
                     plot!(p2,path2[1:end-1],Af*mag1,label=L"\mathcal{A}",color=1)
-                    plot!(p2,path2[1:end-1],ΔSf*mag1,label=L"\Delta S^L",color=2)
+                    plot!(p2,path2[1:end-1],PE*mag1,label="PE",color=2)
                     plot!(p2,path2[1:end-1],KE*mag1,label="KE",color=3)
-                    plot!(p2,path2[1:end-1],PE*mag1,label="PE",color=4)
+                    plot!(p2,path2[1:end-1],ΔSf*mag1,label=L"\Delta S^L",color=6)
                     plot!(p3,path2[1:end-1],prods*mag2,label="EP",color=1)
                     plot!(p3,path2[1:end-1],flows*mag2,label="EF",color=2)
                     plot!(p3,path2[1:end-1],(prods.-flows)*mag2,label="EP-EF",color=3)
@@ -544,9 +544,9 @@ function plotting()
                     annotate!(p5,[(path2[68],fs[68]-1.0,text(L"f",40)),(path2[68],qs[68]+1.0,text(L"\dot{q}",40))])
                 else
                     plot!(p2,path2[1:end-1],Af*mag1,label="",color=1,style=:dash)
-                    plot!(p2,path2[1:end-1],ΔSf*mag1,label="",color=2,style=:dash)
+                    plot!(p2,path2[1:end-1],PE*mag1,label="",color=2,style=:dash)
                     plot!(p2,path2[1:end-1],KE*mag1,label="",color=3,style=:dash)
-                    plot!(p2,path2[1:end-1],PE*mag1,label="",color=4,style=:dash)
+                    plot!(p2,path2[1:end-1],ΔSf*mag1,label="",color=6,style=:dash)
                     plot!(p3,path2[1:end-1],prods*mag2,label="",color=1,style=:dash)
                     plot!(p3,path2[1:end-1],flows*mag2,label="",color=2,style=:dash)
                     plot!(p3,path2[1:end-1],(prods.-flows)*mag2,label="",color=3,style=:dash)

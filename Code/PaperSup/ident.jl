@@ -227,7 +227,7 @@ function speed(path::Array{Float64,2},ps::Array{Float64,1})
     Tp = tims2[end]
     Tmid = tims2[Nmid]
     path2, Ns = timdis(tims2,x,NG,NM,Tmid)
-    δt = tims2[2] - tims2[1]
+    δt = Tp/(length(tims2)-1)
     for i = 1:size(v,1)
         v[i,1] = (path2[i+1,1]-path2[i,1])/δt
         v[i,2] = (path2[i+1,2]-path2[i,2])/δt

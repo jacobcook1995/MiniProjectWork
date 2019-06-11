@@ -1361,7 +1361,6 @@ function third()
         sca = acts[i,2] + acts[i,6] # rescaling factor
         δ2[i] = δ[i]/sca
         r[i] = (ps[i,2]+ps[i,5]+ps[i,4]+ps[i,7])/(ps[i,1]+ps[i,6]+ps[i,3]+ps[i,8])
-        # r[i] = (ps[i,2]+ps[i,4]+ps[i,6]+ps[i,8])/(ps[i,1]+ps[i,3]+ps[i,5]+ps[i,7])
         # Fill empty entries until vector full
         if i <= L
             if best[i,2] == 0.0 && worst[i,2] == 0.0
@@ -1444,4 +1443,4 @@ function fourth()
     return(nothing)
 end
 
-@time fourth()
+@time third()

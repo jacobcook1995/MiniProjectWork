@@ -233,7 +233,7 @@ function timdis(ts::Array{Float64,1},x::Array{Float64,2},NG::Int64,NM::Int64,Tmi
 end
 
 # function to take time discretised path and return Action and total entropy production based on it
-function act(x::Array{Float64,2},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::Array{SymEngine.Basic,2},ps::Array{Float64,1},Ns::Int64)
+function act(x::Array{Float64,2},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::Array{SymEngine.Basic,2},ps::Array{Float64,1},Ns::Int64,red::Bool=false)
     # find time step etc
     N = size(x,1)-1
     dt = Tp/(N)
@@ -289,9 +289,15 @@ function act(x::Array{Float64,2},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::A
     end
     ΔS = sum(ΔSf)
     Ac = sum(Af)
-    ΔS1 = sum(ΔSf[1:Ns])
-    ΔS2 = sum(ΔSf[Ns+1:end])
-    return(Ac,ΔS,Af,ΔSf,KE,PE,prods,flows,ΔS1,ΔS2)
+    if red == false
+        ΔS1 = sum(ΔSf[1:Ns])
+        ΔS2 = sum(ΔSf[Ns+1:end])
+        return(Ac,ΔS,Af,ΔSf,KE,PE,prods,flows,ΔS1,ΔS2)
+    else
+        ΔS1 = maximum(ΔSf[1:Ns])
+        ΔS2 = maximum(ΔSf[Ns+1:end])
+        return(Ac,ΔS,ΔS1,ΔS2)
+    end
 end
 
 function main()
@@ -652,5 +658,123 @@ function plotting()
     return(nothing)
 end
 
-# @time main()
-@time plotting()
+function entcheck()
+    println("Compiled, Starting script.")
+    flush(stdout)
+    # First check that an argument for naming has been provided
+    if length(ARGS) == 0
+        println("Error: Need to provide an argument to name output with.")
+        return(nothing)
+    end
+    # Check there is a file of parameters to be read
+    infile = "../Results/Fig3Data/$(ARGS[1])para.csv"
+    if ~isfile(infile)
+        println("Error: No file of parameters to be read.")
+        return(nothing)
+    end
+    # now read in parameters
+    l = countlines(infile)
+    w = 10
+    ps = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                ps[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    Act = zeros(2)
+    ΔS = zeros(2)
+    ΔS1 = zeros(2)
+    ΔS2 = zeros(2)
+    # 2 for loops to loop over every file
+    for i = 1:l
+        for j = 1:2
+            if j == 1
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2B.csv"
+            else
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2A.csv"
+            end
+            # check if file
+            if isfile(infile)
+                # now should read in path
+                l = countlines(infile)
+                w = 2
+                path = zeros(l,w)
+                open(infile, "r") do in_file
+                    # Use a for loop to process the rows in the input file one-by-one
+                    k = 1
+                    for line in eachline(in_file)
+                        # parse line by finding commas
+                        L = length(line)
+                        comma = fill(0,w+1)
+                        m = 1
+                        for i = 1:L
+                            if line[i] == ','
+                                m += 1
+                                comma[m] = i
+                            end
+                        end
+                        comma[end] = L+1
+                        for i = 1:w
+                            path[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                        end
+                        k += 1
+                    end
+                end
+                # generate symbolic objects
+                ϑ, λ, b, Dmin = gensyms(ps[i,:])
+                # define NG and Nmid and use to find variables
+                NG = NM = l - 1
+                Nmid = convert(Int64, ceil((NG+1)/2))
+                x, xprim, λs, ϑs, λprim = genvars(path,λ,ϑ,NG,Nmid)
+                # use function Ŝ to find the action associated with this path
+                λs[1] = λs[2]
+                λs[Nmid] = (λs[Nmid+1] + λs[Nmid-1])/2
+                λs[end] = λs[end-1]
+                # find and save action from geometric method
+                S = Ŝ(x,xprim,λs,ϑs,λprim,NG)
+                ActS = sum(S)
+                tims2 = times(x,xprim,λs,ϑs,λprim,NG)
+                # save time of path
+                Tmid = tims2[Nmid]
+                Tp = tims2[end]
+                path2, Ns = timdis(tims2,x,NG,NM,Tmid)
+                # now use a function that takes the time discretised path and
+                # finds the action in a more conventional manner and then can also get entropy production from this
+                Act[j], ΔS[j], ΔS1[j], ΔS2[j] = act(path2,Tp,b,Dmin,ps[i,:],Ns,true) # true reduces the output
+                if j == 2
+                    δ = abs((ΔS[1]-ΔS[2])-2*(Act[2]-Act[1]))/abs(ΔS[1]-ΔS[2])
+                    scatter!([δ],[maximum(ΔS1)],color=1,label="")
+                    # scatter!([δ],[ΔS1[2]],color=2,label="")
+                    # scatter!([δ],[ΔS2[1]],color=3,label="")
+                    # scatter!([δ],[ΔS2[2]],color=4,label="")
+                end
+            else # Tell users about missing files
+                if j == 1
+                    println("No A to B path for $(i)")
+                else
+                    println("No B to A path for $(i)")
+                end
+            end
+        end
+    end
+    savefig("../Results/MaxExitEnt.png")
+    return(nothing)
+end
+
+@time entcheck()

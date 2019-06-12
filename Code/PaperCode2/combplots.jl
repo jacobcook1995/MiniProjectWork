@@ -1303,6 +1303,37 @@ function third()
             k += 1
         end
     end
+    # Check file of steady states exists
+    infile = "../Results/Fig3Data/$(ARGS[1])stead.csv"
+    if ~isfile(infile)
+        println("Error: No file of parameters to be read.")
+        return(nothing)
+    end
+    # now read in steady states
+    l = countlines(infile)
+    w = 6
+    steads = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                steads[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
     # Now a whole section for reading and plotting the stability data
     # first make structure to store data to
     acts = zeros(l,8)
@@ -1349,18 +1380,20 @@ function third()
         end
     end
     # Want to establish the worst and best fitting cases for toggle switch
-    L = 25#10 # Number of points to find
+    L = 10 # Number of points to find
     best = zeros(L,2)
     worst = zeros(L,2)
     δ = zeros(l)
     δ2 = zeros(l)
     r = zeros(l) # to store parameter ratios
+    sr = zeros(l) # to store steady-state ratios
     for i = 1:l
         # Find divergence from expected relation
         δ[i] = abs(acts[i,8]-acts[i,4]-2*(acts[i,2]-acts[i,6]))
-        sca = acts[i,2] + acts[i,6] # rescaling factor
+        sca = abs(acts[i,8]-acts[i,4]) # rescaling factor
         δ2[i] = δ[i]/sca
         r[i] = (ps[i,2]+ps[i,5]+ps[i,4]+ps[i,7])/(ps[i,1]+ps[i,6]+ps[i,3]+ps[i,8])
+        sr[i] = (steads[i,3]+steads[i,4])/(steads[i,1]+steads[i,2]+steads[i,5]+steads[i,6])
         # Fill empty entries until vector full
         if i <= L
             if best[i,2] == 0.0 && worst[i,2] == 0.0
@@ -1429,6 +1462,15 @@ function third()
     # and again using rescaled divergences
     scatter(r,δ2)
     savefig("../Results/test2.png")
+    # Now plot steady state ratios against divergences
+    scatter(sr,δ)
+    savefig("../Results/test3.png")
+    # and again using rescaled divergences
+    scatter(sr,δ2)
+    savefig("../Results/test4.png")
+    # Now plot parametervs steady state ratios
+    scatter(sr,r)
+    savefig("../Results/test5.png")
     return(nothing)
 end
 

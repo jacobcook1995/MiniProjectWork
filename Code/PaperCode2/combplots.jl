@@ -1387,12 +1387,12 @@ function third()
     δ2 = zeros(l)
     r = zeros(l) # to store parameter ratios
     sr = zeros(l) # to store steady-state ratios
+    fr = zeros(l) # to store f:r ratios
     for i = 1:l
         # Find divergence from expected relation
         δ[i] = abs(acts[i,8]-acts[i,4]-2*(acts[i,2]-acts[i,6]))
         sca = abs(acts[i,8]-acts[i,4]) # rescaling factor
         δ2[i] = δ[i]/sca
-        r[i] = (ps[i,2]+ps[i,5]+ps[i,4]+ps[i,7])/(ps[i,1]+ps[i,6]+ps[i,3]+ps[i,8])
         sr[i] = (steads[i,3]+steads[i,4])/(steads[i,1]+steads[i,2]+steads[i,5]+steads[i,6])
         # Fill empty entries until vector full
         if i <= L
@@ -1456,21 +1456,9 @@ function third()
     end
     close(out_filew)
     pyplot() # call pyplot
-    # Now plot parameter ratios against divergences
-    scatter(r,δ)
-    savefig("../Results/test1.png")
-    # and again using rescaled divergences
-    scatter(r,δ2)
-    savefig("../Results/test2.png")
-    # Now plot steady state ratios against divergences
-    scatter(sr,δ)
-    savefig("../Results/test3.png")
-    # and again using rescaled divergences
+    # Now plot steady state ratios against rescaled divergences
     scatter(sr,δ2)
     savefig("../Results/test4.png")
-    # Now plot parametervs steady state ratios
-    scatter(sr,r)
-    savefig("../Results/test5.png")
     return(nothing)
 end
 

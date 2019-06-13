@@ -270,7 +270,13 @@ function speed(path::Array{Float64,2},ps::Array{Float64,1})
             ΔS[i] += (f[i,j]*Dm[i,j,j]*v[i,j])*δt
         end
     end
-    return(v,path2,f,C,ΔS)
+    # New section to calculate D for each
+    Dmin = zeros(length(C),2)
+    for i = 1:length(C)
+        Dmin[i,1] = Dm[i,1,1]
+        Dmin[i,2] = Dm[i,2,2]
+    end
+    return(v,path2,f,C,ΔS,Dmin)
 end
 
 function main()
@@ -373,28 +379,7 @@ function main()
             k += 1
         end
     end
-    # @. f1(x,ind) = (1/(ps[ind,2]+ps[ind,5]))*((ps[ind,1]*ps[ind,9]/(ps[ind,9]+ps[ind,10]*x^2)) + ps[ind,6])
-    # @. f2(x,ind) = real(sqrt(complex((ps[ind,9]/ps[ind,10])*(ps[ind,3]/((ps[ind,4]+ps[ind,7])*x - ps[ind,8]) - 1))))
-    # B = 0.0:0.01:50.0
-    # ind = best[1]
-    # ps[ind,2] = ps[ind,2]/4
-    # ps[ind,5] = ps[ind,5]/4
-    # ps[ind,4] = ps[ind,4]/4
-    # ps[ind,7] = ps[ind,7]/4
-    # plot(B,f1(B,ind))
-    # plot!(B,f2(B,ind))
-    # savefig("../Results/BestWorst/test1.png")
-    # ind = worst[1]
-    # plot(B,f1(B,ind))
-    # plot!(B,f2(B,ind))
-    # savefig("../Results/BestWorst/test2.png")
-    println("BEST:")
-    println((ps[best,2].+ps[best,5].+ps[best,4].+ps[best,7])./(ps[best,1].+ps[best,6].+ps[best,3].+ps[best,8]))
-    # println((ps[best,2]./ps[best,1]).+(ps[best,5]./ps[best,6]).+(ps[best,4]./ps[best,3]).+(ps[best,7]./ps[best,8]))
-    println("WORST:")
-    println((ps[worst,2].+ps[worst,5].+ps[worst,4].+ps[worst,7])./(ps[worst,1].+ps[worst,6].+ps[worst,3].+ps[worst,8]))
-    # println((ps[worst,2]./ps[worst,1]).+(ps[worst,5]./ps[worst,6]).+(ps[worst,4]./ps[worst,3]).+(ps[worst,7]./ps[worst,8]))
-    # Now read in best trajectories and plot
+    # Do plots for best trajectories first
     for i = 1:length(best)
         infile1 = "../Results/Fig3Data/Traj/$(best[i])$(ARGS[1])A2B.csv"
         infile2 = "../Results/Fig3Data/Traj/$(best[i])$(ARGS[1])B2A.csv"
@@ -449,43 +434,17 @@ function main()
             end
         end
         # Calculate and then plot velocities
-        v1, tpath1, f1, C1, ΔS1 = speed(path1,ps[best[i],:])
-        v2, tpath2, f2, C2, ΔS2 = speed(path2,ps[best[i],:])
+        v1, tpath1, f1, C1, ΔS1, Dm1 = speed(path1,ps[best[i],:])
+        v2, tpath2, f2, C2, ΔS2, Dm2 = speed(path2,ps[best[i],:])
         plot(path1[:,2],path1[:,1])
         plot!(path2[:,2],path2[:,1])
         savefig("../Results/BestWorst/Best$(i).png")
-        # plot(tpath1[2:end,2],v1)
-        # plot!(tpath2[2:end,2],v2)
-        # savefig("../Results/BestWorst/VelocityBest$(i).png")
-        # plot(tpath1[2:end,2],f1)
-        # plot!(tpath2[2:end,2],f2)
-        # savefig("../Results/BestWorst/ForceBest$(i).png")
-        # plot(tpath1[2:end,2],C1)
-        # plot!(tpath2[2:end,2],C2)
-        # savefig("../Results/BestWorst/ConservBest$(i).png")
-        # # Make cumaltive actions
-        # CC1 = zeros(length(C1))
-        # CC2 = zeros(length(C2))
-        # for i = 1:length(C1)
-        #     CC1[i] = sum(C1[1:i])
-        #     CC2[i] = sum(C2[end+1-i:end])
-        # end
-        # plot(tpath1[2:end,2],CC1)
-        # plot!(tpath2[end:-1:2,2],CC2)
-        # savefig("../Results/BestWorst/CumConservBest$(i).png")
-        # # Make cumaltive entropy productions
-        # CΔS1 = zeros(length(ΔS1))
-        # CΔS2 = zeros(length(ΔS2))
-        for i = 1:length(C1)
-            CΔS1[i] = sum(ΔS1[1:i])
-            CΔS2[i] = sum(ΔS2[end+1-i:end])
-        end
-        plot(tpath1[2:end,2],ΔS1)
-        plot!(tpath2[end:-1:2,2],ΔS2[end:-1:1])
-        savefig("../Results/BestWorst/EntPBest$(i).png")
-        # plot(tpath1[2:end,2],CΔS1)
-        # plot!(tpath2[end:-1:2,2],CΔS2)
-        # savefig("../Results/BestWorst/CumEntPBest$(i).png")
+        plot(tpath1[2:end,2],f1)
+        plot!(tpath2[2:end,2],f2)
+        savefig("../Results/BestWorst/ForceBest$(i).png")
+        plot(tpath1[2:end,2],Dm1)
+        plot!(tpath2[2:end,2],Dm2)
+        savefig("../Results/BestWorst/DiffBest$(i).png")
     end
     # Now read in worst trajectories and plot
     for i = 1:length(worst)
@@ -542,43 +501,17 @@ function main()
             end
         end
         # Calculate and then plot velocities
-        v1, tpath1, f1, C1, ΔS1 = speed(path1,ps[worst[i],:])
-        v2, tpath2, f2, C2, ΔS2 = speed(path2,ps[worst[i],:])
+        v1, tpath1, f1, C1, ΔS1, Dm1 = speed(path1,ps[worst[i],:])
+        v2, tpath2, f2, C2, ΔS2, Dm2 = speed(path2,ps[worst[i],:])
         plot(path1[:,2],path1[:,1])
         plot!(path2[:,2],path2[:,1])
         savefig("../Results/BestWorst/Worst$(i).png")
-        # plot(tpath1[2:end,2],v1)
-        # plot!(tpath2[2:end,2],v2)
-        # savefig("../Results/BestWorst/VelocityWorst$(i).png")
-        # plot(tpath1[2:end,2],f1)
-        # plot!(tpath2[2:end,2],f2)
-        # savefig("../Results/BestWorst/ForceWorst$(i).png")
-        # plot(tpath1[2:end,2],C1)
-        # plot!(tpath2[2:end,2],C2)
-        # savefig("../Results/BestWorst/ConservWorst$(i).png")
-        # # Make cumulative actions
-        # CC1 = zeros(length(C1))
-        # CC2 = zeros(length(C2))
-        # for i = 1:length(C1)
-        #     CC1[i] = sum(C1[1:i])
-        #     CC2[i] = sum(C2[end+1-i:end])
-        # end
-        # plot(tpath1[2:end,2],CC1)
-        # plot!(tpath2[end:-1:2,2],CC2)
-        # savefig("../Results/BestWorst/CumConservWorst$(i).png")
-        # # Make cumaltive entropy productions
-        # CΔS1 = zeros(length(ΔS1))
-        # CΔS2 = zeros(length(ΔS2))
-        for i = 1:length(C1)
-            CΔS1[i] = sum(ΔS1[1:i])
-            CΔS2[i] = sum(ΔS2[end+1-i:end])
-        end
-        plot(tpath1[2:end,2],ΔS1)
-        plot!(tpath2[end:-1:2,2],ΔS2[end:-1:1])
-        savefig("../Results/BestWorst/EntPWorst$(i).png")
-        # plot(tpath1[2:end,2],CΔS1)
-        # plot!(tpath2[end:-1:2,2],CΔS2)
-        # savefig("../Results/BestWorst/CumEntPWorst$(i).png")
+        plot(tpath1[2:end,2],f1)
+        plot!(tpath2[2:end,2],f2)
+        savefig("../Results/BestWorst/ForceWorst$(i).png")
+        plot(tpath1[2:end,2],Dm1)
+        plot!(tpath2[2:end,2],Dm2)
+        savefig("../Results/BestWorst/DiffWorst$(i).png")
     end
     return(nothing)
 end

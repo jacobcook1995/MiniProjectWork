@@ -7,6 +7,7 @@
 # Date: May 2019
 
 using SymEngine
+using LaTeXStrings
 using Plots
 import PyPlot
 
@@ -317,6 +318,37 @@ function main()
             k += 1
         end
     end
+    # Then read in all steady states
+    infile = "../Results/Fig3Data/$(ARGS[1])stead.csv"
+    if ~isfile(infile)
+        println("Error: No file of parameters to be read.")
+        return(nothing)
+    end
+    # now read in parameters
+    l = countlines(infile)
+    w = 6
+    steads = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                steads[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
     # Define input files
     infileb = "../Results/Fig3Data/Best.csv"
     infilew = "../Results/Fig3Data/Worst.csv"
@@ -379,8 +411,10 @@ function main()
             k += 1
         end
     end
+    # Call pyplot
+    pyplot(dpi=300,titlefontsize=20,guidefontsize=17,legendfontsize=15,tickfontsize=14)
     # Do plots for best trajectories first
-    for i = 1:length(best)
+    for i = 6#1:length(best)
         infile1 = "../Results/Fig3Data/Traj/$(best[i])$(ARGS[1])A2B.csv"
         infile2 = "../Results/Fig3Data/Traj/$(best[i])$(ARGS[1])B2A.csv"
         # now should read in 1st path
@@ -433,11 +467,27 @@ function main()
                 k += 1
             end
         end
-        # Calculate and then plot velocities
+        N = best[i]
+        # Calculate velocities and other dynamical features
         v1, tpath1, f1, C1, ΔS1, Dm1 = speed(path1,ps[best[i],:])
         v2, tpath2, f2, C2, ΔS2, Dm2 = speed(path2,ps[best[i],:])
-        plot(path1[:,2],path1[:,1])
-        plot!(path2[:,2],path2[:,1])
+        # Find appropriate upper limits
+        xmax = ceil(maximum([maximum(path1[:,1]),maximum(path2[:,1])]))
+        ymax = ceil(maximum([maximum(path1[:,2]),maximum(path2[:,2])]))
+        # Plot data
+        plot(path1[:,1],path1[:,2],label=L"A{\rightarrow}B",title="Good fit")
+        plot!(path2[:,1],path2[:,2],label=L"B{\rightarrow}A")
+        # Mark direction with arrows
+        plot!(path1[515:516,1],path1[515:516,2],arrow=0.4,label="",color=1)
+        plot!(path2[85:86,1],path2[85:86,2],arrow=0.4,label="",color=2)
+        # mark steady states
+        scatter!([steads[N,1]],[steads[N,2]],markersize=6,markercolor=:white,label="")
+        scatter!([steads[N,3]],[steads[N,4]],markersize=5,markercolor=:black,markershape=:x,label="")
+        scatter!([steads[N,5]],[steads[N,6]],markersize=6,markercolor=:black,label="")
+        # annotate and set limits and labels
+        annotate!([(steads[N,5]+0.5,steads[N,6],text("B",20)),(steads[N,1],steads[N,2]+1.0,text("A",20))])
+        plot!(xlims=(0,xmax),ylims=(0,ymax),xlabel="Concentration a",ylabel="Concentration b")
+        # scatter points and annotations
         savefig("../Results/BestWorst/Best$(i).png")
         plot(tpath1[2:end,2],f1)
         plot!(tpath2[2:end,2],f2)
@@ -447,7 +497,7 @@ function main()
         savefig("../Results/BestWorst/DiffBest$(i).png")
     end
     # Now read in worst trajectories and plot
-    for i = 1:length(worst)
+    for i = 7#1:length(worst)
         infile1 = "../Results/Fig3Data/Traj/$(worst[i])$(ARGS[1])A2B.csv"
         infile2 = "../Results/Fig3Data/Traj/$(worst[i])$(ARGS[1])B2A.csv"
         # now should read in 1st path
@@ -500,11 +550,26 @@ function main()
                 k += 1
             end
         end
-        # Calculate and then plot velocities
+        N = worst[i]
+        # Calculate velocities and other dynamical features
         v1, tpath1, f1, C1, ΔS1, Dm1 = speed(path1,ps[worst[i],:])
         v2, tpath2, f2, C2, ΔS2, Dm2 = speed(path2,ps[worst[i],:])
-        plot(path1[:,2],path1[:,1])
-        plot!(path2[:,2],path2[:,1])
+        # Find appropriate upper limits
+        xmax = ceil(maximum([maximum(path1[:,1]),maximum(path2[:,1])]))
+        ymax = ceil(maximum([maximum(path1[:,2]),maximum(path2[:,2])]))
+        # Plot data
+        plot(path1[:,1],path1[:,2],label=L"A{\rightarrow}B",title="Poor fit")
+        plot!(path2[:,1],path2[:,2],label=L"B{\rightarrow}A")
+        # Mark direction with arrows
+        plot!(path1[515:516,1],path1[515:516,2],arrow=0.4,label="",color=1)
+        plot!(path2[85:86,1],path2[85:86,2],arrow=0.4,label="",color=2)
+        # mark steady states
+        scatter!([steads[N,1]],[steads[N,2]],markersize=6,markercolor=:white,label="")
+        scatter!([steads[N,3]],[steads[N,4]],markersize=5,markercolor=:black,markershape=:x,label="")
+        scatter!([steads[N,5]],[steads[N,6]],markersize=6,markercolor=:black,label="")
+        # annotate and set limits and labels
+        annotate!([(steads[N,5]+0.75,steads[N,6],text("B",20)),(steads[N,1],steads[N,2]+0.75,text("A",20))])
+        plot!(xlims=(-0.5,xmax),ylims=(-0.5,ymax),xlabel="Concentration a",ylabel="Concentration b")
         savefig("../Results/BestWorst/Worst$(i).png")
         plot(tpath1[2:end,2],f1)
         plot!(tpath2[2:end,2],f2)

@@ -580,7 +580,6 @@ function plotting()
                 Tp = tims2[end]
                 Tmid = tims2[Nmid]
                 path2, Ns = timdis(tims2,x,NG,NM,Tmid)
-                println(Ns)
                 if j == 1
                     plot!(p1,path2[:,1],path2[:,2],label=L"A\rightarrow B",color=1)
                     plot!(p1,path2[515:516,1],path2[515:516,2],arrow=0.4,label="",color=1)
@@ -590,7 +589,6 @@ function plotting()
                 end
                 # find point that path reaches saddle Ns
                 Ns = 0
-                println(Ns)
                 if path2[1,:] == [steads[N,1],steads[N,2]]
                     for i = 1:length(path2)
                         if path2[i,1] <= steads[N,3] && path2[i,2] >= steads[N,4]
@@ -609,7 +607,6 @@ function plotting()
                     println("Error: Should start at one of the two points")
                     error()
                 end
-                println(Ns)
                 # now use a function that takes the time discretised path and
                 # finds the action in a more conventional manner and then can also get entropy production from this
                 Act[j], ΔS[j], Af[:,j], ΔSf[:,j], KE[:,j], PE[:,j], prods, flows = act(path2,Tp,b,Dmin,ps[i,:],Ns)
@@ -622,6 +619,8 @@ function plotting()
                     plot!(p3,path2[1:end-1,1],(prods.-flows)*mag2,label="EP-EF",color=3)
                     plot!(p3,path2[1:end-1,1],ΔSf[:,j]*mag2,label=L"\Delta S^L",color=4)
                 else
+                    plot!(p2,path2[1:end-1,1],(Af[:,2]-Af[end:-1:1,1])*mag1,label=L"\mathcal{A}_{B\rightarrow A} - \mathcal{A}_{A\rightarrow B}",color=4)
+                    plot!(p2,path2[1:end-1,1],(ΔSf[end:-1:1,1]-ΔSf[:,2])*mag1,label=L"\Delta S^{L}_{A\rightarrow B} - \Delta S^{L}_{B\rightarrow A}",color=5)
                     plot!(p2,path2[1:end-1,1],Af[:,j]*mag1,label="",color=1,style=:dash)
                     plot!(p2,path2[1:end-1,1],PE[:,j]*mag1,label="",color=2,style=:dash)
                     plot!(p2,path2[1:end-1,1],KE[:,j]*mag1,label="",color=3,style=:dash)
@@ -640,20 +639,18 @@ function plotting()
         end
     end
     # Start plotting here
-    scatter!(p1,[steads[N,1]],[steads[N,2]],markersize=6,markercolor=:white,label="",bgcolor=:transparent,fgcolor=:black)
+    scatter!(p1,[steads[N,1]],[steads[N,2]],markersize=6,markercolor=:white,label="")
     scatter!(p1,[steads[N,3]],[steads[N,4]],markersize=5,markercolor=:black,markershape=:x,label="")
     scatter!(p1,[steads[N,5]],[steads[N,6]],markersize=6,markercolor=:black,label="",legendfontrotation=90.0)
     annotate!(p1,[(steads[N,5]+0.1,steads[N,6],text("B",20)),(steads[N,1],steads[N,2]+0.15,text("A",20))])
     savefig(p1,"../Results/Fig2Graphs/TogPath$(ARGS[2]).png")
-    plot!(p2,path2[1:end-1,1],(Af[:,2]-Af[end:-1:1,1])*mag1,label=L"\mathcal{A}_{B\rightarrow A} - \mathcal{A}_{A\rightarrow B}",color=4,style=:dashdot)
-    plot!(p2,path2[1:end-1,1],(ΔSf[end:-1:1,1]-ΔSf[:,2])*mag1,label=L"\Delta S^{L}_{A\rightarrow B} - \Delta S^{L}_{B\rightarrow A}",color=5,style=:dashdot)
     scatter!(p2,[steads[N,1]],[0.0],markersize=6,markercolor=:white,label="")
     scatter!(p2,[steads[N,3]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
-    scatter!(p2,[steads[N,5]],[0.0],markersize=6,markercolor=:black,label="",bgcolor=:transparent,fgcolor=:black)
+    scatter!(p2,[steads[N,5]],[0.0],markersize=6,markercolor=:black,label="")
     savefig(p2,"../Results/Fig2Graphs/TogAct$(ARGS[2]).png")
     scatter!(p3,[steads[N,1]],[0.0],markersize=6,markercolor=:white,label="")
     scatter!(p3,[steads[N,3]],[0.0],markersize=5,markercolor=:black,markershape=:x,label="")
-    scatter!(p3,[steads[N,5]],[0.0],markersize=6,markercolor=:black,label="",bgcolor=:transparent,fgcolor=:black)
+    scatter!(p3,[steads[N,5]],[0.0],markersize=6,markercolor=:black,label="")
     savefig(p3,"../Results/Fig2Graphs/TogfTerms$(ARGS[2]).png")
     return(nothing)
 end
@@ -777,4 +774,4 @@ function entcheck()
     return(nothing)
 end
 
-@time entcheck()
+@time plotting()

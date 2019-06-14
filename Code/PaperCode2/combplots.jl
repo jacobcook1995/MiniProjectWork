@@ -468,7 +468,7 @@ function first()
     # now try to get log ratio of state probailities to plot against differences in entropy production
     ylab = L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}"
     xlab = L"\dot{S}_A - \dot{S}_B\;(s^{-1})"
-    plot(xlabel=xlab2,ylabel=ylab,title="MaxEPP",ylims=(-45.0,22.5))
+    plot(xlabel=xlab,ylabel=ylab,title="MaxEPP",ylims=(-45.0,22.5))
     xdataT = ent[ind,3].-ent[ind,4]
     ydataT = log.(probs[ind,1]./probs[ind,2])./probs[ind,3]
     p0 = [0.0,1.0]

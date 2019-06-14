@@ -260,7 +260,7 @@ function first()
     # plot change in action vs entropy produced
     xlab = L"ΔS^L_{B\rightarrow A} - ΔS^L_{A\rightarrow B}"
     ylab = L"\mathcal{A}_{A\rightarrow B} - \mathcal{A}_{B\rightarrow A}\;(1/\Omega)"
-    plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S^L",top_margin=8mm)
+    plot(xlabel=xlab,ylabel=ylab,title="Path entropy production")
     # Now want to fit two lines, one for each model
     @. model(x,p) = p[1] + p[2]*x
     # Need to reduce data here to only include the relevant points
@@ -398,7 +398,7 @@ function first()
             Sind = vcat(Sind,i)
         end
     end
-    plot(title=L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}\;vs\;\Delta\mathcal{A}")
+    plot(title="Validity of FW action")
     for i = ind
         scatter!([probs[i,3]*(acts[i,2]-acts[i,6])],[log(probs[i,1]/probs[i,2])],label="",color=1)
     end
@@ -467,9 +467,8 @@ function first()
     println("Correlation Schlögl Theory vs Simulation: $(r)")
     # now try to get log ratio of state probailities to plot against differences in entropy production
     ylab = L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}"
-    xlab1 = L"\dot{S}_A - \dot{S}_B"
-    xlab2 = L"\dot{S}_A - \dot{S}_B\;(s^{-1})"
-    plot(xlabel=xlab2,ylabel=ylab,title="$(ylab) vs $(xlab1)",ylims=(-45.0,22.5))
+    xlab = L"\dot{S}_A - \dot{S}_B\;(s^{-1})"
+    plot(xlabel=xlab2,ylabel=ylab,title="MaxEPP",ylims=(-45.0,22.5))
     xdataT = ent[ind,3].-ent[ind,4]
     ydataT = log.(probs[ind,1]./probs[ind,2])./probs[ind,3]
     p0 = [0.0,1.0]
@@ -537,424 +536,6 @@ function first()
     end
     r = a/sqrt(b*c)
     println("Correlation Schlögl Occ vs Ent Prod: $(r)")
-    # # Read in steady states and use to calculate distances
-    # infile = "../Results/Fig3Data/$(ARGS[1])stead.csv"
-    # l = countlines(infile)
-    # w = 6
-    # steads = zeros(l,w)
-    # open(infile, "r") do in_file
-    #     # Use a for loop to process the rows in the input file one-by-one
-    #     k = 1
-    #     for line in eachline(in_file)
-    #         # parse line by finding commas
-    #         L = length(line)
-    #         comma = fill(0,w+1)
-    #         j = 1
-    #         for i = 1:L
-    #             if line[i] == ','
-    #                 j += 1
-    #                 comma[j] = i
-    #             end
-    #         end
-    #         comma[end] = L+1
-    #         for i = 1:w
-    #             steads[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-    #         end
-    #         k += 1
-    #     end
-    # end
-    # # now make δsad
-    # δsad = zeros(l,2)
-    # for i = 1:l
-    #     δsad[i,1] = sqrt((steads[i,1]-steads[i,3])^2 + (steads[i,2]-steads[i,4])^2)
-    #     δsad[i,2] = sqrt((steads[i,5]-steads[i,3])^2 + (steads[i,6]-steads[i,4])^2)
-    # end
-    # # Same for Schlögl states
-    # infile = "../Results/Fig3DataS/$(ARGS[2])steadS.csv"
-    # l = countlines(infile)
-    # w = 3
-    # steadsS = zeros(l,w)
-    # open(infile, "r") do in_file
-    #     # Use a for loop to process the rows in the input file one-by-one
-    #     k = 1
-    #     for line in eachline(in_file)
-    #         # parse line by finding commas
-    #         L = length(line)
-    #         comma = fill(0,w+1)
-    #         j = 1
-    #         for i = 1:L
-    #             if line[i] == ','
-    #                 j += 1
-    #                 comma[j] = i
-    #             end
-    #         end
-    #         comma[end] = L+1
-    #         for i = 1:w
-    #             steadsS[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-    #         end
-    #         k += 1
-    #     end
-    # end
-    # # now make δsad
-    # δsadS = zeros(l,2)
-    # for i = 1:l
-    #     δsadS[i,1] = abs(steadsS[i,1]-steadsS[i,2])
-    #     δsadS[i,2] = abs(steadsS[i,3]-steadsS[i,2])
-    # end
-    # # Now do graph of different
-    # xlab = L"ΔS"
-    # ylab = L"\dot{S}"
-    # mag1 = 10^-2
-    # Lmag1 = L"10^2"
-    # p1 = plot(title=L"\Delta S_{A\rightarrow B} - \Delta S_{B\rightarrow A}",guidefontsize=15)#,bgcolor=:transparent,fgcolor=:black)
-    # plot!(p1,xlabel="Langevin EP (LDT) ($Lmag1)",ylabel="Exact EP (FT) ($Lmag1)")
-    # p2 = plot(xlabel=xlab,ylabel=ylab,title=L"Δ\;\dot{S}\;vs\;\Delta\Delta S")
-    # p3 = plot(xlabel=xlab,ylabel=ylab,title=L"Δ\;\dot{S}\;vs\;\Delta\Delta S")
-    # I = collect(1:100)
-    # K = 0 # start counter
-    # # make arrays to store data
-    # pos = zeros(length(I))
-    # ms = zeros(length(I))
-    # sds = zeros(length(I))
-    # pos2 = zeros(length(I))
-    # # save all x and y values
-    # for i = I
-    #     infile1 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BMast.csv"
-    #     infile2 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AMast.csv"
-    #     # Extract forward data
-    #     ne = 101
-    #     w = ne
-    #     mastf = zeros(w-1)
-    #     open(infile1, "r") do in_file
-    #         # Use a for loop to process the rows in the input file one-by-one
-    #         k = 1
-    #         for line in eachline(in_file)
-    #             # parse line by finding commas
-    #             L = length(line)
-    #             comma = fill(0,w+1)
-    #             j = 1
-    #             for i = 1:L
-    #                 if line[i] == ','
-    #                     j += 1
-    #                     comma[j] = i
-    #                 end
-    #             end
-    #             comma[end] = L+1
-    #             for i = 1:w-1
-    #                 mastf[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-    #             end
-    #             k += 1
-    #         end
-    #     end
-    #     # Then extract backwards data
-    #     mastb = zeros(w-1)
-    #     open(infile2, "r") do in_file
-    #         # Use a for loop to process the rows in the input file one-by-one
-    #         k = 1
-    #         for line in eachline(in_file)
-    #             # parse line by finding commas
-    #             L = length(line)
-    #             comma = fill(0,w+1)
-    #             j = 1
-    #             for i = 1:L
-    #                 if line[i] == ','
-    #                     j += 1
-    #                     comma[j] = i
-    #                 end
-    #             end
-    #             comma[end] = L+1
-    #             for i = 1:w-1
-    #                 mastb[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-    #             end
-    #             k += 1
-    #         end
-    #     end
-    #     # now read in productions and flows for foward and backwards paths
-    #     infile1 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2Bpf.csv"
-    #     infile2 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2Apf.csv"
-    #     # Extract forward data
-    #     w = 4
-    #     pff = zeros(w)
-    #     open(infile1, "r") do in_file
-    #         # Use a for loop to process the rows in the input file one-by-one
-    #         k = 1
-    #         for line in eachline(in_file)
-    #             # parse line by finding commas
-    #             L = length(line)
-    #             comma = fill(0,w+1)
-    #             j = 1
-    #             for i = 1:L
-    #                 if line[i] == ','
-    #                     j += 1
-    #                     comma[j] = i
-    #                 end
-    #             end
-    #             comma[end] = L+1
-    #             for i = 1:w
-    #                 pff[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-    #             end
-    #             k += 1
-    #         end
-    #     end
-    #     pfb = zeros(w)
-    #     open(infile2, "r") do in_file
-    #         # Use a for loop to process the rows in the input file one-by-one
-    #         k = 1
-    #         for line in eachline(in_file)
-    #             # parse line by finding commas
-    #             L = length(line)
-    #             comma = fill(0,w+1)
-    #             j = 1
-    #             for i = 1:L
-    #                 if line[i] == ','
-    #                     j += 1
-    #                     comma[j] = i
-    #                 end
-    #             end
-    #             comma[end] = L+1
-    #             for i = 1:w
-    #                 pfb[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-    #             end
-    #             k += 1
-    #         end
-        # end
-        # # Now need to extract averages and standard deviations and plot against other data
-        # mf = mean(mastf)
-        # mb = mean(mastb)
-        # sdf = stdm(mastf,mf;corrected=true)/sqrt(ne-1)
-        # sdb = stdm(mastb,mb;corrected=true)/sqrt(ne-1)
-        # m = mf - mb
-        # sd = sqrt(sdf^2 + sdb^2)
-        # plot!(p1,mag1*[pff[1]-pfb[1]],mag1*[m],yerror=mag1*sd,label="",markercolor=1,markerstrokecolor=:black)
-        # scatter!(p2,[pff[3]-pfb[3]],[ents[i,1] - ents[i,3]],label="",color=1)
-        # scatter!(p3,[pff[3]-pfb[3]],[δsad[i,1]*ents[i,1] - δsad[i,2]*ents[i,3]],label="",color=1)
-        # # Save data for use outside
-        # K += 1 # increment index
-        # pos[K] = pff[1]-pfb[1]
-        # ms[K] = m
-        # sds[K] = sd
-        # pos2[K] = pff[3]-pfb[3]
-    # end
-    # # Abandoning theory here and just finding the best fit
-    # xdataT = pos
-    # ydataT = ms
-    # weigT = (sds.^-2)
-    # p0 = [0.0,1.0]
-    # fitT = curve_fit(model,xdataT,ydataT,weigT,p0)
-    # yintT = coef(fitT)[1]
-    # slopT = coef(fitT)[2]
-    # xran = -55.0:5.0:195.0
-    # plot!(p1,mag1*xran,mag1*model(xran,[yintT,slopT]),label="",color=1)
-    # xdataT = pos2
-    # ydataT = ents[:,1] .- ents[:,3]
-    # fitT = curve_fit(model,xdataT,ydataT,p0)
-    # yintT = coef(fitT)[1]
-    # slopT = coef(fitT)[2]
-    # xran = -45.0:5.0:10.0
-    # plot!(p2,xran,model(xran,[yintT,slopT]),label="",color=1)
-    # xdataT = pos2
-    # ydataT = δsad[:,1].*ents[:,1] .- δsad[:,2].*ents[:,3]
-    # fitT = curve_fit(model,xdataT,ydataT,p0)
-    # yintT = coef(fitT)[1]
-    # slopT = coef(fitT)[2]
-    # xran = -45.0:5.0:10.0
-    # plot!(p3,xran,model(xran,[yintT,slopT]),label="",color=1)
-    # # Now calculate Pearson correlation coefficient
-    # xbarT = sum(xdataT)/length(xdataT)
-    # ybarT = sum(ydataT)/length(ydataT)
-    # a = 0
-    # b = 0
-    # c = 0
-    # for i = 1:length(xdataT)
-    #     a += (xdataT[i] - xbarT)*(ydataT[i] - ybarT)
-    #     b += (xdataT[i] - xbarT)^2
-    #     c += (ydataT[i] - ybarT)^2
-    # end
-    # r = a/sqrt(b*c)
-    # println("Correlation Toggle Switch EntProd vs TrajEntProd: $(r)")
-    # # And could do a weighted correlation
-    # wxbarT = sum(weigT.*xdataT)/(length(xdataT)*sum(weigT))
-    # wybarT = sum(weigT.*ydataT)/(length(ydataT)*sum(weigT))
-    # wcovxy = sum(weigT.*(xdataT.-wxbarT).*(ydataT.-wybarT))/sum(weigT)
-    # wcovxx = sum(weigT.*(xdataT.-wxbarT).*(xdataT.-wxbarT))/sum(weigT)
-    # wcovyy = sum(weigT.*(ydataT.-wybarT).*(ydataT.-wybarT))/sum(weigT)
-    # r = wcovxy/sqrt(wcovxx*wcovyy)
-    # println("Weighted Correlation Toggle Switch Mast vs Langevin: $(r)")
-    # # The same is now done for the Schlögl model
-    # # make arrays to store data
-    # pos = zeros(length(I))
-    # ms = zeros(length(I))
-    # sds = zeros(length(I))
-    # pos2 = zeros(length(I))
-    # K = 0 # restart counter
-    # # save all x and y values
-    # for i = I
-    #     infile1 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])h2lMast.csv"
-    #     infile2 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])l2hMast.csv"
-    #     # Extract forward data
-    #     ne = 101
-    #     w = ne
-    #     mastf = zeros(w-1)
-    #     open(infile1, "r") do in_file
-    #         # Use a for loop to process the rows in the input file one-by-one
-    #         k = 1
-    #         for line in eachline(in_file)
-    #             # parse line by finding commas
-    #             L = length(line)
-    #             comma = fill(0,w+1)
-    #             j = 1
-    #             for i = 1:L
-    #                 if line[i] == ','
-    #                     j += 1
-    #                     comma[j] = i
-    #                 end
-    #             end
-    #             comma[end] = L+1
-    #             for i = 1:w-1
-    #                 mastf[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-    #             end
-    #             k += 1
-    #         end
-    #     end
-    #     # Then extract backwards data
-    #     mastb = zeros(w-1)
-    #     open(infile2, "r") do in_file
-    #         # Use a for loop to process the rows in the input file one-by-one
-    #         k = 1
-    #         for line in eachline(in_file)
-    #             # parse line by finding commas
-    #             L = length(line)
-    #             comma = fill(0,w+1)
-    #             j = 1
-    #             for i = 1:L
-    #                 if line[i] == ','
-    #                     j += 1
-    #                     comma[j] = i
-    #                 end
-    #             end
-    #             comma[end] = L+1
-    #             for i = 1:w-1
-    #                 mastb[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-    #             end
-    #             k += 1
-    #         end
-    #     end
-        # # now read in productions and flows for foward and backwards paths
-        # infile1 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])h2lpf.csv"
-        # infile2 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])l2hpf.csv"
-        # # Extract forward data
-        # w = 4
-        # pff = zeros(w)
-        # open(infile1, "r") do in_file
-        #     # Use a for loop to process the rows in the input file one-by-one
-        #     k = 1
-        #     for line in eachline(in_file)
-        #         # parse line by finding commas
-        #         L = length(line)
-        #         comma = fill(0,w+1)
-        #         j = 1
-        #         for i = 1:L
-        #             if line[i] == ','
-        #                 j += 1
-        #                 comma[j] = i
-        #             end
-        #         end
-        #         comma[end] = L+1
-        #         for i = 1:w
-        #             pff[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-        #         end
-        #         k += 1
-        #     end
-        # end
-        # pfb = zeros(w)
-        # open(infile2, "r") do in_file
-        #     # Use a for loop to process the rows in the input file one-by-one
-        #     k = 1
-        #     for line in eachline(in_file)
-        #         # parse line by finding commas
-        #         L = length(line)
-        #         comma = fill(0,w+1)
-        #         j = 1
-        #         for i = 1:L
-        #             if line[i] == ','
-        #                 j += 1
-        #                 comma[j] = i
-        #             end
-        #         end
-        #         comma[end] = L+1
-        #         for i = 1:w
-        #             pfb[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-        #         end
-        #         k += 1
-        #     end
-        # end
-        # # Now need to extract averages and standard deviations and plot against other data
-        # mf = mean(mastf)
-        # mb = mean(mastb)
-        # sdf = stdm(mastf,mf;corrected=true)/sqrt(ne-1)
-        # sdb = stdm(mastb,mb;corrected=true)/sqrt(ne-1)
-        # m = mf - mb
-        # sd = sqrt(sdf^2 + sdb^2)
-        # plot!(p1,mag1*[pff[1]-pfb[1]],mag1*[m],yerror=mag1*sd,label="",markercolor=2,markerstrokecolor=:black)
-        # scatter!(p2,[pff[3]-pfb[3]],[Sents[i,1] - Sents[i,3]],label="",color=2)
-        # scatter!(p3,[pff[3]-pfb[3]],[δsadS[i,1]*Sents[i,1] - δsadS[i,2]*Sents[i,3]],label="",color=2)
-        # # Save data for use outside
-        # K += 1 # increment index
-        # pos[K] = pff[1]-pfb[1]
-        # ms[K] = m
-        # sds[K] = sd
-        # pos2[K] = pff[3]-pfb[3]
-    # end
-    # # Abandoning theory here and just finding the best fit
-    # xdataS = pos
-    # ydataS = ms
-    # weigS = (sds.^-2)
-    # p0 = [0.0,1.0]
-    # fitS = curve_fit(model,xdataS,ydataS,weigS,p0)
-    # yintS = coef(fitS)[1]
-    # slopS = coef(fitS)[2]
-    # xran = -55.0:5.0:195.0
-    # plot!(p1,mag1*xran,mag1*model(xran,[yintS,slopS]),label="",color=2)
-    # xdataS = pos2
-    # ydataS = Sents[:,1] .- Sents[:,3]
-    # p0 = [0.0,1.0]
-    # fitS = curve_fit(model,xdataS,ydataS,p0)
-    # yintS = coef(fitS)[1]
-    # slopS = coef(fitS)[2]
-    # xran = -45.0:5.0:10.0
-    # plot!(p2,xran,model(xran,[yintS,slopS]),label="",color=2)
-    # xdataS = pos2
-    # ydataS = δsadS[:,1].*Sents[:,1] .- δsadS[:,2].*Sents[:,3]
-    # p0 = [0.0,1.0]
-    # fitS = curve_fit(model,xdataS,ydataS,p0)
-    # yintS = coef(fitS)[1]
-    # slopS = coef(fitS)[2]
-    # xran = -45.0:5.0:10.0
-    # plot!(p3,xran,model(xran,[yintS,slopS]),label="",color=2)
-    # savefig(p1,"../Results/MultDiff.png")
-    # savefig(p2,"../Results/SwitchvsProd.png")
-    # savefig(p3,"../Results/SwitchvsProdtest.png")
-    # Now calculate Pearson correlation coefficient
-    # xbarS = sum(xdataS)/length(xdataS)
-    # ybarS = sum(ydataS)/length(ydataS)
-    # a = 0
-    # b = 0
-    # c = 0
-    # for i = 1:length(xdataS)
-    #     a += (xdataS[i] - xbarS)*(ydataS[i] - ybarS)
-    #     b += (xdataS[i] - xbarS)^2
-    #     c += (ydataS[i] - ybarS)^2
-    # end
-    # r = a/sqrt(b*c)
-    # println("Correlation Schlögl Entprod vs TrajEntProd: $(r)")
-    # # And could do a weighted correlation
-    # wxbarS = sum(weigS.*xdataS)/(length(xdataS)*sum(weigS))
-    # wybarS = sum(weigS.*ydataS)/(length(ydataS)*sum(weigS))
-    # wcovxy = sum(weigS.*(xdataS.-wxbarS).*(ydataS.-wybarS))/sum(weigS)
-    # wcovxx = sum(weigS.*(xdataS.-wxbarS).*(xdataS.-wxbarS))/sum(weigS)
-    # wcovyy = sum(weigS.*(ydataS.-wybarS).*(ydataS.-wybarS))/sum(weigS)
-    # r = wcovxy/sqrt(wcovxx*wcovyy)
-    # println("Weighted Correlation Schlögl Mast vs Langevin: $(r)")
     return(nothing)
 end
 
@@ -1197,9 +778,7 @@ function second()
     # Some Latex strings to insert
     xlab = L"\mathcal{A}_{A\rightarrow B} - \mathcal{A}_{B\rightarrow A} (1/\Omega)"
     ylab = L"S_A - S_B"
-    titx = L"\Delta\mathcal{A}"
-    tity = L"\Delta S"
-    plot(xlabel=xlab,ylabel=ylab,title="$(tity) vs $(titx)")
+    plot(xlabel=xlab,ylabel=ylab,title="Role of entropy")
     # Make linear model to fit to
     @. model(x, p) = p[1] + p[2]*x
     xdataT = acts[:,2].-acts[:,6]
@@ -1458,7 +1037,7 @@ function third()
     pyplot() # call pyplot
     # Now plot steady state ratios against rescaled divergences
     scatter(sr,δ2)
-    savefig("../Results/test4.png")
+    savefig("../Results/BestWorst/SadvsDiv.png")
     return(nothing)
 end
 
@@ -1473,4 +1052,5 @@ function fourth()
     return(nothing)
 end
 
-@time third()
+@time first()
+@time second()

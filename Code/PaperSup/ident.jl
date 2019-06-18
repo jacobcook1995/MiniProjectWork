@@ -487,13 +487,18 @@ function main()
         # annotate and set limits and labels
         annotate!([(steads[N,5]+0.5,steads[N,6],text("B",20)),(steads[N,1],steads[N,2]+1.0,text("A",20))])
         plot!(xlims=(0,xmax),ylims=(0,ymax),xlabel="Concentration a",ylabel="Concentration b")
-        # scatter points and annotations
         savefig("../Results/BestWorst/Best$(i).png")
-        plot(tpath1[2:end,2],f1)
-        plot!(tpath2[2:end,2],f2)
+        # make awkward part of label
+        fi = L"f_i\;(s^{-1})"
+        # plot and give limits
+        plot(tpath1[2:end,1],f1,label=[L"f_a" L"f_b"],color=[1 2],xlabel="Concentration a",xlims=(0.0,xmax))
+        plot!(tpath2[2:end,1],f2,label="",linestyle=:dash,color=[1 2],ylabel="Force $(fi)")
+        plot!(title="Good fit")
         savefig("../Results/BestWorst/ForceBest$(i).png")
-        plot(tpath1[2:end,2],Dm1)
-        plot!(tpath2[2:end,2],Dm2)
+        Di = L"D_i\;(s^{-1})"
+        plot(tpath1[2:end,1],Dm1,label=[L"D_a" L"D_b"],color=[1 2],xlabel="Concentration a",xlims=(0,xmax))
+        plot!(tpath2[2:end,1],Dm2,label="",linestyle=:dash,color=[1 2],ylabel="Diffusion coefficient $(Di)")
+        plot!(title="Good fit")
         savefig("../Results/BestWorst/DiffBest$(i).png")
     end
     # Now read in worst trajectories and plot
@@ -571,11 +576,19 @@ function main()
         annotate!([(steads[N,5]+0.75,steads[N,6],text("B",20)),(steads[N,1],steads[N,2]+0.75,text("A",20))])
         plot!(xlims=(-0.5,xmax),ylims=(-0.5,ymax),xlabel="Concentration a",ylabel="Concentration b")
         savefig("../Results/BestWorst/Worst$(i).png")
-        plot(tpath1[2:end,2],f1)
-        plot!(tpath2[2:end,2],f2)
+        # make awkward part of label
+        fi = L"f_i\;(s^{-1})"
+        # plot and give limits
+        plot(tpath1[2:end,1],f1,label=[L"f_a" L"f_b"],color=[1 2],xlabel="Concentration a",xlims=(-0.5,xmax))
+        plot!(tpath2[2:end,1],f2,label="",linestyle=:dash,color=[1 2],ylabel="Force $(fi)")
+        plot!(title="Poor fit")
         savefig("../Results/BestWorst/ForceWorst$(i).png")
-        plot(tpath1[2:end,2],Dm1)
-        plot!(tpath2[2:end,2],Dm2)
+        # make awkward part of label
+        Di = L"D_i\;(s^{-1})"
+        # plot and give limits
+        plot(tpath1[2:end,1],Dm1,label=[L"D_a" L"D_b"],color=[1 2],xlabel="Concentration a",xlims=(-0.5,xmax))
+        plot!(tpath2[2:end,1],Dm2,label="",linestyle=:dash,color=[1 2],ylabel="Diffusion coefficient $(Di)")
+        plot!(title="Poor fit")
         savefig("../Results/BestWorst/DiffWorst$(i).png")
     end
     return(nothing)

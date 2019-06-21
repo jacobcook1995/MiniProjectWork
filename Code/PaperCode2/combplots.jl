@@ -166,7 +166,7 @@ function first()
         Sent[i,4] = Sents[i,3] # B
     end
     # Line that sets up pyplot and basic sizings
-    pyplot(dpi=300,titlefontsize=20,guidefontsize=17,legendfontsize=15,tickfontsize=14)
+    pyplot(dpi=300,titlefontsize=20,guidefontsize=17,legendfontsize=15,tickfontsize=14)#,fgcolor=:black,bgcolor=:transparent)
     # Now a whole section for reading and plotting the stability data
     # first make structure to store data to
     acts = zeros(l,8)
@@ -1053,4 +1053,4 @@ function fourth()
     return(nothing)
 end
 
-@time third()
+@time first()

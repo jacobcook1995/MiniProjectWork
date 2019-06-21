@@ -466,23 +466,24 @@ function first()
     r = a/sqrt(b*c)
     println("Correlation Schlögl Theory vs Simulation: $(r)")
     # now try to get log ratio of state probailities to plot against differences in entropy production
+    mag = 1000
     ylab = L"\ln{\left(\frac{P_{A}}{P_{B}}\right)}"
-    xlab = L"\dot{S}_A - \dot{S}_B\;(s^{-1})"
+    xlab = L"\dot{S}_A - \dot{S}_B\;(1000\;s^{-1})"
     plot(xlabel=xlab,ylabel=ylab,title="MaxEPP",ylims=(-45.0,22.5))
-    xdataT = ent[ind,3].-ent[ind,4]
+    xdataT = (ent[ind,3].-ent[ind,4])/mag
     ydataT = log.(probs[ind,1]./probs[ind,2])./probs[ind,3]
     p0 = [0.0,1.0]
     fitT = curve_fit(model,xdataT,ydataT,p0)
     yintT = coef(fitT)[1]
     slopT = coef(fitT)[2]
-    xranT = -300.0:100.0:3800.0#1900.0
+    xranT = -0.3:0.1:3.8#1900.0
     # then same for Schlögl model
-    xdataS = Sent[Sind,3].-Sent[Sind,4]
+    xdataS = (Sent[Sind,3].-Sent[Sind,4])/mag
     ydataS = log.(Sprobs[Sind,1]./Sprobs[Sind,2])./Sprobs[Sind,3]
     fitS = curve_fit(model,xdataS,ydataS,p0)
     yintS = coef(fitS)[1]
     slopS = coef(fitS)[2]
-    xranS = -300.0:100.0:4100.0
+    xranS = -0.3:0.1:4.1
     # Find confidence intervals of parameters and convert to usable form
     conT = confidence_interval(fitT, 0.05)
     vyintT = conT[1]
@@ -501,12 +502,12 @@ function first()
     # Now plot the data points on top
     for i = ind
         if datayn[i] == true
-            scatter!([ent[i,3]-ent[i,4]],[log(probs[i,1]/probs[i,2])/probs[i,3]],label="",color=1)
+            scatter!([(ent[i,3]-ent[i,4])/mag],[log(probs[i,1]/probs[i,2])/probs[i,3]],label="",color=1)
         end
     end
     for i = Sind
         if Sdatayn[i] == true
-            scatter!([Sent[i,3]-Sent[i,4]],[log(Sprobs[i,1]/Sprobs[i,2])/Sprobs[i,3]],label="",color=2)
+            scatter!([(Sent[i,3]-Sent[i,4])/mag],[log(Sprobs[i,1]/Sprobs[i,2])/Sprobs[i,3]],label="",color=2)
         end
     end
     savefig("../Results/LogProbvsDiffEnt.png")

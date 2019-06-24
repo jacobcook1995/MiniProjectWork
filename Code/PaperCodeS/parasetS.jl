@@ -19,10 +19,9 @@ function paras()
     works = false
     paras = zeros(4)
     while works == false
-        # k randomly selected between 1.0 and 100.0
+        # All parameters drawn from same range
         k1 = myrand(10.0,0.1)
         K1 = myrand(10.0,0.1)
-        # q then smaller than k by a ratio between 1.0 and 0.01
         k2 = myrand(10.0,0.1)
         K2 = myrand(10.0,0.1)
         # now gather parameters

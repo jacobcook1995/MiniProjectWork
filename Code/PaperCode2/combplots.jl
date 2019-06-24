@@ -1035,9 +1035,13 @@ function third()
         write(out_filew, line)
     end
     close(out_filew)
-    pyplot(dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=15,tickfontsize=14) # call pyplot
+    pyplot(dpi=300,titlefontsize=17,guidefontsize=14,legendfontsize=15,tickfontsize=14) # call pyplot
     # Now plot steady state ratios against rescaled divergences
-    scatter(sr,δ2,label="",ylabel=L"\delta",title="Divergence vs relative saddle height",xlabel=L"R_s")
+    scatter(sr,δ2,label="",title="Divergence vs relative saddle height")
+    # Now do axes labels
+    xl = L"R_s"
+    yl = L"\delta"
+    plot!(xlabel="Relative SP concentration $(xl)",ylabel="Divergence $(yl)")
     # Basically done just need to give a title and label the axes
     savefig("../Results/BestWorst/SadvsDiv.png")
     return(nothing)
@@ -1054,4 +1058,4 @@ function fourth()
     return(nothing)
 end
 
-@time first()
+@time third()

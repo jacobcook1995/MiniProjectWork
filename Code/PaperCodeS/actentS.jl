@@ -474,7 +474,8 @@ function plotting()
     mag2 = 10.0^2
     Smag2 = L"(10^{-2}\,1/\Omega)" # legendfontsize used to be 12
     plot!(p3,titlefontsize=20,guidefontsize=16,legendfontsize=15,ylabel="Action terms $(Smag2)",tickfontsize=14)
-    p4 = plot(dpi=300,title="Comparison of f and $(qlab) for Schlögl model",xlabel="Concentration x",ylabel="Magnitude (Copy Number/s)")
+    # Need a more appropriate name than Magnitude here
+    p4 = plot(dpi=300,title="Comparison of f and $(qlab) for Schlögl model",xlabel="Concentration x",ylabel="Value (Copy Number/s)")
     p5 = plot(dpi=300,bgcolor=:transparent,fgcolor=:black,grid=false,ticks=false,border=:none)
     for i = N
         for j = 1:2

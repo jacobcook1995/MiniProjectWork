@@ -665,37 +665,6 @@ function test()
             k += 1
         end
     end
-    # Check there is a file of steady states to be read
-    infile = "../Results/Fig3DataS/$(ARGS[1])steadS.csv"
-    if ~isfile(infile)
-        println("Error: No file of steady states to be read.")
-        return(nothing)
-    end
-    # now read in steady states
-    l = countlines(infile)
-    w = 3
-    steads = zeros(l,w)
-    open(infile, "r") do in_file
-        # Use a for loop to process the rows in the input file one-by-one
-        k = 1
-        for line in eachline(in_file)
-            # parse line by finding commas
-            L = length(line)
-            comma = fill(0,w+1)
-            j = 1
-            for i = 1:L
-                if line[i] == ','
-                    j += 1
-                    comma[j] = i
-                end
-            end
-            comma[end] = L+1
-            for i = 1:w
-                steads[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
-            end
-            k += 1
-        end
-    end
     maxdiff = 0.0
     chang = Array{Int64,1}(undef,0)
     Act = zeros(2)

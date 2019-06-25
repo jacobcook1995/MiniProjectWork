@@ -300,6 +300,54 @@ function act(x::Array{Float64,2},Tp::Float64,b::Array{SymEngine.Basic,1},Dmin::A
     end
 end
 
+# calculate +ve step γ+
+# X[1] = A, X[2] = B
+function γpos(X::Array{Float64,1},ps::Array{Float64,1})
+    y = [0.0,0.0]
+    y[1] = ps[1]*ps[9]/(ps[9]+ps[10]*X[2]*X[2]) + ps[6] # produce A
+    y[2] = ps[3]*ps[9]/(ps[9]+ps[10]*X[1]*X[1]) + ps[8] # produce B
+    return(y)
+end
+
+# calculate -ve step γ-
+function γneg(X::Array{Float64,1},ps::Array{Float64,1})
+    y = [0.0,0.0]
+    y[1] = (ps[2]+ps[5])*X[1] # degrade A
+    y[2] = (ps[4]+ps[7])*X[2] # degrade B
+    return(y)
+end
+
+# find difference from actual rate as would be expected from the master equation
+function Δ(x::Array{Float64,2},Ns::Int64,ps::Array{Float64,1})
+    V1 = zeros(Ns)
+    V2 = zeros(Ns)
+    for i = 1:length(x)
+        γ1 = γpos(x[i,:],ps)
+        γ2 = γneg(x[i,:],ps)
+        δγ = γ1 .- γ2
+        ϵγ = γ1 .+ γ2
+        R = (δγ./ϵγ)
+        # Now 2D so everything has to change accordingly
+        if i <= Ns
+            for j = 1:5
+                V1[i] += -(2/(2*j+1))*(R[1]^(2*j+1))
+                V2[i] += -(2/(2*j+1))*(R[2]^(2*j+1))
+            end
+        else
+            break
+        end
+    end
+    Δpm = 0
+    # Numerically integrate by midpoint method
+    for i = 1:Ns-1
+        δx = x[i+1,1] - x[i,1]
+        Δpm += 0.5*(V1[i+1]+V1[i])*δx
+        δy = x[i+1,2] - x[i,2]
+        Δpm += 0.5*(V2[i+1]+V2[i])*δy
+    end
+    return(Δpm)
+end
+
 function main()
     println("Compiled, Starting script.")
     flush(stdout)
@@ -774,4 +822,137 @@ function entcheck()
     return(nothing)
 end
 
-@time plotting()
+# function to test how much langevin rates diverge from master equation
+function test()
+    println("Compiled, Starting plotting script.")
+    flush(stdout)
+    # First check that an argument for naming has been provided
+    if length(ARGS) == 0
+        println("Error: Need to provide an argument to name output with.")
+        return(nothing)
+    end
+    # Check there is a file of parameters to be read
+    infile = "../Results/Fig3Data/$(ARGS[1])para.csv"
+    if ~isfile(infile)
+        println("Error: No file of parameters to be read.")
+        return(nothing)
+    end
+    # now read in parameters
+    l = countlines(infile)
+    w = 10
+    ps = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                ps[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    maxdiff = 0.0
+    maxdiffR = 0.0
+    chang = Array{Int64,1}(undef,0)
+    Act = zeros(2)
+    dAct = zeros(2)
+    # Now do for loop for both trajectories
+    for i = 1:l
+        for j = 1:2
+            if j == 1
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2B.csv"
+            else
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2A.csv"
+            end
+            # check if file
+            if isfile(infile)
+                # now should read in path
+                l = countlines(infile)
+                w = 2
+                path = zeros(l,w)
+                open(infile, "r") do in_file
+                    # Use a for loop to process the rows in the input file one-by-one
+                    k = 1
+                    for line in eachline(in_file)
+                        # parse line by finding commas
+                        L = length(line)
+                        comma = fill(0,w+1)
+                        m = 1
+                        for i = 1:L
+                            if line[i] == ','
+                                m += 1
+                                comma[m] = i
+                            end
+                        end
+                        comma[end] = L+1
+                        for i = 1:w
+                            path[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                        end
+                        k += 1
+                    end
+                end
+                # generate symbolic objects
+                ϑ, λ, b, Dmin = gensyms(ps[i,:])
+                # define NG and Nmid and use to find variables
+                NG = NM = l - 1
+                Nmid = convert(Int64, ceil((NG+1)/2))
+                x, xprim, λs, ϑs, λprim = genvars(path,λ,ϑ,NG,Nmid)
+                # use function Ŝ to find the action associated with this path
+                λs[1] = λs[2]
+                λs[Nmid] = (λs[Nmid+1] + λs[Nmid-1])/2
+                λs[end] = λs[end-1]
+                # find and save action from geometric method
+                S = Ŝ(x,xprim,λs,ϑs,λprim,NG)
+                ActS = sum(S)
+                Act[j] = ActS
+                # Got all the conventional stuff now run script for Δ
+                Δpm = Δ(x,Nmid-1,ps[i,:]) # put x in as time discretisation not required
+                dAct[j] = ActS - Δpm
+                # Step to save largest divergence
+                if Δpm/ActS > maxdiff
+                    maxdiff = Δpm/ActS
+                    println("Diff $(i)")
+                end
+            else # Tell users about missing files
+                if j == 1
+                    println("No high to low path for $(i)")
+                else
+                    println("No low to high path for $(i)")
+                end
+            end
+        end
+        # Check if result has been altered
+        if (Act[1] < Act[2]) != (dAct[1] < dAct[2])
+            chang = vcat(chang,i)
+        end
+        # calculate ratio of ratios
+        RR = (dAct[1]/dAct[2])/(Act[1]/Act[2])
+        if RR > 1
+            dRR = (RR-1)
+        else
+            dRR = (1-RR)
+        end
+        # update if this is greater
+        if dRR > maxdiffR
+            maxdiffR = dRR
+            println("Diff R $(i)")
+        end
+    end
+    println("Max difference = $(maxdiff)")
+    println("Max difference in ratio = $(maxdiffR*100)")
+    println("Stability changed: $(chang)")
+    return(nothing)
+end
+
+@time test()

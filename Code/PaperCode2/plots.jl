@@ -57,7 +57,7 @@ function main()
     # Check there is a file of parameters to be read
     infile = "../Results/Fig3Data/$(ARGS[1])gill.csv"
     if ~isfile(infile)
-        println("Error: No file of 'Entropy Productions' to be read.")
+        println("Error: No file of trajectory entropy productions to be read.")
         return(nothing)
     end
     # now read in 'Entropy productions'
@@ -150,7 +150,7 @@ function main()
     # Check there is a file of magnitudes of diffusion matrices to be read
     infile = "../Results/Fig3Data/$(ARGS[1])D.csv"
     if ~isfile(infile)
-        println("Error: No file of entropies to be read.")
+        println("Error: No file of diffusion matrices to be read.")
         return(nothing)
     end
     # now read in magnitudes of diffusion matrices

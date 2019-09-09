@@ -1058,4 +1058,153 @@ function fourth()
     return(nothing)
 end
 
-@time third()
+# function to read in and compare Schnakenberg entropy productions with gillepsie simulation entropy Productions
+function fifth()
+    println("Compiled, Starting script.")
+    # First check that an argument for naming has been provided
+    if length(ARGS) == 0
+        println("Error: Need to provide a name for toggle switch inputs")
+        return(nothing)
+    elseif length(ARGS) == 1
+        println("Error: Need to provide a name for Schlögl inputs.")
+        return(nothing)
+    end
+    # Check there is a file of Schnakenberg entropy productions to be read
+    infile = "../Results/Fig3Data/$(ARGS[1])schnak.csv"
+    if ~isfile(infile)
+        println("Error: No file of Entropy Productions to be read.")
+        return(nothing)
+    end
+    # now read in Schnakenberg entropy productions
+    l = countlines(infile)
+    w = 3
+    entS = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                entS[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Check there is a file of Schnakenberg entropy productions to be read for Schlögl
+    infile = "../Results/Fig3DataS/$(ARGS[2])schnakS.csv"
+    if ~isfile(infile)
+        println("Error: No file of Entropy Productions to be read.")
+        return(nothing)
+    end
+    # now read in Schnakenberg entropy productions
+    l = countlines(infile)
+    w = 3
+    SentS = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                SentS[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Now read in data from Gillespie simulations for both cases
+    infile = "../Results/Fig3Data/$(ARGS[1])gill.csv"
+    if ~isfile(infile)
+        println("Error: No file of trajectory entropy productions to be read.")
+        return(nothing)
+    end
+    # now read in 'Entropy productions'
+    l = countlines(infile)
+    w = 2
+    entG = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                entG[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Then for Schlögl
+    infile = "../Results/Fig3DataS/$(ARGS[2])gillS.csv"
+    if ~isfile(infile)
+        println("Error: No file of trajectory entropy productions to be read.")
+        return(nothing)
+    end
+    # now read in 'Entropy productions'
+    l = countlines(infile)
+    w = 2
+    SentG = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                SentG[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Rearrange into sensible plotting form
+    SentS = cat(SentS[:,1],SentS[:,3],dims=1)
+    entS = cat(entS[:,1],entS[:,3],dims=1)
+    SentG = cat(SentG[:,1],SentG[:,2],dims=1)
+    entG = cat(entG[:,1],entG[:,2],dims=1)
+    # Now do ploting
+    pers = L"10^3\;s^{-1}"
+    pyplot(dpi=300,titlefontsize=17,guidefontsize=14,legendfontsize=15,tickfontsize=14) # call pyplot
+    scatter([SentS/1000],[SentG/1000],label="Schlögl",color=2,title="Entropy production comparison")
+    scatter!([entS/1000],[entG/1000],label="Toggle switch",color=1,legend=:topleft)
+    plot!(xlabel="Ent prod $(pers) (Schnakenberg)",ylabel="Ent prod $(pers) (Master Eq)")
+    savefig("../Results/SchnakvsGill.png")
+end
+
+@time fifth()

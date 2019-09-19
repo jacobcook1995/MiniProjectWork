@@ -1274,8 +1274,78 @@ function sixth()
         end
     end
     N = 100 # Number that I have chosen to use
+    # Read in relevant switching paths
+    infileAB = "../Results/Fig3Data/Traj/$(N)$(ARGS[1])A2B.csv"
+    infileBA = "../Results/Fig3Data/Traj/$(N)$(ARGS[1])B2A.csv"
+    # First read in A→B path
+    if isfile(infileAB) # check if file exists
+        # now should read in path
+        l = countlines(infileAB)
+        w = 2
+        pathAB = zeros(l,w)
+        open(infileAB, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                m = 1
+                for i = 1:L
+                    if line[i] == ','
+                        m += 1
+                        comma[m] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w
+                    pathAB[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+    end
+    # Then read in B→A path
+    if isfile(infileBA) # check if file exists
+        # now should read in path
+        l = countlines(infileBA)
+        w = 2
+        pathBA = zeros(l,w)
+        open(infileBA, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                m = 1
+                for i = 1:L
+                    if line[i] == ','
+                        m += 1
+                        comma[m] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w
+                    pathBA[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+    end
+    # Activate PyPlot
+    pyplot(dpi=300,titlefontsize=17,guidefontsize=14,legendfontsize=15,tickfontsize=14)
     # Now want to make heat map of conservative actions and probably overlay actual switching paths
+    plot(pathAB[:,1],pathAB[:,2],xlabel="concentration a",color=1,label="")
+    plot!(pathBA[:,1],pathBA[:,2],ylabel="concentration b",color=2,label="")
+    # Now add steady states
+    scatter!([steads[N,1]],[steads[N,2]],markersize=6,markercolor=:white,label="") # macrostate A
+    scatter!([steads[N,3]],[steads[N,4]],markersize=5,markercolor=:black,markershape=:x,label="")
+    scatter!([steads[N,5]],[steads[N,6]],markersize=6,markercolor=:black,label="") # macrostate B
+    savefig("../Results/test.png")
     # Print out parameters used for good measure
+    println("Parameters used:")
+    println(ps[N,:])
     return(nothing)
 end
 

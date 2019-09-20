@@ -13,6 +13,23 @@ using Statistics
 using Plots.PlotMeasures
 using LsqFit
 
+# Diffusion matrix D
+# ps = [ k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f]
+function D!(D::Array{Float64,2},x::Array{Float64,1},ps::Array{Float64,1})
+    D[1,1] = ps[1]*ps[9]/(ps[9]+ps[10]*x[2]*x[2]) + (ps[5]+ps[2])*x[1] + ps[6]
+    D[1,2] = 0
+    D[2,1] = 0
+    D[2,2] = ps[3]*ps[9]/(ps[9]+ps[10]*x[1]*x[1]) + (ps[7]+ps[4])*x[2] + ps[8]
+    return(D)
+end
+
+# vector of forces
+function f!(f::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
+    f[1] = ps[1]*ps[9]/(ps[9]+ps[10]*x[2]*x[2]) - ps[2]*x[1] - ps[5]*x[1] + ps[6]
+    f[2] = ps[3]*ps[9]/(ps[9]+ps[10]*x[1]*x[1]) - ps[4]*x[2] - ps[7]*x[2] + ps[8]
+    return(f)
+end
+
 # function to plot graphs of actions vs path entropies, path entropies vs prods, occupation probability from theory vs exact
 # and occupation probability vs Schnakenberg entropy production
 function first()
@@ -1333,16 +1350,33 @@ function sixth()
             end
         end
     end
+    # Some ranges are now defined, this is specific to our chosen N
+    x = collect(0.0:0.01:6.5)
+    y = collect(0.0:0.01:12.0)
+    Cs = zeros(length(x),length(y))
+    # for loop to calculate conservative action
+    D = [0.0 0.0; 0.0 0.0]
+    f = [0.0,0.0]
+    for i = 1:length(x)
+        for j = 1:length(y)
+            D = D!(D,[x[i],y[j]],ps[N,:])
+            f = f!(f,[x[i],y[j]],ps[N,:])
+            Cs[i,j] = (f[1]*f[1]/D[1,1]) + (f[2]*f[2]/D[2,2])
+        end
+    end
     # Activate PyPlot
-    pyplot(dpi=300,titlefontsize=17,guidefontsize=14,legendfontsize=15,tickfontsize=14)
+    gr(dpi=300,titlefontsize=17,guidefontsize=14,legendfontsize=15,tickfontsize=14) # dpi=300 breaks plotting when using pyplot, hopefully will be resolved
+    # Plot heatmap of conservative action or 2*PE
+    Cs = transpose(Cs) # tranpose so that pyplot will behave
+    heatmap(x,y,Cs,legend=:outerright,colorbar=:legend,title="Conservative action across space")
     # Now want to make heat map of conservative actions and probably overlay actual switching paths
-    plot(pathAB[:,1],pathAB[:,2],xlabel="concentration a",color=1,label="")
-    plot!(pathBA[:,1],pathBA[:,2],ylabel="concentration b",color=2,label="")
+    plot!(pathAB[:,1],pathAB[:,2],xlabel="Concentration a",color=1,label="")
+    plot!(pathBA[:,1],pathBA[:,2],ylabel="Concentration b",color=2,label="")
     # Now add steady states
-    scatter!([steads[N,1]],[steads[N,2]],markersize=6,markercolor=:white,label="") # macrostate A
-    scatter!([steads[N,3]],[steads[N,4]],markersize=5,markercolor=:black,markershape=:x,label="")
-    scatter!([steads[N,5]],[steads[N,6]],markersize=6,markercolor=:black,label="") # macrostate B
-    savefig("../Results/test.png")
+    scatter!([steads[N,1]],[steads[N,2]],markersize=3.5,markercolor=:yellow,label="") # macrostate A
+    scatter!([steads[N,3]],[steads[N,4]],markersize=3.5,markerstrokecolor=:white,markershape=:x,label="")
+    scatter!([steads[N,5]],[steads[N,6]],markersize=3.5,markercolor=:green,label="") # macrostate B
+    savefig("../Results/HeatMap.png")
     # Print out parameters used for good measure
     println("Parameters used:")
     println(ps[N,:])

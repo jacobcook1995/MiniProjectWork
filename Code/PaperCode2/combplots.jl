@@ -819,9 +819,13 @@ function second()
     conS = confidence_interval(fitS, 0.05)
     vyintS = conS[1]
     vslopS = conS[2]
-    # Find deviating from best line and then plot them on raph as ribbon
+    # Find deviating from best line and then plot them on graph as ribbon
     Tl = abs.(model(xran,[yintT,slopT]) .- model(xran,[vyintT[2],vslopT[2]]))
     Tu = abs.(model(xran,[yintT,slopT]) .- model(xran,[vyintT[1],vslopT[1]]))
+    # THIS FIX ONLY WORKS BECAUSE Tl ≈ Tu
+    # KEEP FOR NOW AS IT DOES WORK HERE
+    # BUT DON"T COPY THIS ELSEWHERE
+    # NEED TO WAIT FOR Plots.jl TO FIX THE BUG
     plot!(xran,model(xran,[yintT,slopT]),ribbon=cat(Tl,Tu,dims=2),label="",color=1)
     # Same for Schlögl model
     Sl = abs.(model(xran,[yintS,slopS]) .- model(xran,[vyintS[2],vslopS[2]]))

@@ -822,11 +822,11 @@ function second()
     # Find deviating from best line and then plot them on raph as ribbon
     Tl = abs.(model(xran,[yintT,slopT]) .- model(xran,[vyintT[2],vslopT[2]]))
     Tu = abs.(model(xran,[yintT,slopT]) .- model(xran,[vyintT[1],vslopT[1]]))
-    plot!(xran,model(xran,[yintT,slopT]),ribbon=(Tl,Tu),label="",color=1)
+    plot!(xran,model(xran,[yintT,slopT]),ribbon=cat(Tl,Tu,dims=2),label="",color=1)
     # Same for Schlögl model
     Sl = abs.(model(xran,[yintS,slopS]) .- model(xran,[vyintS[2],vslopS[2]]))
     Su = abs.(model(xran,[yintS,slopS]) .- model(xran,[vyintS[1],vslopS[1]]))
-    plot!(xran,model(xran,[yintS,slopS]),ribbon=(Sl,Su),label="",color=2)
+    plot!(xran,model(xran,[yintS,slopS]),ribbon=cat(Sl,Su,dims=2),label="",color=2)
     # Finally add points to entropy plot
     scatter!([acts[:,2].-acts[:,6]],[Tent[:,1].-Tent[:,2]],label="",color=1)
     scatter!([Sacts[:,2].-Sacts[:,6]],[Sent[:,1].-Sent[:,2]],label="",color=2)
@@ -1383,4 +1383,4 @@ function sixth()
     return(nothing)
 end
 
-@time sixth()
+@time second()

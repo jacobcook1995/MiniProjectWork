@@ -112,7 +112,8 @@ function main()
            D = D!(D,steads[i,(2*j-1):(2*j)],ps[i,:])
            f1 = f1!(f1,steads[i,(2*j-1):(2*j)],ps[i,:])
            f2 = f2!(f2,steads[i,(2*j-1):(2*j)],ps[i,:])
-           Ds[i,j] = sum(D)
+           # save magnitude of each matrix
+           Ds[i,j] = D[1,1]*D[2,2]
            prods[i,j] = 2*(f1[1]*f1[1]/D[1,1] + f1[2]*f1[2]/D[2,2] + f2[1]*f2[1]/D[1,1] + f2[2]*f2[2]/D[2,2])
            flows[i,j] = 4*(f1[1]*f2[1]/D[1,1] + f1[2]*f2[2]/D[2,2])
         end

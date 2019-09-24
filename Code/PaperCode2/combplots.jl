@@ -30,6 +30,20 @@ function f!(f::Array{Float64,1},x::Array{Float64,1},ps::Array{Float64,1})
     return(f)
 end
 
+# Making a function to return positions for labels
+function annpos(datax::Array{Float64,1},datay::Array{Float64,1},δx=0.15::Float64,δy=0.125::Float64)
+    # Need minimas and maximas
+    xmax = maximum(datax)
+    xmin = minimum(datax)
+    # Calculate optimal x position for label
+    posx = xmin - δx*(xmax-xmin)
+    ymax = maximum(datay)
+    ymin = minimum(datay)
+    # Different formula for y as y axis extends a different length
+    posy = ymax + δy*(ymax-ymin)
+    return(posx,posy)
+end
+
 # function to plot graphs of actions vs path entropies, path entropies vs prods, occupation probability from theory vs exact
 # and occupation probability vs Schnakenberg entropy production
 function first()
@@ -1502,13 +1516,21 @@ function seventh()
     # First Schlögl conservative actions
     p1 = scatter([Sacts[Sdatayn,2].+0.5.*Sacts[Sdatayn,4]],[Sacts[Sdatayn,6].+0.5.*Sacts[Sdatayn,8]],label="")
     p1 = plot!(p1,xlabel=CA,ylabel=CB,title="Schlögl")
+    px, py = annpos(Sacts[Sdatayn,2].+0.5.*Sacts[Sdatayn,4],Sacts[Sdatayn,6].+0.5.*Sacts[Sdatayn,8])
+    p1 = annotate!(p1,px,py,text("A",17,:black))
     # Then Schlögl entropy productions
     p2 = scatter([Sacts[Sdatayn,4]],[Sacts[Sdatayn,8]],label="",xlabel=SA,ylabel=SB)
+    px, py = annpos(Sacts[Sdatayn,4],Sacts[Sdatayn,8])
+    p2 = annotate!(p2,px,py,text("C",17,:black))
     # Then toggle switch conservative actions
     p3 = scatter([acts[datayn,2].+0.5.*acts[datayn,4]],[acts[datayn,6].+0.5.*acts[datayn,8]],label="")
     p3 = plot!(p3,xlabel=CA,ylabel=CB,title="Toggle switch")
+    px, py = annpos(acts[datayn,2].+0.5.*acts[datayn,4],acts[datayn,6].+0.5.*acts[datayn,8])
+    p3 = annotate!(p3,px,py,text("B",17,:black))
     # Then toggle switch entropy productions
     p4 = scatter([acts[datayn,4]],[acts[datayn,8]],label="",xlabel=SA,ylabel=SB)
+    px, py = annpos(acts[datayn,4],acts[datayn,8])
+    p4 = annotate!(p4,px,py,text("D",17,:black))
     # Now combine into a single plot and save
     plot(p1,p3,p2,p4,layout=(2,2))
     savefig("../Results/ConAndEnt.png")

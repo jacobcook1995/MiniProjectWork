@@ -1493,17 +1493,24 @@ function seventh()
         end
     end
     # Now start making graphs
-    pyplot(dpi=300,titlefontsize=17,guidefontsize=14,legendfontsize=15,tickfontsize=14) # launch pyplot
+    pyplot(dpi=300,titlefontsize=17,guidefontsize=12,legendfontsize=15,tickfontsize=10) # launch pyplot
+    # Prepare a few Latex labels
+    SA = L"\Delta S^L_{A{\rightarrow}B}\;(1/\Omega)"
+    SB = L"\Delta S^L_{B{\rightarrow}A}\;(1/\Omega)"
+    CA = L"\mathcal{C}_{A{\rightarrow}B}\;(1/\Omega)"
+    CB = L"\mathcal{C}_{B{\rightarrow}A}\;(1/\Omega)"
     # First Schlögl conservative actions
     p1 = scatter([Sacts[Sdatayn,2].+0.5.*Sacts[Sdatayn,4]],[Sacts[Sdatayn,6].+0.5.*Sacts[Sdatayn,8]],label="")
+    p1 = plot!(p1,xlabel=CA,ylabel=CB,title="Schlögl")
     # Then Schlögl entropy productions
-    p2 = scatter([Sacts[Sdatayn,4]],[Sacts[Sdatayn,8]],label="")
+    p2 = scatter([Sacts[Sdatayn,4]],[Sacts[Sdatayn,8]],label="",xlabel=SA,ylabel=SB)
     # Then toggle switch conservative actions
     p3 = scatter([acts[datayn,2].+0.5.*acts[datayn,4]],[acts[datayn,6].+0.5.*acts[datayn,8]],label="")
+    p3 = plot!(p3,xlabel=CA,ylabel=CB,title="Toggle switch")
     # Then toggle switch entropy productions
-    p4 = scatter([acts[datayn,4]],[acts[datayn,8]],label="")
+    p4 = scatter([acts[datayn,4]],[acts[datayn,8]],label="",xlabel=SA,ylabel=SB)
     # Now combine into a single plot and save
-    plot(p1,p2,p3,p4,layout=(2,2))
+    plot(p1,p3,p2,p4,layout=(2,2))
     savefig("../Results/ConAndEnt.png")
     return(nothing)
 end

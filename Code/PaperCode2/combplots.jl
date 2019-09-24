@@ -1229,9 +1229,14 @@ function fifth()
     return(nothing)
 end
 
-# function to make a heat map of conservative actiosn showing that only small area is feasible
+# function to make a heat map of conservative actions showing that only small area is feasible
 function sixth()
     println("Compiled, Starting script.")
+    # Check enough arguments have been given
+    if length(ARGS) == 0
+        println("Error: Need to provide a name for toggle switch inputs")
+        return(nothing)
+    end
     # First read in parameter sets
     infile = "../Results/Fig3Data/$(ARGS[1])para.csv"
     if ~isfile(infile)
@@ -1387,4 +1392,120 @@ function sixth()
     return(nothing)
 end
 
-@time second()
+# function to make plots of conservative actions and entropy productions
+function seventh()
+    println("Compiled, Starting script.")
+    # First check that an argument for naming has been provided
+    if length(ARGS) == 0
+        println("Error: Need to provide a name for toggle switch inputs")
+        return(nothing)
+    elseif length(ARGS) == 1
+        println("Error: Need to provide a name for Schlögl inputs.")
+        return(nothing)
+    end
+    l = 100
+    # First read in Schlögl actions and entropy productions
+    Sacts = zeros(l,8)
+    Sdatayn = fill(true,l)
+    for i = 1:l
+        for j = 1:2
+            # set file to read in
+            if j == 1
+                infile = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])h2lD.csv"
+            else
+                infile = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])l2hD.csv"
+            end
+            # check it exits
+            if isfile(infile)
+                w = 4
+                open(infile, "r") do in_file
+                    # only one line now
+                    for line in eachline(in_file)
+                        # parse line by finding commas
+                        L = length(line)
+                        comma = fill(0,w+1)
+                        m = 1
+                        for k = 1:L
+                            if line[k] == ','
+                                m += 1
+                                comma[m] = k
+                            end
+                        end
+                        comma[end] = L+1
+                        for k = 1:w
+                            Sacts[i,(j-1)*4+k] = parse(Float64,line[(comma[k]+1):(comma[k+1]-1)])
+                        end
+                    end
+                end
+            else # if file doesn't exist inform user of missing data and exclude from plots
+                if j == 1
+                    println("Missing data for run $(i) high A to high B")
+                    Sdatayn[i] = false
+                else
+                    println("Missing data for run $(i) high B to high A")
+                    Sdatayn[i] = false
+                end
+            end
+        end
+    end
+    # Then read in same data for the toggle switch model
+    acts = zeros(l,8)
+    datayn = fill(true,l)
+    for i = 1:l
+        for j = 1:2
+            # set file to read in
+            if j == 1
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BD.csv"
+            else
+                infile = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AD.csv"
+            end
+            # check it exits
+            if isfile(infile)
+                w = 4
+                open(infile, "r") do in_file
+                    # only one line now
+                    for line in eachline(in_file)
+                        # parse line by finding commas
+                        L = length(line)
+                        comma = fill(0,w+1)
+                        m = 1
+                        for k = 1:L
+                            if line[k] == ','
+                                m += 1
+                                comma[m] = k
+                            end
+                        end
+                        comma[end] = L+1
+                        for k = 1:w
+                            acts[i,(j-1)*4+k] = parse(Float64,line[(comma[k]+1):(comma[k+1]-1)])
+                        end
+                    end
+                end
+            else # if file doesn't exist inform user of missing data and exclude from plots
+                if j == 1
+                    println("Missing data for run $(i) high A to high B")
+                    datayn[i] = false
+                else
+                    println("Missing data for run $(i) high B to high A")
+                    datayn[i] = false
+                end
+            end
+        end
+    end
+    # Now start making graphs
+    pyplot(dpi=300,titlefontsize=17,guidefontsize=14,legendfontsize=15,tickfontsize=14) # launch pyplot
+    # First Schlögl conservative actions
+    p1 = scatter([Sacts[Sdatayn,2].+0.5.*Sacts[Sdatayn,4]],[Sacts[Sdatayn,6].+0.5.*Sacts[Sdatayn,8]],label="")
+    # Then Schlögl entropy productions
+    p2 = scatter([Sacts[Sdatayn,4]],[Sacts[Sdatayn,8]],label="")
+    # Then toggle switch conservative actions
+    p3 = scatter([acts[datayn,2].+0.5.*acts[datayn,4]],[acts[datayn,6].+0.5.*acts[datayn,8]],label="")
+    # Then toggle switch entropy productions
+    p4 = scatter([acts[datayn,4]],[acts[datayn,8]],label="")
+    # Now combine into a single plot and save
+    plot(p1,p2,p3,p4,layout=(2,2))
+    savefig("../Results/ConAndEnt.png")
+    return(nothing)
+end
+
+@time seventh()

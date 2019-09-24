@@ -1513,9 +1513,11 @@ function seventh()
     SB = L"\Delta S^L_{B{\rightarrow}A}\;(1/\Omega)"
     CA = L"\mathcal{C}_{A{\rightarrow}B}\;(1/\Omega)"
     CB = L"\mathcal{C}_{B{\rightarrow}A}\;(1/\Omega)"
+    # Set bottom margin to space graphs
+    bm = 15*mm
     # First Schlögl conservative actions
     p1 = scatter([Sacts[Sdatayn,2].+0.5.*Sacts[Sdatayn,4]],[Sacts[Sdatayn,6].+0.5.*Sacts[Sdatayn,8]],label="")
-    p1 = plot!(p1,xlabel=CA,ylabel=CB,title="Schlögl")
+    p1 = plot!(p1,xlabel=CA,ylabel=CB,title="Schlögl",bottom_margin=bm)
     px, py = annpos(Sacts[Sdatayn,2].+0.5.*Sacts[Sdatayn,4],Sacts[Sdatayn,6].+0.5.*Sacts[Sdatayn,8])
     p1 = annotate!(p1,px,py,text("A",17,:black))
     # Then Schlögl entropy productions
@@ -1524,7 +1526,7 @@ function seventh()
     p2 = annotate!(p2,px,py,text("C",17,:black))
     # Then toggle switch conservative actions
     p3 = scatter([acts[datayn,2].+0.5.*acts[datayn,4]],[acts[datayn,6].+0.5.*acts[datayn,8]],label="")
-    p3 = plot!(p3,xlabel=CA,ylabel=CB,title="Toggle switch")
+    p3 = plot!(p3,xlabel=CA,ylabel=CB,title="Toggle switch",bottom_margin=bm)
     px, py = annpos(acts[datayn,2].+0.5.*acts[datayn,4],acts[datayn,6].+0.5.*acts[datayn,8])
     p3 = annotate!(p3,px,py,text("B",17,:black))
     # Then toggle switch entropy productions

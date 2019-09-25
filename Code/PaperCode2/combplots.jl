@@ -1388,17 +1388,17 @@ function sixth()
         end
     end
     # Activate PyPlot
-    gr(dpi=300,titlefontsize=17,guidefontsize=14,legendfontsize=15,tickfontsize=14) # dpi=300 breaks plotting when using pyplot, hopefully will be resolved
+    pyplot(dpi=100,titlefontsize=17,guidefontsize=14,legendfontsize=15,tickfontsize=14) # dpi=300 breaks plotting when using pyplot, hopefully will be resolved
     # Plot heatmap of conservative action or 2*PE
     Cs = transpose(Cs) # tranpose so that pyplot will behave
-    heatmap(x,y,Cs,legend=:outerright,colorbar=:legend,title="Conservative action across space")
+    heatmap(x,y,Cs,legend=:outerright,colorbar=:legend,title="Conservative action across space",colorbar_title=L"\mathcal{C}\;(1/\Omega)")
     # Now want to make heat map of conservative actions and probably overlay actual switching paths
     plot!(pathAB[:,1],pathAB[:,2],xlabel="Concentration a",color=1,label="")
     plot!(pathBA[:,1],pathBA[:,2],ylabel="Concentration b",color=2,label="")
     # Now add steady states
-    scatter!([steads[N,1]],[steads[N,2]],markersize=3.5,markercolor=:yellow,label="") # macrostate A
-    scatter!([steads[N,3]],[steads[N,4]],markersize=3.5,markerstrokecolor=:white,markershape=:x,label="")
-    scatter!([steads[N,5]],[steads[N,6]],markersize=3.5,markercolor=:green,label="") # macrostate B
+    scatter!([steads[N,1]],[steads[N,2]],markersize=6,markercolor=:yellow,label="") # macrostate A
+    scatter!([steads[N,3]],[steads[N,4]],markersize=5,markercolor=:white,markershape=:x,label="")
+    scatter!([steads[N,5]],[steads[N,6]],markersize=6,markercolor=:green,label="") # macrostate B
     savefig("../Results/HeatMap.png")
     # Print out parameters used for good measure
     println("Parameters used:")
@@ -1539,4 +1539,4 @@ function seventh()
     return(nothing)
 end
 
-@time seventh()
+@time sixth()

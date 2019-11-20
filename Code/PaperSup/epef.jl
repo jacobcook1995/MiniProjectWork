@@ -10,8 +10,8 @@ using Plots
 using LaTeXStrings
 import PyPlot
 
-# One main plotting function in this script that should hopefully obtain everything needed
-function main()
+# One plotting function in this script that should hopefully obtain everything needed
+function first()
     println("Compiled, Starting script.")
     # First check that an argument for naming has been provided
     if length(ARGS) == 0
@@ -163,7 +163,26 @@ function main()
         Sent[i,3] = Sents[i,1] # A
         Sent[i,4] = Sents[i,3] # B
     end
+    # Now ready to do first load of plots
+    pyplot(dpi=200)#,titlefontsize=17,guidefontsize=14,legendfontsize=15,tickfontsize=14)
+    scatter(ent[:,1:2],ent[:,3:4],label=[L"\dot{S}_A" L"\dot{S}_B"])
+    plot!(xlabel="Exact (Schnakenberg)",ylabel="EP term",title="Steady state entropy productions toggle")
+    savefig("../Results/EPEF/steadT.png")
+    scatter(Sent[:,1:2],Sent[:,3:4],label=[L"\dot{S}_A" L"\dot{S}_B"])
+    plot!(xlabel="Exact (Schnakenberg)",ylabel="EP term",title="Steady state entropy productions Schlögl")
+    savefig("../Results/EPEF/steadS.png")
+    scatter(ent[:,1].-ent[:,2],ent[:,3].-ent[:,4],label=L"\dot{S}_A - \dot{S}_B")
+    plot!(xlabel="Exact (Schnakenberg)",ylabel="EP term",title="Diff. Steady state entropy productions toggle")
+    savefig("../Results/EPEF/diffsteadT.png")
+    scatter(Sent[:,1].-Sent[:,2],Sent[:,3].-Sent[:,4],label=L"\dot{S}_A - \dot{S}_B")
+    plot!(xlabel="Exact (Schnakenberg)",ylabel="EP term",title="Diff. Steady state entropy productions Schlögl")
+    savefig("../Results/EPEF/diffsteadS.png")
     return(nothing)
 end
 
-@time main()
+# A second function to find production and flow terms along the paths
+function second()
+    return(nothing)
+end
+
+@time second()

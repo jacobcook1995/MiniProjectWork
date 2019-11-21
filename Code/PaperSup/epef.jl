@@ -463,21 +463,68 @@ function second()
         end
     end
     savefig("../Results/EPEF/diffswitchS.png")
-    # Now compare EP with ΔS^L
-    scatter(ef[:,1],ef[:,3].+ef[:,4])
-    scatter!(ef[:,5],ef[:,7].+ef[:,8])
-    savefig("../Results/EPEF/test1.png")
-    # Same for Schlögl
-    scatter(Sef[:,1],Sef[:,3].+Sef[:,4])
-    scatter!(Sef[:,5],Sef[:,7].+Sef[:,8])
-    savefig("../Results/EPEF/test2.png")
-    # Also should do differences
-    scatter(ef[:,1].-ef[:,5],ef[:,3].+ef[:,4].-ef[:,7].-ef[:,8])
-    savefig("../Results/EPEF/test3.png")
-    # Same for Schlögl
-    scatter(Sef[:,1].-Sef[:,5],Sef[:,3].+Sef[:,4].-Sef[:,7].-Sef[:,8])
-    savefig("../Results/EPEF/test4.png")
-    # Does the difference match with the entropy production?
+    # Finally show correlation of ΔS^L with entropy ptoduction of switch
+    plot(xlabel=L"\Delta S^L",ylabel="Exact (Gillespie)",title="Entropy productions Langevin vs Master toggle")
+    # First plot one set
+    for i = 1:l
+        if i == 1
+            plot!([ef[i,3]+ef[i,4]],[means[i,1]],yerror=[means[i,3]],label=L"\Delta S_{A{\rightarrow}B}",color=1)
+        else
+            plot!([ef[i,3]+ef[i,4]],[means[i,1]],yerror=[means[i,3]],label="",color=1)
+        end
+    end
+    # and then the other
+    for i = 1:l
+        if i == 1
+            plot!([ef[i,7]+ef[i,8]],[means[i,2]],yerror=[means[i,4]],label=L"\Delta S_{B{\rightarrow}A}",color=2)
+        else
+            plot!([ef[i,7]+ef[i,8]],[means[i,2]],yerror=[means[i,4]],label="",color=2)
+        end
+    end
+    savefig("../Results/EPEF/LvsMT.png")
+    # Repeat for Schlögl
+    plot(xlabel=L"\Delta S^L",ylabel="Exact (Gillespie)",title="Entropy productions Langevin vs Master Schlögl")
+    # First plot one set
+    for i = 1:l
+        if i == 1
+            plot!([Sef[i,3]+Sef[i,4]],[Smeans[i,1]],yerror=[Smeans[i,3]],label=L"\Delta S_{A{\rightarrow}B}",color=1)
+        else
+            plot!([Sef[i,3]+Sef[i,4]],[Smeans[i,1]],yerror=[Smeans[i,3]],label="",color=1)
+        end
+    end
+    # and then the other
+    for i = 1:l
+        if i == 1
+            plot!([Sef[i,7]+Sef[i,8]],[Smeans[i,2]],yerror=[Smeans[i,4]],label=L"\Delta S_{B{\rightarrow}A}",color=2)
+        else
+            plot!([Sef[i,7]+Sef[i,8]],[Smeans[i,2]],yerror=[Smeans[i,4]],label="",color=2)
+        end
+    end
+    savefig("../Results/EPEF/LvsMS.png")
+    # Next do differences for both cases
+    plot(xlabel=L"\Delta S^L",ylabel="Exact (Gillespie)",title="Diff. entropy productions Langevin vs Master toggle")
+    for i = 1:l
+        # Calculate new error for each point
+        er = sqrt(means[i,3]^2 + means[i,4]^2)
+        if i == 1
+            plot!([ef[i,3]+ef[i,4]-ef[i,7]-ef[i,8]],[means[i,1]-means[i,2]],yerror=[er],label=L"\Delta S_{A{\rightarrow}B}-\Delta S_{B{\rightarrow}A}",color=1)
+        else
+            plot!([ef[i,3]+ef[i,4]-ef[i,7]-ef[i,8]],[means[i,1]-means[i,2]],yerror=[er],label="",color=1)
+        end
+    end
+    savefig("../Results/EPEF/diffLvsMT.png")
+    # Then do same for Schlögl
+    plot(xlabel=L"\Delta S^L",ylabel="Exact (Gillespie)",title="Diff. entropy productions Langevin vs Master Schlögl")
+    for i = 1:l
+        # Calculate new error for each point
+        er = sqrt(Smeans[i,3]^2 + Smeans[i,4]^2)
+        if i == 1
+            plot!([Sef[i,3]+Sef[i,4]-Sef[i,7]-Sef[i,8]],[Smeans[i,1]-Smeans[i,2]],yerror=[er],label=L"\Delta S_{A{\rightarrow}B}-\Delta S_{B{\rightarrow}A}",color=1)
+        else
+            plot!([Sef[i,3]+Sef[i,4]-Sef[i,7]-Sef[i,8]],[Smeans[i,1]-Smeans[i,2]],yerror=[er],label="",color=1)
+        end
+    end
+    savefig("../Results/EPEF/diffLvsMS.png")
     return(nothing)
 end
 

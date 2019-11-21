@@ -463,69 +463,20 @@ function second()
         end
     end
     savefig("../Results/EPEF/diffswitchS.png")
-    # Then same with entropy flow
-    plot(xlabel="EF term",ylabel="Exact (Gillespie)",title="Path entropy productions toggle")
-    # First plot one set
-    for i = 1:l
-        if i == 1
-            plot!([ef[i,2]],[means[i,1]],yerror=[means[i,3]],label=L"\Delta S_{A{\rightarrow}B}",color=1)
-        else
-            plot!([ef[i,2]],[means[i,1]],yerror=[means[i,3]],label="",color=1)
-        end
-    end
-    # and then the other
-    for i = 1:l
-        if i == 1
-            plot!([ef[i,6]],[means[i,2]],yerror=[means[i,4]],label=L"\Delta S_{B{\rightarrow}A}",color=2)
-        else
-            plot!([ef[i,6]],[means[i,2]],yerror=[means[i,4]],label="",color=2)
-        end
-    end
-    savefig("../Results/EPEF/EFswitchT.png")
-    # The same for the Schlögl model
-    plot(xlabel="EF term",ylabel="Exact (Gillespie)",title="Path entropy productions Schlögl")
-    # First plot one set
-    for i = 1:l
-        if i == 1
-            plot!([Sef[i,2]],[Smeans[i,1]],yerror=[Smeans[i,3]],label=L"\Delta S_{A{\rightarrow}B}",color=1)
-        else
-            plot!([Sef[i,2]],[Smeans[i,1]],yerror=[Smeans[i,3]],label="",color=1)
-        end
-    end
-    # and then the other
-    for i = 1:l
-        if i == 1
-            plot!([Sef[i,6]],[Smeans[i,2]],yerror=[Smeans[i,4]],label=L"\Delta S_{B{\rightarrow}A}",color=2)
-        else
-            plot!([Sef[i,6]],[Smeans[i,2]],yerror=[Smeans[i,4]],label="",color=2)
-        end
-    end
-    savefig("../Results/EPEF/EFswitchS.png")
-    # Do differences
-    plot(xlabel="EF term",ylabel="Exact (Gillespie)",title="Diff. Path entropy productions toggle")
-    for i = 1:l
-        # Calculate new error for each point
-        er = sqrt(means[i,3]^2 + means[i,4]^2)
-        if i == 1
-            plot!([ef[i,2]-ef[i,6]],[means[i,1]-means[i,2]],yerror=[er],label=L"\Delta S_{A{\rightarrow}B}-\Delta S_{B{\rightarrow}A}",color=1)
-        else
-            plot!([ef[i,2]-ef[i,6]],[means[i,1]-means[i,2]],yerror=[er],label="",color=1)
-        end
-    end
-    savefig("../Results/EPEF/EFdiffswitchT.png")
-    # And also for Schlögl model
-    plot(xlabel="EF term",ylabel="Exact (Gillespie)",title="Diff. Path entropy productions Schlögl")
-    for i = 1:l
-        # Calculate new error for each point
-        er = sqrt(Smeans[i,3]^2 + Smeans[i,4]^2)
-        if i == 1
-            plot!([Sef[i,2]-Sef[i,6]],[Smeans[i,1]-Smeans[i,2]],yerror=[er],label=L"\Delta S_{A{\rightarrow}B}-\Delta S_{B{\rightarrow}A}",color=1)
-        else
-            plot!([Sef[i,2]-Sef[i,6]],[Smeans[i,1]-Smeans[i,2]],yerror=[er],label="",color=1)
-        end
-    end
-    savefig("../Results/EPEF/EFdiffswitchS.png")
-    # Also need to compare to Langevin entropy production => As Robert is sure to ask about this
+    # Now compare EP with ΔS^L
+    scatter(ef[:,1],ef[:,3].+ef[:,4])
+    scatter!(ef[:,5],ef[:,7].+ef[:,8])
+    savefig("../Results/EPEF/test1.png")
+    # Same for Schlögl
+    scatter(Sef[:,1],Sef[:,3].+Sef[:,4])
+    scatter!(Sef[:,5],Sef[:,7].+Sef[:,8])
+    savefig("../Results/EPEF/test2.png")
+    # Also should do differences
+    scatter(ef[:,1].-ef[:,5],ef[:,3].+ef[:,4].-ef[:,7].-ef[:,8])
+    savefig("../Results/EPEF/test3.png")
+    # Same for Schlögl
+    scatter(Sef[:,1].-Sef[:,5],Sef[:,3].+Sef[:,4].-Sef[:,7].-Sef[:,8])
+    savefig("../Results/EPEF/test4.png")
     # Does the difference match with the entropy production?
     return(nothing)
 end

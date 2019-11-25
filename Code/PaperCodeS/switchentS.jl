@@ -272,13 +272,16 @@ function main()
         end
     end
     # Setting parameter sets to look at
-    I = collect(1:100)
+    # I = collect(1:100)
+    I = [5,10,20,21,36,71,81,99,100] # REMOVE WHEN DONE
     for i = 1:length(I)
         println("Run $(I[i]) Started.")
         flush(stdout)
         # now calulate entropy productions of switching
         # calculate optimum value each time
         Ωs = selectvol([acts[I[i],2],acts[I[i],6]])
+        # Need to increase Ωs in the hope it improves result
+        Ωs = 1.25*Ωs
         len = 100 # run 100 for each, forward and backward
         entpf = zeros(len)
         entpb = zeros(len)

@@ -958,12 +958,13 @@ function comb()
     weig = [Smeans[:,3].^-2; Smeans[:,4].^-2]
     # Set initial guess and plot range
     p0 = [0.0,1.0]
-    xran = 0.0:100.0:400.0
+    xran = 0.0:25.0:475.0
     yint, slop, intlow, intup, r, wr = corrparr(xdata,ydata,weig,p0,xran)
-    println(r)
-    println(wr)
     # Now add to graph
-    plot!(xran,model(xran,[yint,slop]),ribbon=(intlow,intup),label="r = $(round(wr,sigdigits=3))",color=3)
+    plot!(xran,model(xran,[yint,slop]),label="r = $(round(wr,sigdigits=3))",color=3)
+    # Finally annotate
+    px, py = annpos(collect(xran),collect(model(xran,[yint,slop])))
+    annotate!(px,py,text("C",17,:black))
     # The same for the toggle switch model
     p4 = plot(xlabel="EP term",ylabel="Exact (Gillespie)",title="Path entropy productions toggle")
     # First plot one set
@@ -991,9 +992,10 @@ function comb()
     xran = 0.0:100.0:2000.0
     yint, slop, intlow, intup, r, wr = corrparr(xdata,ydata,weig,p0,xran)
     # Now add to graph
-    plot!(xran,model(xran,[yint,slop]),ribbon=(intlow,intup),label="r = $(round(wr,sigdigits=3))",color=3)
-    println(r)
-    println(wr)
+    plot!(xran,model(xran,[yint,slop]),label="r = $(round(wr,sigdigits=3))",color=3)
+    # Then annoate
+    px, py = annpos(xdata,[means[:,1].+means[:,3]; means[:,2].+means[:,4]])
+    annotate!(px,py,text("D",17,:black))
     # Finally combine plots
     plot(p1,p2,p3,p4,layout=(2,2),size=(1200,800))
     savefig("../Results/EPEF/test.png")
@@ -1034,7 +1036,6 @@ function corrparr(xdata::Array{Float64,1},ydata::Array{Float64,1},p0::Array{Floa
     return(yint,slop,intlow,intup,r)
 end
 
-# MOVE TO PLOTS SCRIPT WHEN I'M DONE
 # Overload corrparr function so that errors can be provided
 # This returns the fit, the correlation coefficient, and the confidence interval
 function corrparr(xdata::Array{Float64,1},ydata::Array{Float64,1},weig::Array{Float64,1},p0::Array{Float64,1},xran::AbstractRange)
@@ -1044,7 +1045,7 @@ function corrparr(xdata::Array{Float64,1},ydata::Array{Float64,1},weig::Array{Fl
     # First define model
     @. model(x,p) = p[1] + p[2]*x
     # Fit data to this model
-    fit = curve_fit(model,xdata,ydata,p0)#,weig,p0)
+    fit = curve_fit(model,xdata,ydata,weig,p0)
     yint = coef(fit)[1]
     slop = coef(fit)[2]
     # Then find confidence interval

@@ -243,39 +243,6 @@ function main()
             end
         end
     end
-    # # plot change in action vs entropy produced
-    # xlab = L"ΔS_{h\rightarrow l} - ΔS_{l\rightarrow h}"
-    # ylab = L"\mathcal{A}_{h\rightarrow l} - \mathcal{A}_{l\rightarrow h}"
-    # plot(xlabel=xlab,ylabel=ylab,title=L"\Delta\mathcal{A}\;vs\;\Delta\Delta S")
-    # for i = 1:l
-    #     if datayn[i] == true
-    #         scatter!([acts[i,4]-acts[i,8]],[acts[i,2]-acts[i,6]],label="",color=1)
-    #     end
-    # end
-    # savefig("../Results/DiffActvsDiffEntProd.png")
-    # plot(xlabel="Entropy Produced",ylabel="Action",title="Action vs Entropy Produced")
-    # for i = 1:l
-    #     if datayn[i] == true
-    #         scatter!([acts[i,4],acts[i,8]],[acts[i,2],acts[i,6]],label="")
-    #     end
-    # end
-    # savefig("../Results/ActvsEntProd.png")
-    # plot(xlabel="Approx Action",ylabel="Action",title="Action vs Approx Action")
-    # for i = 1:l
-    #     if datayn[i] == true
-    #         scatter!([acts[i,3],acts[i,7]],[acts[i,2],acts[i,6]],label="")
-    #     end
-    # end
-    # savefig("../Results/ActvsActapprox.png")
-    # now plot differnce in entropy production along path vs differnce at steady states
-    # lab = L"ΔS_{h\rightarrow l} - ΔS_{l\rightarrow h}"
-    # plot(xlabel=L"\dot{S}_h - \dot{S}_l",ylabel=lab,title="Diff in Path Ent Prod vs Steady State")
-    # for i = 1:l
-    #     if datayn[i] == true
-    #         scatter!([ent[i,3]-ent[i,4]],[acts[i,4]-acts[i,8]],label="")
-    #     end
-    # end
-    # savefig("../Results/PathvsState.png")
     # Final section to read in probs and make a plot, this is necessarily rough at this point
     # Check there is a file of entropies to be read
     infile = "../Results/Fig3Data/$(ARGS[1])probs.csv"

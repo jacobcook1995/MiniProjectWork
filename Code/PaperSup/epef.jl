@@ -9,6 +9,7 @@
 using Plots
 using LaTeXStrings
 using Statistics
+using LsqFit
 import PyPlot
 
 # One plotting function in this script that should hopefully obtain everything needed
@@ -528,4 +529,351 @@ function second()
     return(nothing)
 end
 
-@time second()
+# Function to combine and refine the above graphs
+function comb()
+    println("Compiled, Starting script.")
+    # First check that an argument for naming has been provided
+    if length(ARGS) == 0
+        println("Error: Need to provide a name for toggle switch inputs")
+        return(nothing)
+    elseif length(ARGS) == 1
+        println("Error: Need to provide a name for Schlögl inputs.")
+        return(nothing)
+    end
+    # Firstly wish to make steady state comparisons
+    # read in EP terms => as EF terms equal and opposite at steady state
+    # Check there is a file of productions to be read
+    infile = "../Results/Fig3Data/$(ARGS[1])prod.csv"
+    if ~isfile(infile)
+        println("Error: No file of EP terms to be read for toggle switch.")
+        return(nothing)
+    end
+    # now do readings
+    l = countlines(infile)
+    w = 3
+    prods = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                prods[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Check there is a file of EP's to be read for Schlögl model
+    infile = "../Results/Fig3DataS/$(ARGS[2])prodS.csv"
+    if ~isfile(infile)
+        println("Error: No file of EP terms to be read for Schlögl model.")
+        return(nothing)
+    end
+    # now read in EP terms for
+    l = countlines(infile)
+    w = 3
+    Sprods = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                Sprods[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Check there is a file of steady-state entropy productions to be read
+    infile = "../Results/Fig3Data/$(ARGS[1])schnak.csv"
+    if ~isfile(infile)
+        println("Error: No file of Entropy Productions to be read for toggle switch.")
+        return(nothing)
+    end
+    # now read in Schnakenberg entropy productions
+    l = countlines(infile)
+    w = 3
+    ents = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                ents[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # Check there is a file of steady-state entropy productions to be read for Schlögl
+    infile = "../Results/Fig3DataS/$(ARGS[2])schnakS.csv"
+    if ~isfile(infile)
+        println("Error: No file of Entropy Productions to be read for Schlögl.")
+        return(nothing)
+    end
+    # now read in Schnakenberg entropy productions
+    l = countlines(infile)
+    w = 3
+    Sents = zeros(l,w)
+    open(infile, "r") do in_file
+        # Use a for loop to process the rows in the input file one-by-one
+        k = 1
+        for line in eachline(in_file)
+            # parse line by finding commas
+            L = length(line)
+            comma = fill(0,w+1)
+            j = 1
+            for i = 1:L
+                if line[i] == ','
+                    j += 1
+                    comma[j] = i
+                end
+            end
+            comma[end] = L+1
+            for i = 1:w
+                Sents[k,i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+            end
+            k += 1
+        end
+    end
+    # combine entropy production and EP terms into one structure for toggle
+    ent = zeros(l,4)
+    for i = 1:l
+        ent[i,1] = prods[i,1] # A
+        ent[i,2] = prods[i,3] # B
+        ent[i,3] = ents[i,1] # A
+        ent[i,4] = ents[i,3] # B
+    end
+    # combine entropy production and EP into one structure for Schlögl model
+    Sent = zeros(l,4)
+    for i = 1:l
+        Sent[i,1] = Sprods[i,1] # A
+        Sent[i,2] = Sprods[i,3] # B
+        Sent[i,3] = Sents[i,1] # A
+        Sent[i,4] = Sents[i,3] # B
+    end
+    # Now need to obtain the master equation switching data
+    means = zeros(l,4)
+    for i = 1:l
+        infile1 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])A2BMast.csv"
+        infile2 = "../Results/Fig3Data/Traj/$(i)$(ARGS[1])B2AMast.csv"
+        # Extract forward data
+        ne = 101
+        w = ne
+        mastf = zeros(w-1)
+        open(infile1, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w-1
+                    mastf[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+        # Then extract backwards data
+        mastb = zeros(w-1)
+        open(infile2, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w-1
+                    mastb[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+        # Now need to extract averages and standard deviations and plot against other data
+        means[i,1] = mean(mastf)
+        means[i,2] = mean(mastb)
+        means[i,3] = stdm(mastf,means[i,1];corrected=true)/sqrt(ne-1)
+        means[i,4] = stdm(mastb,means[i,2];corrected=true)/sqrt(ne-1)
+    end
+    # Now repeat entire process for the Schlögl model
+    Smeans = zeros(l,4)
+    for i = 1:l
+        infile1 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])h2lMast.csv"
+        infile2 = "../Results/Fig3DataS/Traj/$(i)$(ARGS[2])l2hMast.csv"
+        # Extract forward data
+        ne = 101
+        w = ne
+        mastf = zeros(w-1)
+        open(infile1, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w-1
+                    mastf[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+        # Then extract backwards data
+        mastb = zeros(w-1)
+        open(infile2, "r") do in_file
+            # Use a for loop to process the rows in the input file one-by-one
+            k = 1
+            for line in eachline(in_file)
+                # parse line by finding commas
+                L = length(line)
+                comma = fill(0,w+1)
+                j = 1
+                for i = 1:L
+                    if line[i] == ','
+                        j += 1
+                        comma[j] = i
+                    end
+                end
+                comma[end] = L+1
+                for i = 1:w-1
+                    mastb[i] = parse(Float64,line[(comma[i]+1):(comma[i+1]-1)])
+                end
+                k += 1
+            end
+        end
+        # Now need to extract averages and standard deviations and plot against other data
+        Smeans[i,1] = mean(mastf)
+        Smeans[i,2] = mean(mastb)
+        Smeans[i,3] = stdm(mastf,means[i,1];corrected=true)/sqrt(ne-1)
+        Smeans[i,4] = stdm(mastb,means[i,2];corrected=true)/sqrt(ne-1)
+    end
+    # Set up PyPlot
+    pyplot(dpi=200)
+    # First one to plot is the Schlögl model steady states
+    p1 = scatter(Sent[:,1:2],Sent[:,3:4],label=[L"\dot{S}_A" L"\dot{S}_B"])
+    plot!(xlabel="Exact (Schnakenberg)",ylabel="EP term",title="Steady state entropy productions Schlögl")
+    # Set ylim so that distracting outliers arn't seen
+    plot!(ylims=(-25,1000))
+    # Setup model
+    @. model(x,p) = p[1] + p[2]*x
+    # Choose data to fit model to
+    xdata = Sent[:,2] #[Sent[:,1]; Sent[:,2]]
+    ydata = Sent[:,4] #[Sent[:,3]; Sent[:,4]]
+    # Set initial guess and plot range
+    p0 = [0.0,1.0]
+    xran = 0.0:1.0:63.0
+    yint, slop, intlow, intup, r =  corrparr(xdata,ydata,p0,xran)
+    plot!(xran,model(xran,[yint,slop]),ribbon=(intlow,intup),label="",color=3)
+    println(r)
+    # No data points to be excluded from the plot for toggle switch model
+    p2 = scatter(ent[:,1:2],ent[:,3:4],label=[L"\dot{S}_A" L"\dot{S}_B"])
+    plot!(xlabel="Exact (Schnakenberg)",ylabel="EP term",title="Steady state entropy productions toggle")
+    # Choose data to fit model to
+    xdata = [ent[:,1]; ent[:,2]]
+    ydata = [ent[:,3]; ent[:,4]]
+    # Set initial guess and plot range
+    p0 = [0.0,1.0]
+    xran = 0.0:20.0:180.0
+    # Find linear fit and correlation coefficient
+    yint, slop, intlow, intup, r =  corrparr(xdata,ydata,p0,xran)
+    # plot best fitting line => add correlation coefficient as a label
+    plot!(xran,model(xran,[yint,slop]),label="r = $(round(r,sigdigits=3))",color=3)
+
+    p3 = plot()
+
+    p4 = plot()
+    # Finally combine plots
+    plot(p1,p2,p3,p4,layout=(2,2),size=(1200,800))
+    savefig("../Results/EPEF/test.png")
+    return(nothing)
+end
+
+# MOVE THIS TO MY PLOTS SCRIPT WHEN I'M DONE
+# Function that takes sets of data and does some fitting
+# This returns the fit, the correlation coefficient, and the confidence interval
+function corrparr(xdata::Array{Float64,1},ydata::Array{Float64,1},p0::Array{Float64,1},xran::AbstractRange)
+    # p0 is the initial parameter guess
+    # xran is the range to calculate over
+
+    # First define model
+    @. model(x,p) = p[1] + p[2]*x
+    # Fit data to this model
+    fit = curve_fit(model,xdata,ydata,p0)
+    yint = coef(fit)[1]
+    slop = coef(fit)[2]
+    # Then find confidence interval
+    con = confidence_interval(fit, 0.05)
+    vyint = con[1]
+    vslop = con[2]
+    # Calculate intervals for the range given
+    intlow = abs.(model(xran,[yint,slop]) .- model(xran,[vyint[2],vslop[2]]))
+    intup = abs.(model(xran,[yint,slop]) .- model(xran,[vyint[1],vslop[1]]))
+    # Now calculate Pearson correlation coefficient
+    xbar = sum(xdata)/length(xdata)
+    ybar = sum(ydata)/length(ydata)
+    a = 0
+    b = 0
+    c = 0
+    for i = 1:length(xdata)
+        a += (xdata[i] - xbar)*(ydata[i] - ybar)
+        b += (xdata[i] - xbar)^2
+        c += (ydata[i] - ybar)^2
+    end
+    r = a/sqrt(b*c)
+    return(yint,slop,intlow,intup,r)
+end
+
+@time comb()

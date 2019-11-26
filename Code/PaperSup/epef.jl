@@ -998,7 +998,7 @@ function comb()
     annotate!(px,py,text("D",17,:black))
     # Finally combine plots
     plot(p1,p2,p3,p4,layout=(2,2),size=(1200,800))
-    savefig("../Results/EPEF/test.png")
+    savefig("../Results/EPEF/EPcorr.png")
     return(nothing)
 end
 

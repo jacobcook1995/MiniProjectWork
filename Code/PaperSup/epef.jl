@@ -399,8 +399,8 @@ function second()
         # Now need to extract averages and standard deviations and plot against other data
         Smeans[i,1] = mean(mastf)
         Smeans[i,2] = mean(mastb)
-        Smeans[i,3] = stdm(mastf,means[i,1];corrected=true)/sqrt(ne-1)
-        Smeans[i,4] = stdm(mastb,means[i,2];corrected=true)/sqrt(ne-1)
+        Smeans[i,3] = stdm(mastf,Smeans[i,1];corrected=true)/sqrt(ne-1)
+        Smeans[i,4] = stdm(mastb,Smeans[i,2];corrected=true)/sqrt(ne-1)
     end
     # First compare EP terms with master equation entropy productions
     pyplot(dpi=200)
@@ -888,8 +888,8 @@ function comb()
         # Now need to extract averages and standard deviations and plot against other data
         Smeans[i,1] = mean(mastf)
         Smeans[i,2] = mean(mastb)
-        Smeans[i,3] = stdm(mastf,means[i,1];corrected=true)/sqrt(ne-1)
-        Smeans[i,4] = stdm(mastb,means[i,2];corrected=true)/sqrt(ne-1)
+        Smeans[i,3] = stdm(mastf,Smeans[i,1];corrected=true)/sqrt(ne-1)
+        Smeans[i,4] = stdm(mastb,Smeans[i,2];corrected=true)/sqrt(ne-1)
     end
     # Set up PyPlot
     pyplot(dpi=200,margin=10mm)
@@ -960,10 +960,10 @@ function comb()
     p0 = [0.0,1.0]
     xran = 0.0:25.0:475.0
     yint, slop, intlow, intup, r, wr = corrparr(xdata,ydata,weig,p0,xran)
-    # Now add to graph
-    plot!(xran,model(xran,[yint,slop]),label="r = $(round(wr,sigdigits=3))",color=3)
+    # Not showing line in this case but need to add wr to plot
+    annotate!(425,145,text("r = $(round(wr,sigdigits=3))",9,:black))
     # Finally annotate
-    px, py = annpos(collect(xran),collect(model(xran,[yint,slop])))
+    px, py = annpos(xdata,[Smeans[:,1].+Smeans[:,3]; Smeans[:,2].+Smeans[:,4]])
     annotate!(px,py,text("C",17,:black))
     # The same for the toggle switch model
     p4 = plot(xlabel="EP term",ylabel="Exact (Gillespie)",title="Path entropy productions toggle")
@@ -991,9 +991,9 @@ function comb()
     p0 = [0.0,1.0]
     xran = 0.0:100.0:2000.0
     yint, slop, intlow, intup, r, wr = corrparr(xdata,ydata,weig,p0,xran)
-    # Now add to graph
-    plot!(xran,model(xran,[yint,slop]),label="r = $(round(wr,sigdigits=3))",color=3)
-    # Then annoate
+    # Not showing line in this case but need to add wr to plot
+    annotate!(1850,1600,text("r = $(round(wr,sigdigits=3))",9,:black))
+    # Then annotate
     px, py = annpos(xdata,[means[:,1].+means[:,3]; means[:,2].+means[:,4]])
     annotate!(px,py,text("D",17,:black))
     # Finally combine plots

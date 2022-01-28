@@ -1,9 +1,10 @@
 #!/usr/bin/env julia
 # EntProdtraj.jl
 # A script to read in parameters and steady states and then to generate nice histograms
-# of the entropy productions by two differenet methods.
+# of the entropy productions by three differenet methods.
 # 1) using the langevin entropy production term
 # 2) by using a large volume reduced form of the master equation
+# 3) by using the underlying master equation
 #
 # Author: Jacob Cook
 # Date: January 2019
@@ -77,38 +78,46 @@ function step(rates::Array{Float64,1},vars::Array{Int64,1},reac::Int64)
     p = 0 # probability used for forward path
     if r < rs[1]
         vars[1] += 1 # A produced
-        p = rs[1] + rs[4]
+        p = rs[1]
+        pt = rs[1] + rs[4]
         reac = 1
     elseif r < rs[1] + rs[2]
         vars[1] -= 1 # A unravels
-        p = rs[2] + rs[3]
+        p = rs[2]
+        pt = rs[2] + rs[3]
         reac = 2
     elseif r < rs[1] + rs[2] + rs[3]
         vars[1] -= 1 # A decays
-        p = rs[3] + rs[2]
+        p = rs[3]
+        pt = rs[3] + rs[2]
         reac = 3
     elseif r < rs[1] + rs[2] + rs[3] + rs[4]
         vars[1] += 1 # A regenerated
-        p = rs[4] + rs[1]
+        p = rs[4]
+        pt = rs[4] + rs[1]
         reac = 4
     elseif r < rs[1] + rs[2] + rs[3] + rs[4] + rs[5]
         vars[2] += 1 # B produced
-        p = rs[5] + rs[8]
+        p = rs[5]
+        pt = rs[5] + rs[8]
         reac = 5
     elseif r < rs[1] + rs[2] + rs[3] + rs[4] + rs[5] + rs[6]
         vars[2] -= 1 # B unravels
-        p = rs[6] + rs[7]
+        p = rs[6]
+        pt = rs[6] + rs[7]
         reac = 6
     elseif r < rs[1] + rs[2] + rs[3] + rs[4] + rs[5] + rs[6] + rs[7]
         vars[2] -= 1 # B decays
-        p = rs[7] + rs[6]
+        p = rs[7]
+        pt = rs[7] + rs[6]
         reac = 7
     else
         vars[2] += 1 # B regenerated
-        p = rs[8] + rs[5]
+        p = rs[8]
+        pt = rs[8] + rs[5]
         reac = 8
     end
-    return(vars,p,reac)
+    return(vars,p,pt,reac)
 end
 
 # function to advance gillespie one step
@@ -139,14 +148,22 @@ end
 function rev(rs::Array{Float64,1},reac::Int64)
     rs = rs/sum(rs)
     if reac > 0 || reac < 9
-        if reac == 2 || reac == 3 # A removed case
-            return(rs[1]+rs[4])
-        elseif reac == 1 || reac == 4 # A added case
-            return(rs[2]+rs[3])
-        elseif reac == 5 || reac == 8 # B added case
-            return(rs[6]+rs[7])
-        else # B removed case
-            return(rs[5]+rs[8])
+        if reac == 1 # A produced
+            return(rs[2],rs[2]+rs[3])
+        elseif reac == 2 # A unravels
+            return(rs[1],rs[1]+rs[4])
+        elseif reac == 3 # A decays
+            return(rs[4],rs[1]+rs[4])
+        elseif reac == 4 # A regenerated
+            return(rs[3],rs[2]+rs[3])
+        elseif reac == 5 # B produced
+            return(rs[6],rs[6]+rs[7])
+        elseif reac == 6 # B unravels
+            return(rs[5],rs[5]+rs[8])
+        elseif reac == 7 # B decays
+            return(rs[7],rs[5]+rs[8])
+        else # B regenerated
+            return(rs[8],rs[6]+rs[7])
         end
     else
         error("Invalid reaction code returned")
@@ -155,7 +172,8 @@ end
 
 # function to now run a gillespie simulation of the two states
 function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{Float64,1},ps::Array{Float64,1},
-                    noits::Int64,Ω::Int64,pf::Array{Float64,1},pb::Array{Float64,1})
+                    noits::Int64,Ω::Int64,pf::Array{Float64,1},pft::Array{Float64,1},pb::Array{Float64,1},
+                    pbt::Array{Float64,1})
     # extract all parameters and then rescale
     # ps = [ k, kmin, q, qmin, K, Kmin, Q, Qmin, r, f]
     k = ps[1]*Ω
@@ -171,7 +189,7 @@ function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{
     # set up these gloablly
     times = zeros(2)
     vars = fill(0,2,2)
-    SA = SB = 0
+    SA = SB = SAt = SBt = 0
     # setup for finding if left steady state
     sad = round.(mid*Ω)
     fin = false
@@ -190,18 +208,18 @@ function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{
             rs = rates(vars[1,1],vars[2,1],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
             if i != 1
                 # now use reac to calculate reverse rate
-                pb[i-1] = rev(rs,reac)
+                pb[i-1], pbt[i-1] = rev(rs,reac)
             end
             # calculate timestep
             τ = timstep(rs)
             # update time
             times[2] = times[1] + τ
             # do gillepsie step
-            vars[:,2], pf[i], reac = step(rs,vars[:,1],reac)
+            vars[:,2], pf[i], pft[i], reac = step(rs,vars[:,1],reac)
             # final reverse rate
             if i == noits
                 rs = rates(vars[1,end],vars[2,end],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
-                pb[end] = rev(rs,reac)
+                pb[end], pbt[end] = rev(rs,reac)
             end
             # check if max and minimums should be updated
             if vars[1,2] < minA
@@ -221,6 +239,12 @@ function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{
             SA += log(pf[i]) - log(pb[i])
         end
         SA = SA/Ω
+        # Repeat process for the apparent entropy production
+        SAt = 0
+        for i = 1:length(pbt)
+            SAt += log(pft[i]) - log(pbt[i])
+        end
+        SAt = SAt/Ω
         # check simulated trajectories remain in bounds
         if (steadA[1] - mid[1]) < 0
             if sad[1] < maxA
@@ -267,18 +291,18 @@ function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{
             rs = rates(vars[1,1],vars[2,1],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
             if i != 1
                 # now use reac to calculate reverse rate
-                pb[i-1] = rev(rs,reac)
+                pb[i-1], pbt[i-1] = rev(rs,reac)
             end
             # calculate timestep
             τ = timstep(rs)
             # update time
             times[2] = times[1] + τ
             # do gillepsie step
-            vars[:,2], pf[i], reac = step(rs,vars[:,1],reac)
+            vars[:,2], pf[i], pft[i], reac = step(rs,vars[:,1],reac)
             # final reverse rate
             if i == noits
                 rs = rates(vars[1,end],vars[2,end],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
-                pb[end] = rev(rs,reac)
+                pb[end], pbt[end] = rev(rs,reac)
             end
             # check if max and minimums should be updated
             if vars[1,2] < minA
@@ -298,6 +322,12 @@ function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{
             SB += log(pf[i]) - log(pb[i])
         end
         SB = SB/Ω
+        # Repeat for reduced master equation case
+        SBt = 0
+        for i = 1:length(pbt)
+            SBt += log(pft[i]) - log(pbt[i])
+        end
+        SBt = SBt/Ω
         # check simulated trajectories remain in bounds
         if (steadB[1] - mid[1]) < 0
             if sad[1] < maxA
@@ -326,7 +356,7 @@ function gillespie(steadA::Array{Float64,1},steadB::Array{Float64,1},mid::Array{
             flush(stdout)
         end
     end
-    return(SA,SB)
+    return(SA,SAt,SB,SBt)
 end
 
 # function to now run a gillespie simulation of the two states
@@ -560,15 +590,25 @@ function main()
     SLangB = zeros(N,len)
     SMastA = zeros(N,len)
     SMastB = zeros(N,len)
+    SRedMA = zeros(N,len)
+    SRedMB = zeros(N,len)
     pf = zeros(noits)
     pb = zeros(noits)
+    pft = zeros(noits)
+    pbt = zeros(noits)
     trajA = zeros(Int64,noits+1,2)
     trajB = zeros(Int64,noits+1,2)
     tA = zeros(noits+1)
     tB = zeros(noits+1)
     for i = 1:len
+        println("Starting analysis of parameter set $(i)")
         for j = 1:N
-            SMastA[j,i], SMastB[j,i] = gillespie([stead[i,1],stead[i,2]],[stead[i,5],stead[i,6]],[stead[i,3],stead[i,4]],ps[i,:],noits,Ω,pf,pb)
+            # Keep user informed of progress
+            if j % 100 == 0
+                println("Simulation $(j) being performed")
+            end
+            SMastA[j,i], SRedMA[j,i], SMastB[j,i], SRedMB[j,i] = gillespie([stead[i,1],stead[i,2]],
+            [stead[i,5],stead[i,6]],[stead[i,3],stead[i,4]],ps[i,:],noits,Ω,pf,pft,pb,pbt)
             trajA, trajB, tA, tB = gillespie([stead[i,1],stead[i,2]],[stead[i,5],stead[i,6]],[stead[i,3],stead[i,4]],ps[i,:],noits,Ω,trajA,trajB,tA,tB)
             SLangA[j,i] = LangEnt(trajA/Ω,ps[i,:],tA)
             SLangB[j,i] = LangEnt(trajB/Ω,ps[i,:],tB)
@@ -579,7 +619,7 @@ function main()
         outfile = "../Results/SupData/Stead$(i)$(ARGS[1]).csv"
         out_file = open(outfile, "w")
         for j = 1:N
-            line = "$(SLangA[j,i]),$(SLangB[j,i]),$(SMastA[j,i]),$(SMastB[j,i])\n"
+            line = "$(SLangA[j,i]),$(SLangB[j,i]),$(SMastA[j,i]),$(SMastB[j,i]),$(SRedMA[j,i]),$(SRedMB[j,i])\n"
             write(out_file,line)
         end
         close(out_file)
@@ -615,6 +655,8 @@ function plotting()
     SLangB = zeros(len,len2)
     SMastA = zeros(len,len2)
     SMastB = zeros(len,len2)
+    SRedMA = zeros(len,len2)
+    SRedMB = zeros(len,len2)
     # Make latex strings to be used in plots
     LM = L"\Delta S_{M}"
     LL = L"\Delta S_{L}"
@@ -638,7 +680,7 @@ function plotting()
             for line in eachline(in_file)
                 # parse line by finding commas
                 L = length(line)
-                comma = fill(0,5)
+                comma = fill(0,7)
                 j = 1
                 for l = 1:L
                     if line[l] == ','
@@ -651,6 +693,8 @@ function plotting()
                 SLangB[i,k] = parse(Float64,line[(comma[2]+1):(comma[3]-1)])
                 SMastA[i,k] = parse(Float64,line[(comma[3]+1):(comma[4]-1)])
                 SMastB[i,k] = parse(Float64,line[(comma[4]+1):(comma[5]-1)])
+                SRedMA[i,k] = parse(Float64,line[(comma[5]+1):(comma[6]-1)])
+                SRedMB[i,k] = parse(Float64,line[(comma[6]+1):(comma[7]-1)])
                 k += 1
             end
         end
@@ -658,42 +702,54 @@ function plotting()
         maxA = minA = maxB = minB = 0
         maxMA = maximum(SMastA)
         maxLA = maximum(SLangA)
-        if maxMA > maxLA
-            maxA = maxMA
-        else
+        maxRA = maximum(SRedMA)
+        if maxLA > maxRA
             maxA = maxLA
+        else
+            maxA = maxRA
         end
         minMA = minimum(SMastA)
         minLA = minimum(SLangA)
-        if minMA < minLA
-            minA = minMA
-        else
+        minRA = maximum(SRedMA)
+        if minLA < minRA
             minA = minLA
+        else
+            minA = minRA
         end
         maxMB = maximum(SMastB)
         maxLB = maximum(SLangB)
-        if maxMB > maxLB
-            maxB = maxMB
-        else
+        maxRB = maximum(SRedMB)
+        if maxLB > maxRB
             maxB = maxLB
+        else
+            maxB = maxRB
         end
         minMB = minimum(SMastB)
         minLB = minimum(SLangB)
-        if minMB < minLB
-            minB = minMB
-        else
+        minRB = minimum(SRedMB)
+        if minLB < minRB
             minB = minLB
+        else
+            minB = minRB
         end
         # Now use to setup bins
         Nbins = 500
         binsA = range(minA,stop=maxA,length=Nbins)
         binsB = range(minB,stop=maxB,length=Nbins)
+        binsMA = range(minMA,stop=maxMA,length=Nbins)
+        binsMB = range(minMB,stop=maxMB,length=Nbins)
         # Now carry out plotting
         pyplot() # activate pyplot
-        histogram(SMastA[i,:],bins=binsA,label="",title="Reduced Master Eq")
+        histogram(SRedMA[i,:],bins=binsA,label="",title="Reduced Master Eq")
+        plot!(xlabel=LM,ylabel="Number of Trajectories",dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+        savefig("../Results/SupGraphs/$(i)1RedMStead.png")
+        histogram(SRedMB[i,:],bins=binsB,label="",title="Reduced Master Eq")
+        plot!(xlabel=LM,ylabel="Number of Trajectories",dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+        savefig("../Results/SupGraphs/$(i)2RedMStead.png")
+        histogram(SMastA[i,:],bins=binsMA,label="",title="Underlying Master Eq")
         plot!(xlabel=LM,ylabel="Number of Trajectories",dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
         savefig("../Results/SupGraphs/$(i)1MastStead.png")
-        histogram(SMastB[i,:],bins=binsB,label="",title="Reduced Master Eq")
+        histogram(SMastB[i,:],bins=binsMB,label="",title="Underlying Master Eq")
         plot!(xlabel=LM,ylabel="Number of Trajectories",dpi=300,titlefontsize=20,guidefontsize=16,legendfontsize=12)
         savefig("../Results/SupGraphs/$(i)2MastStead.png")
         histogram(SLangA[i,:],bins=binsA,label="",title="Langevin")

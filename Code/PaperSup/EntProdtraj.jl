@@ -1,9 +1,10 @@
 #!/usr/bin/env julia
 # EntProdtraj.jl
-# A script to read in parameters and trajcetories and then to generate nice plots
-# of the entropy productions by two differenet methods.
+# A script to read in parameters and trajectories and then to generate nice plots
+# of the entropy productions by three different methods.
 # 1) using the langevin entropy production term
 # 2) by using a large volume reduced form of the master equation
+# 3) by using the underlying master equation
 #
 # Author: Jacob Cook
 # Date: January 2019
@@ -244,8 +245,8 @@ function LangEnt(traj::Array{Float64,2},ps::Array{Float64,1},dt::Float64)
 end
 
 # function that takes in two points and finds the probability that the switch that generates them happens
-function probs(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q::Float64,Q::Float64,
-                kmin::Float64,Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64)
+function probs_tot(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q::Float64,Q::Float64,
+                    kmin::Float64,Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64)
     rates = [ k*r/(r+f*star[2]^2), kmin*star[1], K*star[1], Kmin, q*r/(r+f*star[1]^2), qmin*star[2], Q*star[2], Qmin ]
     # not actually possible to distinguish two processes, which will effect the probabilities
     if fin[1] - star[1] == 0
@@ -271,7 +272,61 @@ function probs(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q:
     return(P)
 end
 
-# A function to find and plot the reduced master equation entropy productions of the various trajectories
+# This function now attempts to differentiate path taken
+function probsR(star::Array{Int64,1},fin::Array{Int64,1},k::Float64,K::Float64,q::Float64,Q::Float64,
+                kmin::Float64,Kmin::Float64,qmin::Float64,Qmin::Float64,r::Float64,f::Float64)
+    rates = [ k*r/(r+f*star[2]^2), kmin*star[1], K*star[1], Kmin, q*r/(r+f*star[1]^2), qmin*star[2], Q*star[2], Qmin]
+    # not actually possible to distinguish two processes, which will effect the probabilities
+    R = rand()
+    if fin[1] - star[1] == 0
+        if fin[2] - star[2] == 1
+            if R < rates[5]/(rates[5] + rates[8])
+                P = (rates[5])/sum(rates)
+                rev = 6
+            else
+                P = (rates[8])/sum(rates)
+                rev = 7
+            end
+        elseif fin[2] - star[2] == -1
+            if R < rates[6]/(rates[6] + rates[7])
+                P = (rates[6])/sum(rates)
+                rev = 5
+            else
+                P = (rates[7])/sum(rates)
+                rev = 8
+            end
+        else
+            error()
+        end
+    else
+        if fin[1] - star[1] == 1
+            if R < rates[1]/(rates[1] + rates[4])
+                P = (rates[1])/sum(rates)
+                rev = 2
+            else
+                P = (rates[4])/sum(rates)
+                rev = 3
+            end
+        elseif fin[1] - star[1] == -1
+            if R < rates[2]/(rates[2] + rates[3])
+                P = (rates[2])/sum(rates)
+                rev = 1
+            else
+                P = (rates[3])/sum(rates)
+                rev = 4
+            end
+        else
+            error()
+        end
+    end
+    # find reverse rates from final point
+    rsR = [ k*r/(r+f*fin[2]^2), kmin*fin[1], K*fin[1], Kmin, q*r/(r+f*fin[1]^2), qmin*fin[2], Q*fin[2], Qmin]
+    Pr = rsR[rev]/sum(rsR)
+    return(P,Pr)
+end
+
+# A function to find and plot the reduced and underlying master equation entropy
+# productions of the various trajectories
 function MastEnt(traj::Array{Float64,2},ps::Array{Float64,1},T::Float64,Ω::Int64)
     k = ps[1]
     kmin = ps[2]
@@ -406,18 +461,23 @@ function MastEnt(traj::Array{Float64,2},ps::Array{Float64,1},T::Float64,Ω::Int6
     end
     # need both forward and backward trajectories in order to establish entropy production
     backp = path[end:-1:1,:]
-    backts = ts[end:-1:1]
     len = length(ts)-1
     Pf = zeros(len)
     Pb = zeros(len)
+    Pft = zeros(len)
+    Pbt = zeros(len)
     for i = 2:len+1
-        Pf[i-1] = probs(path[i-1,:],path[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
-        Pb[i-1] = probs(backp[i-1,:],backp[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        Pf[i-1], Pb[i-1] = probsR(path[i-1,:],path[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        Pft[i-1] = probs_tot(path[i-1,:],path[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
+        Pbt[i-1] = probs_tot(backp[i-1,:],backp[i,:],k,K,q,Q,kmin,Kmin,qmin,Qmin,r,f)
     end
-    entp = log.(Pf./Pb[end:-1:1])
+    # Find both entropy productions
+    entp = log.(Pf./Pb)
+    entpt = log.(Pft./Pbt[end:-1:1])
     # Now should rebin the entropy data into the appropriate segments
     len2 = size(traj,1)-1
     entsr = zeros(len2)
+    entsrt = zeros(len2)
     inds = zeros(Int64,len2)
     # find index to sum up to for each one
     for i = 1:len2-1
@@ -437,12 +497,15 @@ function MastEnt(traj::Array{Float64,2},ps::Array{Float64,1},T::Float64,Ω::Int6
     inds[end] = length(entp)
     # then sum entropies into appropraite sections
     entsr[1] = sum(entp[1:inds[1]])
+    entsrt[1] = sum(entpt[1:inds[1]])
     for i = 1:len2-1
         entsr[i+1] = sum(entp[inds[i]:inds[i+1]])
+        entsrt[i+1] = sum(entpt[inds[i]:inds[i+1]])
     end
     # finally extract the path in A
     entp = entsr
-    return(entp)
+    entpt = entsrt
+    return(entp,entpt)
 end
 
 # main function
@@ -608,22 +671,29 @@ function main()
     LatS2 = L"\Delta S^{R}"
     LatS3 = L"\Delta S"
     pyplot()
-    Ω = 5000
+    Ω = 50000
     for i = 1:len
         for j = 1:2
             d = 2*(j-1)+4*(i-1)
             entp = LangEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1]/N)
             println("$(i),$(j),$(sum(entp)),$(Act[2*(i-1)+j,4])")
-            entp2 = MastEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1],Ω)
+            entp2, entpt = MastEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1],Ω)
             println("$(i),$(j),$(sum(entp2)/Ω)")
+            println("$(i),$(j),$(sum(entpt)/Ω)")
             plot(traj2[1:end-1,1+d],entp,label=LatS,dpi=300,legend=:best,title="",margin=8.0mm)
             plot!(xlabel="Concentration a",ylabel=LatS,titlefontsize=20,guidefontsize=16,legendfontsize=12)
             scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
             scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
             scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
             savefig("../Results/SupGraphs/$(i)$(j)LangEnt.png")
-            plot(traj2[1:end-1,1+d],entp2/(Ω),label=LatS2,dpi=300,legend=:best,title="",margin=8.0mm)
+            plot(traj2[1:end-1,1+d],entpt/(Ω),label=LatS2,dpi=300,legend=:best,title="",margin=8.0mm)
             plot!(xlabel="Concentration a",ylabel=LatS2,titlefontsize=20,guidefontsize=16,legendfontsize=12)
+            scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
+            scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
+            scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
+            savefig("../Results/SupGraphs/$(i)$(j)RedMEnt.png")
+            plot(traj2[1:end-1,1+d],entp2/(Ω),label=LatS3,dpi=300,legend=:best,title="",margin=8.0mm)
+            plot!(xlabel="Concentration a",ylabel=LatS3,titlefontsize=20,guidefontsize=16,legendfontsize=12)
             scatter!([steads[i,1+4*(j-1)]],[0.0],markersize=6,color=:black,label="Start")
             scatter!([steads[i,3]],[0.0],markersize=5,color=:black,markershape=:x,label="Saddle")
             scatter!([steads[i,5-4*(j-1)]],[0.0],markersize=6,color=:white,label="End")
@@ -634,7 +704,7 @@ function main()
         for j = 1:2
             d = 2*(j-1)+4*(i-1)
             entp = LangEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1]/N)
-            entp2 = MastEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1],Ω)
+            entp2, _ = MastEnt(traj2[:,(1+d):(2+d)],ps[i,:],Act[2*(i-1)+j,1],Ω)
             plot(traj2[1:end-1,1+d],entp,label=LatS,dpi=300,legend=:best,title="",margin=8.0mm)
             plot!(traj2[1:end-1,1+d],entp2/(Ω),label=LatS2)
             plot!(xlabel="Concentration a",ylabel=LatS3,titlefontsize=20,guidefontsize=16,legendfontsize=12)
